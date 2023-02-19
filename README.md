@@ -1,2 +1,1 @@
-# monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders
-Monte Carlo Simulation Algorithm for Mixtures of Unlike Hard Convex Bodies (Ellipsoids of revolution, Spherocylinders, and Cylinders)
+# Monte Carlo Simulation Algorithm for Mixtures of Anisomorphic Hard Convex Bodies (Ellipsoids of revolution, Spherocylinders, and Cylinders)
