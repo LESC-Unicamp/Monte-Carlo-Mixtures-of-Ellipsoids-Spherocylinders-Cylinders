@@ -53,6 +53,12 @@ Luís Fernando Mercier Franco<br></p>
 
 ## <a name="disclaimer"></a>Disclaimer
 
+<p align="justify">
+The authors make no warranties about the use of this software. The authors hold no liabilities for the use of this software. The authors do not 
+ recommend the use of this software whatsoever. The algorithm is made freely available to assist researchers in studies involving mixtures of hard convex bodies.
+ All information contained herein regarding any specific methodology does not constitute or imply its endorsement or recommendation by the authors.
+</p>
+
 ## <a name="overview"></a>Overview
 
 <p align="justify">
