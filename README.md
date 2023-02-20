@@ -67,7 +67,7 @@ The authors make no warranties about the use of this software. The authors hold 
 
 <p align="justify">
 This algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) is also possible. The geometries are illustrated in Figure 1.
-</p><br>
+</p>
 
 ## <a name="features"></a>Features
 
