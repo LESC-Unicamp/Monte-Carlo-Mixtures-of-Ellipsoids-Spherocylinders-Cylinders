@@ -53,3 +53,19 @@ Luís Fernando Mercier Franco<br></p>
 6. [Data Input](#datainput)
 7. [Running the Code](#running)
 8. [Citing Us](#citation)
+
+## <a name="disclaimer"></a>Disclaimer
+
+## <a name="features"></a>Features
+
+## <a name="language"></a>Language
+
+## <a name="installation"></a>Building and Compilation
+
+## <a name="reporting"></a>Reporting Errors
+
+## <a name="datainput"></a>Data Input
+
+## <a name="running"></a>Running the Code
+
+## <a name="citation"></a>Citing Us
