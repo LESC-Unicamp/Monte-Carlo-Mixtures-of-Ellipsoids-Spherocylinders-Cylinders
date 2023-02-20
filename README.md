@@ -63,18 +63,33 @@ The authors make no warranties about the use of this software. The authors hold 
 
 <p align="justify">
   This NVT/NPT-Monte Carlo algorithm was designed to evaluate the thermodynamic behavior of mixtures of anisomorphic hard convex bodies (HCB), namely: ellipsoids of revolution (EOR), spherocylinders (SPC), and cylinders (CYL). Here, the HCB interact only through a purely repulsive hard-core potential, which means that a single check of overlapping configurations is sufficient to validate a random trial move. To search for overlapping configurations, different methods were applied depending on the molecular geometry: for mixtures of anisomorphic EOR particles, the Perram-Wertheim method (<a href="https://doi.org/10.1016/0021-9991(85)90171-8"><b>J. Comput. Phys.</b>, 58, 409-416, 1985</a>) is used; for mixtures of anisomorphic SPC particles, the Vega-Lago method (<a href="https://doi.org/10.1016/0097-8485(94)80023-5"><b>Comput. Chem.</b>, 18, 55-59, 1994</a>) is used; and for mixtures of CYL particles, the enhanced Orellana <i>et al.</i> algorithm (<a href="https://doi.org/10.1063/5.0040942"><b>J. Chem. Phys.</b>, 154, 104902, 2021</a>) is used.
+</p>
+
+<p align="justify">
+This algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) is also possible. The geometries are illustrated in Figure 1.
 </p><br>
 
 ## <a name="features"></a>Features
 
 ## <a name="language"></a>Language
+<p align="justify">
+The main program, subroutines, modules, and functions contain some explanatory comments and are mainly written in Fortran 95. The user can look for
+ more information on Fortran language <a href="https://docs.oracle.com/cd/E19957-01/806-3591/C_f95.html">here</a>.
+</p>
 
 ## <a name="installation"></a>Building and Compilation
 
 ## <a name="reporting"></a>Reporting Errors
+<p align="justify">
+If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/issues">Issues</a> tab.
+</p>
 
 ## <a name="datainput"></a>Data Input
 
 ## <a name="running"></a>Running the Code
 
 ## <a name="citation"></a>Citing Us
+
+---
+
+“<i>With thermodynamics, one can calculate almost everything crudely; with kinetic theory, one can calculate fewer things, but more accurately; and with statistical mechanics, one can calculate almost nothing exactly.</i>” -- Eugene P. Wigner
