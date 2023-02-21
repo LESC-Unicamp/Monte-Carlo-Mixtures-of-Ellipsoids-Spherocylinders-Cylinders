@@ -102,7 +102,7 @@ The following features are supported in the current version:
 
 2. Moves
     - Translation
-    - Rotation
+    - Rotation (Quaternion Algebra)
     - Cubic Expansions/Compressions (Isotropic)
     - Triclinic Expansions/Compressions (Anisotropic)
 
