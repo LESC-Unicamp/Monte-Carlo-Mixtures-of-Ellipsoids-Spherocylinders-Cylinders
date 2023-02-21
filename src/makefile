@@ -4,7 +4,7 @@
 FC= gfortran
 
 # Executable name
-EXEC_NAME= main.out
+EXEC_NAME= mc_mixtures_standard.out
 
 # Executable path
 EXEC_PATH= ../bin
