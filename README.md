@@ -116,7 +116,57 @@ The following features are supported in the current version:
 
 ## <a name="installation"></a>Building and Compilation
 <p align="justify">
-  A
+  The source code tarball for the latest release is available through our [releases
+page](https://github.com/maginngroup/cassandra/releases/latest). Alternatively,
+you can clone the GitHub repository to get the bleeding edge version:
+</p>
+
+```
+> git clone
+https://github.com/MaginnGroup/Cassandra.git
+```
+
+<p align="justify">
+  In either case, the ```/Src/``` directory contains the Makefiles that you can use to compile the code.
+Makefiles contain the compilation options and set of directives used to automate the build.
+At present, Makefiles for the Intel Fortran Compiler, gfortran and
+Portland group compiler (PGI) are included in the distribution.
+</p>
+
+<p align="justify">
+  To compile Cassandra, first remove any object files using the 'clean' command
+</p>
+  
+```> make clean```
+
+<p align="justify">
+  The following table provides examples of the commands you need to use to compile the source code as provided:
+</p>
+
+|   Build type    | Intel Compiler      |    GNU Fortran   |
+|---    |---    |---    |
+|  Debug     |   ```make -f Makefile```    | ```make -f Makefile.gfortran```   |
+|  OpenMP    |   ```make -f Makefile.intel.openMP```     |   ```make -f Makefile.gfortran.openMP```    |
+
+<p align="justify">
+  Each of these commands will produce an executable with the name specified in the field EXEC NAME in the relevant Makefile.
+</p>
+
+<p align="justify">
+  You can take these Makefiles as templates
+creating your own customized Makefile. Depending on the architecture
+of the machine you are using, you will need to change compilation
+options and flags.  Note that to change compiler options appropriate
+for your environment, the F90FLAGS line in the Makefiles can be
+edited. You can also modify the optimization options to
+improve the speed of the code or operate in debug mode.
+</p>
+
+<p align="justify">
+  Before running the openMP enabled executable, the environment variable
+OMP_NUM_THREADS will have to be set to the number of threads you want to
+run the simulation on. For example, for 12-thread simulation, the
+following command is used in tcsh:
 </p>
 
 ## <a name="reporting"></a>Reporting Errors
