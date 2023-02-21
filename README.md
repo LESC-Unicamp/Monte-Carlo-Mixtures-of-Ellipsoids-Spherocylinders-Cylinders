@@ -151,10 +151,14 @@ The following features are supported in the current version:
 | Standard | ```make -f makefile``` |
 
 <p align="justify">
-  Each of these commands will produce an executable with a specific name depending on the chosen compilation type. Both executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization options you need to set up.
+  Each of these commands will produce an executable with a specific name depending on the chosen compilation type. Both executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization variables and options you need to set up.
 </p>
 
 ## <a name="datainput"></a>Data Input
+
+<p align="justify">
+  Apart from the executable file, the <code>/bin/</code> folder contains some initialization files that need to be set up.
+</p>
 
 ## <a name="filesandfolders"></a>Files and Folders
 
