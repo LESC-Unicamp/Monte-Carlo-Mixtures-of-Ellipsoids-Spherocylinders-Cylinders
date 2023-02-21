@@ -181,7 +181,17 @@ The following features are supported in the current version:
 | Maximum attempts<br> (<code>RND</code> only) | <code>max_attempts_rnd</code> | Used to select the maximum number of attempts to randomly allocate particles inside a cubic box<br> (random configuration only) | Any non-zero, positive <code>INTEGER</code> number |
 | Packing fraction<br> (<code>RND</code> only) | <code>packing_fraction_rnd</code> | Used to define the initial volume of the simulation box<br> (random configuration only)<br>**NOTE**: Smaller packing fractions (larger box volumes) are recommended | Any non-zero, positive <code>FLOAT</code> number |
 | Reduced pressure<br> (<code>RND</code> only) | <code>pressure_npt_rnd</code> | Used to correct the initial packing fraction of the simulation box to the target packing fraction<br> (random configuration only)<br>**NOTE**: Higher pressures are recommended | Any non-zero, positive <code>FLOAT</code> number |
-| Preset configuration | <code>preset_initial_configuration</code> | Replaces the current configuration with a previously generated configuration<br> **NOTE**: This overrides any simulation settings | <ul><li><code>.TRUE.</code> to use a preset configuration</li><li><code>.FALSE.</code> to use the current configuration</li></ul> |
+| Preset configuration | <code>preset_initial_configuration</code> | Used to replace the current configuration with a previously generated configuration<br> **NOTE**: This overrides most of the simulation settings | <ul><li><code>.TRUE.</code> to use a preset configuration</li><li><code>.FALSE.</code> to use the current configuration</li></ul> |
+
+<p align="justify">
+  <b>OBS.</b>: When selecting a preset configuration, the user will be asked to enter a 14-character code at some point. This code is part of the name of a configuration file inside the '/bin/Initial_Configuration/' directory. The filename says something like:
+</p>
+
+<code>[DATE][HOUR]\_initconf\_[CONFIGURATION]\_[GEOMETRY].xyz</code>
+
+<p align="justify">
+  The 14-character code is the [DATE][HOUR] descriptor of the filename. You can open this file using any text editor and edit some simulation settings that you find relevant. Please be reminded that editing anything in this file, except the reduced pressure and absolute temperature, may cause the program to detect overlapping configurations. The molecular structure
+</p>
 
 ### The Control File<br> <sub><code>ini_control.ini</code></sub>
 
