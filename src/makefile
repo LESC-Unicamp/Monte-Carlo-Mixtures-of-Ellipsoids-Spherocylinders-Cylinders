@@ -31,4 +31,4 @@ exe: $(OBJS)
 
 # Clean
 clean:
-	rm -fr *.o *.mod *.ini $(EXEC_PATH)/$(EXEC_NAME)
+	rm -fr *.o *.mod *.ini $(EXEC_PATH)/*.out
