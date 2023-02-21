@@ -220,9 +220,14 @@ The following features are supported in the current version:
 | Number of equilibration cycles | <code>equilibration_cycles</code> | Used to define the number of equilibration cycles within the maximum number of cycles | Any positive, non-zero <code>INTEGER</code> number less than the maximum number of cycles |
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
 | Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
+| Adjustment frequency<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd</code> | Used to define how often displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
 | Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any non-zero <code>FLOAT</code> number |
+| Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any non-zero <code>FLOAT</code> number |
 | Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any non-zero <code>FLOAT</code> number |
+| Maximum rotational displacement<br> (<code>RND</code> only) | <code>max_rotational_displc_rnd</code> | Used to define the maximum rotational displacement \[+/-\] in radians (random configuration only) | Any non-zero <code>FLOAT</code> number |
 | Maximum volumetric displacement | <code>max_volumetric_displc</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ | Any non-zero <code>FLOAT</code> number |
+| Maximum volumetric displacement<br> (<code>RND</code> only) | <code>max_volumetric_displc_rnd</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number |
+| Minimum volumetric displacement<br> (<code>RND</code> only) | <code>min_volumetric_displc_rnd</code> | Used to define the minimum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number less than the maximum volumetric displacement |
 | Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isobaric-isothermal ensemble</li></ul> |
 
 <p align="justify">
@@ -258,11 +263,6 @@ The following features are supported in the current version:
 | | <code>ratio_translation</code> | | |
 | | <code>ratio_rotation</code> | | |
 | | <code>ratio_volume</code> | | |
-| | <code>adjustment_frequency_rnd</code> | | |
-| | <code>max_translational_displc_rnd</code> | | |
-| | <code>max_rotational_displc_rnd</code> | | |
-| | <code>max_volumetric_displc_rnd</code> | | |
-| | <code>min_volumetric_displc_rnd</code> | | |
 
 ### The System File<br> <sub><code>ini_system.ini</code></sub>
 
