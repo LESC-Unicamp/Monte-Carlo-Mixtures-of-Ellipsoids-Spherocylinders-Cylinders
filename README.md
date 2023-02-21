@@ -172,9 +172,8 @@ The following features are supported in the current version:
   This file is used to set up the molecular geometry and the molecular configuration, including aditional information on the random structure (if selected). The table below shows some options that can be used to define the configuration parameters:
 </p>
 
-| Name | String Name | Definition | Options |
+| Name<br> ___________________ | String Name | Definition | Options |
 |:---:|:---:|:---:| --- |
-| <img width=400/> |:---:|:---:| --- |
 | Geometry selection | <code>geometry_selection</code> | Used to select the molecular geometry | <ul><li><code>EOR</code> for ellipsoids of revolution</li><li><code>SPC</code> for spherocylinders</li><li><code>CYL</code> for cylinders</li></ul> |
 | Configuration selection | <code>molecular_configuration</code> | Used to select the initial configuration | <ul><li><code>SC</code> for a simple cubic structure</li><li><code>BCC</code> for a body-centered cubic structure</li><li><code>FCC</code> for a face-centered cubic structure</li><li><code>RND</code> for a random cubic structure</li></ul> |
 | Unrotated axis | <code>unrotated_axis</code> | Used to select the unrotated reference axis<br> (initial configurations only) | <ul><li><code>X</code> to select the _x_-axis</li><li><code>Y</code> to select the _y_-axis</li><li><code>Z</code> to select the _z_-axis</li></ul> |
