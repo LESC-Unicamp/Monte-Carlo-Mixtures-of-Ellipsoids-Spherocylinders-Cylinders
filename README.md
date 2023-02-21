@@ -61,30 +61,49 @@ The authors make no warranties about the use of this software. The authors hold 
 
 ## <a name="overview"></a>Overview
 <p align="justify">
-  This NVT/NPT-Monte Carlo algorithm was designed to evaluate the thermodynamic behavior of mixtures of anisomorphic hard convex bodies (HCB), namely: ellipsoids of revolution (EOR), spherocylinders (SPC), and cylinders (CYL). Here, the HCB interact only through a purely repulsive hard-core potential, which means that a single check of overlapping configurations is sufficient to validate a random trial move. To search for overlapping configurations, different methods were applied depending on the molecular geometry: for mixtures of anisomorphic EOR particles, the Perram-Wertheim method (<a href="https://doi.org/10.1016/0021-9991(85)90171-8"><b>J. Comput. Phys.</b>, 58, 409-416, 1985</a>) is used; for mixtures of anisomorphic SPC particles, the Vega-Lago method (<a href="https://doi.org/10.1016/0097-8485(94)80023-5"><b>Comput. Chem.</b>, 18, 55-59, 1994</a>) is used; and for mixtures of CYL particles, the enhanced Orellana <i>et al.</i> algorithm (<a href="https://doi.org/10.1063/5.0040942"><b>J. Chem. Phys.</b>, 154, 104902, 2021</a>) is used.
+  This NVT/NPT-Monte Carlo algorithm was designed to evaluate the thermodynamic behavior of mixtures of anisomorphic hard convex bodies (HCB), namely: ellipsoids of revolution (EOR), spherocylinders (SPC), and cylinders (CYL). Here, the HCB interact only through a purely repulsive hard-core potential, which means that a single check of overlapping configurations is sufficient to validate a random trial move. To search for overlapping configurations, different methods were applied depending on the molecular geometry: for mixtures of anisomorphic EOR particles, the Perram-Wertheim (PW) method (<a href="https://doi.org/10.1016/0021-9991(85)90171-8"><b>J. Comput. Phys.</b>, 58, 409-416, 1985</a>) is used; for mixtures of anisomorphic SPC particles, the Vega-Lago (VL) method (<a href="https://doi.org/10.1016/0097-8485(94)80023-5"><b>Comput. Chem.</b>, 18, 55-59, 1994</a>) is used; and for mixtures of CYL particles, the enhanced Orellana <i>et al.</i> (ECYL) algorithm (<a href="https://doi.org/10.1063/5.0040942"><b>J. Chem. Phys.</b>, 154, 104902, 2021</a>) is used.
 </p>
 
 <p align="justify">
-  This algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) are also possible. The geometries are illustrated below.
+  This NVT/NPT-Monte Carlo algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) are also possible. The geometries are illustrated below.
 </p>
 
-| **Oblate Ellipsoids of Revolution** | **Spheres (Degenerate)** | **Prolate Ellipsoids of revolution** |
+| | | |
 |:---:|:---:|:---:|
+| | | |
+| **Oblate Ellipsoids of Revolution** | **Spheres (Degenerate)** | **Prolate Ellipsoids of revolution** |
 | ![oblate_eor](https://user-images.githubusercontent.com/73966482/220217625-863c0551-3e97-4199-860f-f436746c32da.gif) | ![sphere_eor](https://user-images.githubusercontent.com/73966482/220217633-d9a5dc8b-d624-456a-86d8-22f5d5bb6954.gif) | ![prolate_eor](https://user-images.githubusercontent.com/73966482/220217635-92cd7b1e-c5ef-41a6-af07-f52981402b5e.gif) |
 | **Thin Spherocylinders** | **Spheres (Degenerate)** | **Thick Spherocylinders** |
 | ![short_rod](https://user-images.githubusercontent.com/73966482/220220955-c1020dbe-1ed1-439a-82b5-4b9285e0deab.gif) | ![sphere_eor](https://user-images.githubusercontent.com/73966482/220217633-d9a5dc8b-d624-456a-86d8-22f5d5bb6954.gif) | ![long_rod](https://user-images.githubusercontent.com/73966482/220221125-03a64ead-b267-42fc-8693-2e71b2e91ca3.gif) |
 | **Oblate Cylinders** | **Equilateral Cylinders** | **Prolate Cylinders** |
 | ![oblate_cyl](https://user-images.githubusercontent.com/73966482/220222417-9817f7b8-2905-44de-a75f-bb5723921b89.gif) | ![equilateral_cyl](https://user-images.githubusercontent.com/73966482/220222480-c467f205-8ca0-4434-b1ed-328b12710627.gif) | ![prolate_cyl](https://user-images.githubusercontent.com/73966482/220222442-54428487-292d-4050-9bb5-1a3db933ac3a.gif) |
-
-
-
-
+| | | |
 
 <p align="justify">
-  In.
+  This NVT/NPT-Monte Carlo algorithm can be used, <i>e. g.</i>, for mixtures of oblate and prolate ellipsoids of revolution, oblate/prolate ellipsoids of revolution and spheres (degenerate case), thin and thick spherocylinders, thin/thick spherocylinders and spheres (degenerate case), oblate (disk) and prolate (rod) cylinders, oblate/prolate cylinders and equilateral cylinders, etc. The algorithm cannot yet be used for mixtures of cylinders and spheres. Some NVT-Monte Carlo simulations of  these multicomponent mixtures are illustrated below.
 </p>
 
+| NVT-Monte Carlo (EOR) | NVT-Monte Carlo (SPC) | NVT-Monte Carlo (CYL) |
+|:---:|:---:|:---:|
+| ![all_eor](https://user-images.githubusercontent.com/73966482/220226516-0ac6a160-2d06-4100-bdc4-75cd84a28adb.gif) | ![all_spc](https://user-images.githubusercontent.com/73966482/220227393-6c56c6c4-5857-4388-ad79-98e78814d81d.gif) | ![all_cyl](https://user-images.githubusercontent.com/73966482/220225783-9bcec901-1fa2-4a65-954c-cfda4d942b5d.gif) |
+
 ## <a name="features"></a>Features
+The following features are supported in the current version:
+
+1. Ensembles
+    - Canonical (NVT)
+    - Isothermal-Isobaric (NPT)
+    - Isothermal-Isostress (N&sigma;T)
+
+2. Moves
+    - Translation
+    - Rotation
+    - Cubic Expansions/Compressions (Isotropic)
+    - Triclinic Expansions/Compressions (Anisotropic)
+
+3. Potentials
+    - LJ and Mie
+    - Fixed bond lengths
 
 ## <a name="language"></a>Language
 <p align="justify">
