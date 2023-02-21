@@ -65,17 +65,24 @@ The authors make no warranties about the use of this software. The authors hold 
 </p>
 
 <p align="justify">
-  This algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) are also possible. The geometries are illustrated in the figure below.
+  This algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) are also possible. The geometries are illustrated below.
 </p>
 
-<em><p align="center">
-  <b>Figure 01-A</b>. Example of a simple cubic structure. Particles are hard spheres (<code>&kappa; = 1</code>). Number of particles: 512.<br>
-  Click [here](https://user-images.githubusercontent.com/73966482/125833600-f8091b9c-a405-4ae3-9f24-013f221fe0d2.png) to zoom the figure in.
-</p></em>
-
-| Oblate Ellipsoids of Revolution | Spheres (Degenerate) | Prolate Ellipsoids of revolution |
-|---|---|---|
+| **Oblate Ellipsoids of Revolution** | **Spheres (Degenerate)** | **Prolate Ellipsoids of revolution** |
+|:---:|:---:|:---:|
 | ![oblate_eor](https://user-images.githubusercontent.com/73966482/220217625-863c0551-3e97-4199-860f-f436746c32da.gif) | ![sphere_eor](https://user-images.githubusercontent.com/73966482/220217633-d9a5dc8b-d624-456a-86d8-22f5d5bb6954.gif) | ![prolate_eor](https://user-images.githubusercontent.com/73966482/220217635-92cd7b1e-c5ef-41a6-af07-f52981402b5e.gif) |
+| **Thin Spherocylinders** | **Spheres (Degenerate)** | **Thick Spherocylinders** |
+| ![short_rod](https://user-images.githubusercontent.com/73966482/220220955-c1020dbe-1ed1-439a-82b5-4b9285e0deab.gif) | ![sphere_eor](https://user-images.githubusercontent.com/73966482/220217633-d9a5dc8b-d624-456a-86d8-22f5d5bb6954.gif) | ![long_rod](https://user-images.githubusercontent.com/73966482/220221125-03a64ead-b267-42fc-8693-2e71b2e91ca3.gif) |
+| **Oblate Cylinders** | **Equilateral Cylinders** | **Prolate Cylinders** |
+| ![oblate_cyl](https://user-images.githubusercontent.com/73966482/220222417-9817f7b8-2905-44de-a75f-bb5723921b89.gif) | ![equilateral_cyl](https://user-images.githubusercontent.com/73966482/220222480-c467f205-8ca0-4434-b1ed-328b12710627.gif) | ![prolate_cyl](https://user-images.githubusercontent.com/73966482/220222442-54428487-292d-4050-9bb5-1a3db933ac3a.gif) |
+
+
+
+
+
+<p align="justify">
+  In.
+</p>
 
 ## <a name="features"></a>Features
 
