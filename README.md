@@ -237,11 +237,11 @@ The following features are supported in the current version:
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
 |:---:|:---:|:--- | --- |
-| Movement probability | <code>prob_movement</code> | | |
-| Movement probability<br> (<code>RND</code> only) | <code>prob_movement_rnd</code> | | |
-| Translation probability | <code>prob_translation</code> | | |
-| Translation probability<br> (<code>RND</code> only) | <code>prob_translation_rnd</code> | | |
-| Volume change probability | <code>prob_volume_change_isotropic</code> | | |
+| Probability of movement | <code>prob_movement</code> | Used to define the probability a displacement (translation/rotation) will occur during a trial move | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of movement<br> (<code>RND</code> only) | <code>prob_movement_rnd</code> | Used to define the probability a displacement (translation/rotation) will occur during a trial move (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of translation | <code>prob_translation</code> | Used to define the probability a translation will occur during a trial displacement | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of translation<br> (<code>RND</code> only) | <code>prob_translation_rnd</code> | Used to define the probability a translation will occur during a trial displacement (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of isotropic volume change | <code>prob_volume_change_isotropic</code> | Used to define the probability an isotropic change will occur during a trial volume change | Any positive <code>FLOAT</code> number between 0 and 1 |
 
 ### The Acceptance Ratios File<br> <sub><code>ini_ratio.ini</code></sub>
 
