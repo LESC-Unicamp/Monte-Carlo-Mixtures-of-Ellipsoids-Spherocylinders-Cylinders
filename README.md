@@ -130,7 +130,7 @@ The following features are supported in the current version:
 ```
 
 <p align="justify">
-  After that, change to the repository directory on your device and open the <code>/Src/</code> folder:
+  After that, change to the repository directory on your device and open the <code>/src/</code> folder:
 </p>
 
 ```
