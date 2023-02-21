@@ -237,13 +237,32 @@ The following features are supported in the current version:
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
 |:---:|:---:|:--- | --- |
-| Probability of movement | <code>prob_movement</code> | Used to define the probability a displacement (translation/rotation) will occur during a trial move | Any positive <code>FLOAT</code> number between 0 and 1 |
-| Probability of movement<br> (<code>RND</code> only) | <code>prob_movement_rnd</code> | Used to define the probability a displacement (translation/rotation) will occur during a trial move (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
-| Probability of translation | <code>prob_translation</code> | Used to define the probability a translation will occur during a trial displacement | Any positive <code>FLOAT</code> number between 0 and 1 |
-| Probability of translation<br> (<code>RND</code> only) | <code>prob_translation_rnd</code> | Used to define the probability a translation will occur during a trial displacement (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of movement | <code>prob_movement</code> | Used to define the probability a movement (translation/rotation) will occur during a trial move | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of movement<br> (<code>RND</code> only) | <code>prob_movement_rnd</code> | Used to define the probability a movement (translation/rotation) will occur during a trial move (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of translation | <code>prob_translation</code> | Used to define the probability a translation will occur during a trial movement | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of translation<br> (<code>RND</code> only) | <code>prob_translation_rnd</code> | Used to define the probability a translation will occur during a trial movement (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Probability of isotropic volume change | <code>prob_volume_change_isotropic</code> | Used to define the probability an isotropic change will occur during a trial volume change | Any positive <code>FLOAT</code> number between 0 and 1 |
 
+<p align="justify">
+  <b>OBS.</b>: The probability of a volume change is defined automatically by subtracting the probability of movement from 1. Similarly, the probability of rotation is defined by subtracting the probability of translation from 1. Finally, the probability of an anisotropic volume change is defined by subtracting the probability of the isotropic change from 1.
+</p>
+
 ### The Acceptance Ratios File<br> <sub><code>ini_ratio.ini</code></sub>
+
+<p align="justify">
+  This file is used to set up the acceptace ratios of trial moves. The table below shows some options that can be used to define the acceptance ratio parameters:
+</p>
+
+| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
+|:---:|:---:|:--- | --- |
+| | <code>ratio_translation</code> | | |
+| | <code>ratio_rotation</code> | | |
+| | <code>ratio_volume</code> | | |
+| | <code>adjustment_frequency_rnd</code> | | |
+| | <code>max_translational_displc_rnd</code> | | |
+| | <code>max_rotational_displc_rnd</code> | | |
+| | <code>max_volumetric_displc_rnd</code> | | |
+| | <code>min_volumetric_displc_rnd</code> | | |
 
 ### The System File<br> <sub><code>ini_system.ini</code></sub>
 
