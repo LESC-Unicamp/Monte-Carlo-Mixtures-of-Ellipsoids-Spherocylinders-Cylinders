@@ -184,7 +184,7 @@ The following features are supported in the current version:
 | Preset configuration | <code>preset_initial_configuration</code> | Used to replace the current configuration with a previously generated configuration<br> **NOTE**: This overrides most of the simulation settings | <ul><li><code>.TRUE.</code> to use a preset configuration</li><li><code>.FALSE.</code> to use the current configuration</li></ul> |
 
 <p align="justify">
-  ¹P<sup>*</sup> = P&sigma;<sub>0</sub>³/(k<sub>B</sub>T), where <i>P</i> is the real pressure, <i>k<sub>B</sub></i> is the Boltzmann constant, <i>T</i> is the absolute temperature, and <i>&sigma;<sub>0</sub></i> is a reference diameter, such that &sigma;<sub>0</sub> = 1Å.<br> &nbsp;
+  <sup>¹P<sup>*</sup> = P&sigma;<sub>0</sub>³/(k<sub>B</sub>T), where <i>P</i> is the real pressure, <i>k<sub>B</sub></i> is the Boltzmann constant, <i>T</i> is the absolute temperature, and <i>&sigma;<sub>0</sub></i> is a reference diameter, such that &sigma;<sub>0</sub> = 1Å.</sup>
 </p>
 
 <p align="justify">
@@ -225,7 +225,23 @@ The following features are supported in the current version:
 | Maximum volumetric displacement | <code>max_volumetric_displc</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ | Any non-zero <code>FLOAT</code> number |
 | Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isobaric-isothermal ensemble</li></ul> |
 
+<p align="justify">
+  <b>OBS.</b>: The number of production cycles is defined automatically by subtracting the number of equilibration cycles from the total number of cycles.
+</p>
+
 ### The Probabilities File<br> <sub><code>ini_probabilities.ini</code></sub>
+
+<p align="justify">
+  This file is used to set up the probability of trial moves. The table below shows some options that can be used to define the probability parameters:
+</p>
+
+| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
+|:---:|:---:|:--- | --- |
+| Movement probability | <code>prob_movement</code> | | |
+| Movement probability<br> (<code>RND</code> only) | <code>prob_movement_rnd</code> | | |
+| Translation probability | <code>prob_translation</code> | | |
+| Translation probability<br> (<code>RND</code> only) | <code>prob_translation_rnd</code> | | |
+| Volume change probability | <code>prob_volume_change_isotropic</code> | | |
 
 ### The Acceptance Ratios File<br> <sub><code>ini_ratio.ini</code></sub>
 
