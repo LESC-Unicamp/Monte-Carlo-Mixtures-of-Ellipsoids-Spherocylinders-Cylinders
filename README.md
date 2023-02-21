@@ -116,37 +116,39 @@ The following features are supported in the current version:
 
 ## <a name="installation"></a>Building and Compilation
 <p align="justify">
-  The source code tarball for the latest release is available through our [releases
-page](https://github.com/maginngroup/cassandra/releases/latest). Alternatively,
-you can clone the GitHub repository to get the bleeding edge version:
+  Firstly, you must clone this GitHub repository using the command below:
 </p>
 
 ```
-> git clone
-https://github.com/MaginnGroup/Cassandra.git
+> git clone https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders
 ```
 
 <p align="justify">
-  In either case, the <code>/Src/</code> directory contains the Makefiles that you can use to compile the code.
-Makefiles contain the compilation options and set of directives used to automate the build.
-At present, Makefiles for the Intel Fortran Compiler, gfortran and
-Portland group compiler (PGI) are included in the distribution.
+  After that, change to the repository directory on your device and open the <code>/Src/</code> folder:
+</p>
+
+```
+> cd monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/src/
+```
+
+<p align="justify">
+  The <code>/src/</code> folder contains two 'Makefiles' that you can use to compile the code. Each of these 'Makefiles' contains different compilation options. You can use either the 'makefile' to compile the standard version of the code or the 'makefile-debug' to compile the debug version of the code.
 </p>
 
 <p align="justify">
-  To compile Cassandra, first remove any object files using the <i>clean</i> command
+  To compile it, first remove any object and module files using the <i>clean</i> command:
 </p>
   
 ```> make clean```
 
 <p align="justify">
-  The following table provides examples of the commands you need to use to compile the source code as provided:
+  Then, to compile the source code, run one of the commands below depending on your compilation choice:
 </p>
 
-|   Build type    | Intel Compiler      |    GNU Fortran   |
-|---    |---    |---    |
-|  Debug     |   ```make -f Makefile```    | ```make -f Makefile.gfortran```   |
-|  OpenMP    |   ```make -f Makefile.intel.openMP```     |   ```make -f Makefile.gfortran.openMP```    |
+| Compilation type | Command |
+|:---:|:---:|
+| Debug | ```make -f makefile-debug``` |
+| Standard | ```make -f makefile``` |
 
 <p align="justify">
   Each of these commands will produce an executable with the name specified in the field EXEC NAME in the relevant Makefile.
