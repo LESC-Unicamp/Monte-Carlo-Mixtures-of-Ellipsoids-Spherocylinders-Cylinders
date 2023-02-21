@@ -80,7 +80,7 @@ The authors make no warranties about the use of this software. The authors hold 
 | | | |
 
 <p align="justify">
-  This NVT/NPT-Monte Carlo algorithm can be used, <i>e. g.</i>, for mixtures of oblate and prolate ellipsoids of revolution, oblate/prolate ellipsoids of revolution and spheres (degenerate case), thin and thick spherocylinders, thin/thick spherocylinders and spheres (degenerate case), oblate (disk) and prolate (rod) cylinders, oblate/prolate cylinders and equilateral cylinders, etc. The algorithm cannot yet be used for mixtures of cylinders and spheres. Some NVT-Monte Carlo simulations of  these multicomponent mixtures are illustrated below.
+  This NVT/NPT-Monte Carlo algorithm can be used, <i>e. g.</i>, for mixtures of oblate and prolate ellipsoids of revolution, oblate/prolate ellipsoids of revolution and spheres (degenerate case), thin and thick spherocylinders, thin/thick spherocylinders and spheres (degenerate case), oblate (disk) and prolate (rod) cylinders, and oblate/prolate cylinders and equilateral cylinders. The algorithm cannot yet be used for mixtures of cylinders and spheres. Some NVT-Monte Carlo simulations of  these multicomponent mixtures are illustrated below.
 </p>
 
 | | | |
