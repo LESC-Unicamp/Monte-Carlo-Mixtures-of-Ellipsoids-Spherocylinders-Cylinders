@@ -83,12 +83,17 @@ The authors make no warranties about the use of this software. The authors hold 
   This NVT/NPT-Monte Carlo algorithm can be used, <i>e. g.</i>, for mixtures of oblate and prolate ellipsoids of revolution, oblate/prolate ellipsoids of revolution and spheres (degenerate case), thin and thick spherocylinders, thin/thick spherocylinders and spheres (degenerate case), oblate (disk) and prolate (rod) cylinders, oblate/prolate cylinders and equilateral cylinders, etc. The algorithm cannot yet be used for mixtures of cylinders and spheres. Some NVT-Monte Carlo simulations of  these multicomponent mixtures are illustrated below.
 </p>
 
-| NVT-Monte Carlo (EOR) | NVT-Monte Carlo (SPC) | NVT-Monte Carlo (CYL) |
+| | | |
 |:---:|:---:|:---:|
+| | | |
+| NVT-Monte Carlo (EOR) | NVT-Monte Carlo (SPC) | NVT-Monte Carlo (CYL) |
 | ![all_eor](https://user-images.githubusercontent.com/73966482/220226516-0ac6a160-2d06-4100-bdc4-75cd84a28adb.gif) | ![all_spc](https://user-images.githubusercontent.com/73966482/220227393-6c56c6c4-5857-4388-ad79-98e78814d81d.gif) | ![all_cyl](https://user-images.githubusercontent.com/73966482/220225783-9bcec901-1fa2-4a65-954c-cfda4d942b5d.gif) |
+| | | |
 
 ## <a name="features"></a>Features
+<p align="justify">
 The following features are supported in the current version:
+</p>
 
 1. Ensembles
     - Canonical (NVT)
@@ -102,20 +107,21 @@ The following features are supported in the current version:
     - Triclinic Expansions/Compressions (Anisotropic)
 
 3. Potentials
-    - LJ and Mie
-    - Fixed bond lengths
+    - None
 
 ## <a name="language"></a>Language
 <p align="justify">
-The main program, subroutines, modules, and functions contain some explanatory comments and are mainly written in Fortran 95. The user can look for
- more information on Fortran language <a href="https://docs.oracle.com/cd/E19957-01/806-3591/C_f95.html">here</a>.
+  The main program, subroutines, modules, and functions contain some explanatory comments and are mainly written in Fortran 95. The user can look for more information on Fortran language <a href="https://docs.oracle.com/cd/E19957-01/806-3591/C_f95.html">here</a>.
 </p>
 
 ## <a name="installation"></a>Building and Compilation
+<p align="justify">
+  A
+</p>
 
 ## <a name="reporting"></a>Reporting Errors
 <p align="justify">
-If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/issues">Issues</a> tab.
+  If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/issues">Issues</a> tab.
 </p>
 
 ## <a name="datainput"></a>Data Input
