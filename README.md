@@ -178,9 +178,9 @@ The following features are supported in the current version:
 | Configuration selection | <code>molecular_configuration</code> | Used to select the initial configuration | <ul><li><code>SC</code> for a simple cubic structure</li><li><code>BCC</code> for a body-centered cubic structure</li><li><code>FCC</code> for a face-centered cubic structure</li><li><code>RND</code> for a random cubic structure</li></ul> |
 | Unrotated axis | <code>unrotated_axis</code> | Used to select the unrotated reference axis (initial configurations only) | <ul><li><code>X</code> to select the _x_-axis</li><li><code>Y</code> to select the _y_-axis</li><li><code>Z</code> to select the _z_-axis</li></ul> |
 | Quaternion angle | <code>quaternion_angle</code> | Used to select the orientation angle (initial configurations only) | Any <code>FLOAT</code> number |
-| Maximum attempts<br> (<code>RND</code> only) | <code>max_attempts_rnd</code> | Used to select the maximum number of attempts to randomly distribute particles inside a cubic box (random configuration only) | Any non-zero, positive <code>INTEGER</code> number |
-| Packing fraction<br> (<code>RND</code> only) | <code>packing_fraction_rnd</code> | Used to define the initial volume of the simulation box (random configuration only)<br>**NOTE**: Smaller packing fractions (larger box volumes) are recommended | Any non-zero, positive <code>FLOAT</code> number |
-| Reduced pressure<br> (<code>RND</code> only) | <code>pressure_npt_rnd</code> | Used to correct the initial packing fraction of the simulation box to the target packing fraction (random configuration only)<br>**NOTE**: Higher pressures are recommended | Any non-zero, positive <code>FLOAT</code> number |
+| Maximum attempts<br> (<code>RND</code> only) | <code>max_attempts_rnd</code> | Used to select the maximum number of attempts to randomly distribute particles inside a cubic box (random configuration only) | Any positive, non-zero <code>INTEGER</code> number |
+| Packing fraction<br> (<code>RND</code> only) | <code>packing_fraction_rnd</code> | Used to define the initial volume of the simulation box (random configuration only)<br>**NOTE**: Smaller packing fractions (larger box volumes) are recommended | Any positive, non-zero <code>FLOAT</code> number |
+| Reduced pressure<br> (<code>RND</code> only) | <code>pressure_npt_rnd</code> | Used to correct the initial packing fraction of the simulation box to the target packing fraction (random configuration only)<br>**NOTE**: Higher pressures are recommended | Any positive, non-zero <code>FLOAT</code> number |
 | Preset configuration | <code>preset_initial_configuration</code> | Used to replace the current configuration with a previously generated configuration<br> **NOTE**: This overrides most of the simulation settings | <ul><li><code>.TRUE.</code> to use a preset configuration</li><li><code>.FALSE.</code> to use the current configuration</li></ul> |
 
 <p align="justify">
@@ -195,7 +195,31 @@ The following features are supported in the current version:
 
 ### The Control File<br> <sub><code>ini_control.ini</code></sub>
 
+<p align="justify">
+  This file is used to set up some control variables, such as trajectory printing and seed type. The table below shows some options that can be used to define the control parameters:
+</p>
+
+| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
+|:---:|:---:|:--- | --- |
+| Trajectory printing | <code>print_trajectory</code> | Used to specify whether the trajectory files will be written out or not | <ul><li><code>Y</code> to write out the trajectory file</li><li><code>N</code> to NOT write out the trajectory file</li></ul> |
+| Seed type | <code>fixed_seed</code> | Used to control the type of pseudorandom number generator seed | <ul><li><code>Y</code> for a fixed seed</li><li><code>N</code> for a random seed</li></ul> |
+
 ### The Monte Carlo File<br> <sub><code>ini_montecarlo.ini</code></sub>
+
+<p align="justify">
+  This file is used to set up the number of simulation cycles, maximum displacements, and ensemble type. The table below shows some options that can be used to define the simulation parameters:
+</p>
+
+| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
+|:---:|:---:|:--- | --- |
+| Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as a single random move of all particles in the system | Any positive, non-zero <code>INTEGER</code> number |
+| Number of equilibration cycles | <code>equilibration_cycles</code> | Used to define the number of equilibration cycles within the maximum number of cycles | Any positive, non-zero <code>INTEGER</code> number less than the maximum number of cycles |
+| Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
+| Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
+| Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any non-zero <code>FLOAT</code> number |
+| Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any non-zero <code>FLOAT</code> number |
+| Maximum volumetric displacement | <code>max_volumetric_displc</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ | Any non-zero <code>FLOAT</code> number |
+| Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isobaric-isothermal ensemble</li></ul> |
 
 ### The Probabilities File<br> <sub><code>ini_probabilities.ini</code></sub>
 
