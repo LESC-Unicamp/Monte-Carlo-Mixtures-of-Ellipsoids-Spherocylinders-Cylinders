@@ -190,7 +190,7 @@ The following features are supported in the current version:
 <code>[DATE][HOUR]\_initconf\_[CONFIGURATION]\_[GEOMETRY].xyz</code>
 
 <p align="justify">
-  The 14-character code is the [DATE][HOUR] descriptor of the filename. You can open this file using any text editor and edit some simulation settings that you find relevant. Please be reminded that editing anything in this file, except the reduced pressure and absolute temperature, may cause the program to detect overlapping configurations. The molecular structure
+  The 14-character code is the [DATE][HOUR] descriptor of the filename. You can open this file using any text editor and edit some simulation settings that you find relevant. Please be reminded that editing anything in this file, except the reduced pressure and absolute temperature, may cause the program to detect overlapping configurations in the initial structure.
 </p>
 
 ### The Control File<br> <sub><code>ini_control.ini</code></sub>
