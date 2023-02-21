@@ -45,7 +45,7 @@ Luís Fernando Mercier Franco<br></p>
 2. [Overview](#overview)
 3. [Features](#features)
 4. [Language](#language)
-5. [Building and Compilation](#installation)
+5. [Building and Compiling](#installation)
 6. [Data Input](#datainput)
 7. [Files and Folders](#filesandfolders)
 8. [Reporting Errors](#reporting)
@@ -114,7 +114,7 @@ The following features are supported in the current version:
   The main program, subroutines, modules, and functions contain some explanatory comments and are mainly written in Fortran 95. The user can look for more information on Fortran language <a href="https://docs.oracle.com/cd/E19957-01/806-3591/C_f95.html">here</a>.
 </p>
 
-## <a name="installation"></a>Building and Compilation
+## <a name="installation"></a>Building and Compiling
 <p align="justify">
   Firstly, you must clone this GitHub repository using the command below:
 </p>
