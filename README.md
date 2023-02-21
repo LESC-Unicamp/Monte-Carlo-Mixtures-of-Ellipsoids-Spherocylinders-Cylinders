@@ -127,14 +127,14 @@ https://github.com/MaginnGroup/Cassandra.git
 ```
 
 <p align="justify">
-  In either case, the ```/Src/``` directory contains the Makefiles that you can use to compile the code.
+  In either case, the <code>/Src/</code> directory contains the Makefiles that you can use to compile the code.
 Makefiles contain the compilation options and set of directives used to automate the build.
 At present, Makefiles for the Intel Fortran Compiler, gfortran and
 Portland group compiler (PGI) are included in the distribution.
 </p>
 
 <p align="justify">
-  To compile Cassandra, first remove any object files using the 'clean' command
+  To compile Cassandra, first remove any object files using the _clean_ command
 </p>
   
 ```> make clean```
