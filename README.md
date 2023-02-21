@@ -65,7 +65,7 @@ The authors make no warranties about the use of this software. The authors hold 
 </p>
 
 <p align="justify">
-  This NVT/NPT-Monte Carlo algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB (pure components) are also possible. The geometries are illustrated below.
+  This NVT/NPT-Monte Carlo algorithm only treats mixtures of anisomorphic HCB, that is, mixtures of HCB with same geometry but different aspect ratios. Mixtures of isomorphic HCB are also possible. The geometries are illustrated below.
 </p>
 
 | | | |
