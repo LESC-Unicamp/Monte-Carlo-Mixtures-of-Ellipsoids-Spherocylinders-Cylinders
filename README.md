@@ -46,9 +46,9 @@ Luís Fernando Mercier Franco<br></p>
 3. [Features](#features)
 4. [Language](#language)
 5. [Building and Compilation](#installation)
-6. [Reporting Errors](#reporting)
-7. [Data Input](#datainput)
-8. [Running the Code](#running)
+6. [Data Input](#datainput)
+7. [Files and Folders](#filesandfolders)
+8. [Reporting Errors](#reporting)
 9. [Citing Us](#citation)
 
 ## <a name="disclaimer"></a>Disclaimer
@@ -142,43 +142,26 @@ The following features are supported in the current version:
 ```> make clean```
 
 <p align="justify">
-  Then, to compile the source code, run one of the commands below depending on your compilation choice:
+  Then, to compile the source code, run one of the commands below, depending on the chosen compilation type:
 </p>
 
-| Compilation type | Command |
+| **Compilation type** | **Command** |
 |:---:|:---:|
-| Debug | ```make -f makefile-debug``` |
+| Debug | ```make -f makefile.debug``` |
 | Standard | ```make -f makefile``` |
 
 <p align="justify">
-  Each of these commands will produce an executable with the name specified in the field EXEC NAME in the relevant Makefile.
+  Each of these commands will produce an executable with a specific name depending on the chosen compilation type. Both executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization options you need to set up.
 </p>
 
-<p align="justify">
-  You can take these Makefiles as templates
-creating your own customized Makefile. Depending on the architecture
-of the machine you are using, you will need to change compilation
-options and flags.  Note that to change compiler options appropriate
-for your environment, the F90FLAGS line in the Makefiles can be
-edited. You can also modify the optimization options to
-improve the speed of the code or operate in debug mode.
-</p>
+## <a name="datainput"></a>Data Input
 
-<p align="justify">
-  Before running the openMP enabled executable, the environment variable
-OMP_NUM_THREADS will have to be set to the number of threads you want to
-run the simulation on. For example, for 12-thread simulation, the
-following command is used in tcsh:
-</p>
+## <a name="filesandfolders"></a>Files and Folders
 
 ## <a name="reporting"></a>Reporting Errors
 <p align="justify">
   If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/issues">Issues</a> tab.
 </p>
-
-## <a name="datainput"></a>Data Input
-
-## <a name="running"></a>Running the Code
 
 ## <a name="citation"></a>Citing Us
 
