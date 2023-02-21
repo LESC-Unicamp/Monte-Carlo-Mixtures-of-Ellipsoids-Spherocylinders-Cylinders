@@ -4,7 +4,7 @@
 FC= gfortran
 
 # Executable name
-EXEC_NAME= main.out
+EXEC_NAME= mc_mixtures_debug.out
 
 # Executable path
 EXEC_PATH= ../bin
@@ -31,4 +31,4 @@ exe: $(OBJS)
 
 # Clean
 clean:
-	rm -fr *.o *.mod *.ini $(EXEC_PATH)/$(EXEC_NAME)
+	rm -fr *.o *.mod *.ini $(EXEC_PATH)/*.out
