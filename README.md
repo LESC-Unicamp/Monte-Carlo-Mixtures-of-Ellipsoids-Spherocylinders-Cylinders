@@ -134,7 +134,7 @@ Portland group compiler (PGI) are included in the distribution.
 </p>
 
 <p align="justify">
-  To compile Cassandra, first remove any object files using the _clean_ command
+  To compile Cassandra, first remove any object files using the <i>clean</i> command
 </p>
   
 ```> make clean```
