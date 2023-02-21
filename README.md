@@ -95,18 +95,24 @@ The authors make no warranties about the use of this software. The authors hold 
 The following features are supported in the current version:
 </p>
 
-1. Ensembles
+1. Initial Configurations
+    - Simple Cube (for pure components only)
+    - Body-Centered Cube (for pure components only)
+    - Face-Centered Cube (for pure components only)
+    - Random Structure (for pure components and mixtures)
+
+2. Ensembles
     - Canonical (NVT)
     - Isothermal-Isobaric (NPT)
     - Isothermal-Isostress (N&sigma;T)
 
-2. Moves
+3. Moves
     - Translation
     - Rotation (Quaternion Algebra)
     - Cubic Expansions/Compressions (Isotropic)
     - Triclinic Expansions/Compressions (Anisotropic)
 
-3. Potentials
+4. Potentials
     - None
 
 ## <a name="language"></a>Language
@@ -159,6 +165,19 @@ The following features are supported in the current version:
 <p align="justify">
   Apart from the executable file, the <code>/bin/</code> folder contains some initialization files that need to be set up.
 </p>
+
+1. The Configuration File (<code>ini_config.ini</code>) which is used for:
+    * Selecting the molecular geometry: `<EOR>` for ellipsoids of revolution, `<SPC>` for spherocylinders, and `<CYL>` for cylinders<br> &nbsp;
+    * Selecting the molecular configuration
+    * Face-Centered Cube (for pure components only)
+    * Random Structure (for pure components and mixtures)
+
+2. a
+3. a
+4. a
+5. 
+
+a configuration file for selecting the molecular geometry and the molecular configuration, including some aditional information on the 'Random' structure (if selected); <b>II</b> a control file
 
 ## <a name="filesandfolders"></a>Files and Folders
 
