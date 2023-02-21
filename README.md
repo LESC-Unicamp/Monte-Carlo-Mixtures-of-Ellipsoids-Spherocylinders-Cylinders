@@ -174,11 +174,11 @@ The following features are supported in the current version:
 
 | Name | String Name | Definition | Options |
 |:---:|:---:|:---:| --- |
-| Geometry<br> selection | <code>geometry_selection</code> | Used to select the<br> molecular geometry | <ul><li><code>EOR</code> for ellipsoids of revolution</li><li><code>SPC</code> for spherocylinders</li><li><code>CYL</code> for cylinders</li></ul> |
-| Configuration<br> selection | <code>molecular_configuration</code> | Used to select the<br> initial configuration | <ul><li><code>SC</code> for a simple cubic structure</li><li><code>BCC</code> for a body-centered cubic structure</li><li><code>FCC</code> for a face-centered cubic structure</li><li><code>RND</code> for a random cubic structure</li></ul> |
-| Unrotated<br> axis | <code>unrotated_axis</code> | Used to select the<br> unrotated reference axis<br> (initial configuration only) | <ul><li><code>X</code> to select the _x_-axis</li><li><code>Y</code> to select the _y_-axis</li><li><code>Z</code> to select the _z_-axis</li></ul> |
-| Quaternion<br> angle | <code>quaternion_angle</code> | Used to select the<br> orientation angle<br> (initial configuration only) | Any <code>FLOAT</code> number |
-| Maximum attempts<br> (<code>RND</code> only) | <code>max_attempts_rnd</code> | Used to select the<br> maximum number of attempts<br> to randomly allocate particle<br> inside a cubic box<br> (random configuration only) | Any non-zero, positive <code>INTEGER</code> number |
+| Geometry selection | <code>geometry_selection</code> | Used to select the molecular geometry | <ul><li><code>EOR</code> for ellipsoids of revolution</li><li><code>SPC</code> for spherocylinders</li><li><code>CYL</code> for cylinders</li></ul> |
+| Configuration selection | <code>molecular_configuration</code> | Used to select the initial configuration | <ul><li><code>SC</code> for a simple cubic structure</li><li><code>BCC</code> for a body-centered cubic structure</li><li><code>FCC</code> for a face-centered cubic structure</li><li><code>RND</code> for a random cubic structure</li></ul> |
+| Unrotated axis | <code>unrotated_axis</code> | Used to select the unrotated reference axis<br> (initial configurations only) | <ul><li><code>X</code> to select the _x_-axis</li><li><code>Y</code> to select the _y_-axis</li><li><code>Z</code> to select the _z_-axis</li></ul> |
+| Quaternion angle | <code>quaternion_angle</code> | Used to select the orientation angle (initial configurations only) | Any <code>FLOAT</code> number |
+| Maximum attempts<br> (<code>RND</code> only) | <code>max_attempts_rnd</code> | Used to select the maximum number of attempts to randomly allocate particle inside a cubic box (random configuration only) | Any non-zero, positive <code>INTEGER</code> number |
 
 ### The Control File<br> <sub><code>ini_control.ini</code></sub>
 
