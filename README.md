@@ -351,7 +351,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  The first thing the algorithm does is create the initial configuration folder and the initial configuration file. Is you selected the random structure as the initial configuration, you can also check what stage the code is in while it builds the random configuration. After that, the algorithm creates the remaining folders and subfolders.
+  The first thing the algorithm does is create the initial configuration folder and the initial configuration file. If you selected the random structure as the initial configuration, you can also check what stage the code is in while it builds the random configuration. After that, the algorithm creates the remaining folders and subfolders.
 </p>
 
 <p align="justify">
