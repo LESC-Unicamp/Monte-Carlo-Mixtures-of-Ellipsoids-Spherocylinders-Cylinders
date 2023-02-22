@@ -280,7 +280,7 @@ The following features are supported in the current version:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:|:--- | --- |
+|:---:|:---:| --- | --- |
 | Packing fraction | <code>packing_fraction</code> | Used to define the target packing fraction of an <b>NVT</b>-simulation or the initial packing fraction (initial volume) of an <b>NPT</b>-simulation | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
 | Number of components | <code>components</code> | Used to define the number of components in the mixture | Any positive, non-zero <code>INTEGER</code> number |
 | Molecular diameter | <code>diameter</code> | Use to define the molecular diameter in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
