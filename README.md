@@ -303,7 +303,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  <b>OBS. III</b>: The total number of particles can be modified depending on the selected mole fractions.
+  <b>OBS. III</b>: The total number of particles may be slightly adjusted depending on the selected mole fractions.
 </p>
 
 <p align="justify">
