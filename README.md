@@ -347,7 +347,23 @@ The following features are supported in the current version:
 ## <a name="running"></a>Running the Code
 
 <p align="justify">
-  Finally, it's time to run the code! After compilation, the executable(s) can be found in the <code>/bin/</code> folder. First, when running the code, a summary of every property previously defined in the <b>*.ini</b> files will be printed out on the screen. If everything is OK, enter "Y" to continue. Otherwise, enter "N" to exit and edit something.
+  Finally, it's time to run the code! After compilation, the executable(s) can be found in the <code>/bin/</code> folder:
+</p>
+
+**Standard compilation**
+```
+./mc_mixtures_standard.out
+```
+
+or
+
+**Debug compilation**
+```
+./mc_mixtures_debug.out
+```
+
+<p align="justify">  
+  First, when running the code, a summary of every property previously defined in the <b>*.ini</b> files will be printed out on the screen. If everything is OK, enter "Y" to continue. Otherwise, enter "N" to exit and edit something.
 </p>
 
 <p align="justify">
