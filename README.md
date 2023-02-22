@@ -347,7 +347,19 @@ The following features are supported in the current version:
 ## <a name="running"></a>Running the Code
 
 <p align="justify">
-  Finally, it's time to run the code! After compilation, the executable(s) can be found in the <code>/bin/</code> folder. First, when running the code, a summary of every property previously defined in the <b>*.ini</b> files will be printed out on the screen. If everything is OK, enter "Y". Otherwise, enter "N" to exit and edit something.
+  Finally, it's time to run the code! After compilation, the executable(s) can be found in the <code>/bin/</code> folder. First, when running the code, a summary of every property previously defined in the <b>*.ini</b> files will be printed out on the screen. If everything is OK, enter "Y" to continue. Otherwise, enter "N" to exit and edit something.
+</p>
+
+<p align="justify">
+  The first thing the algorithm does is create the initial configuration folder and the initial configuration file. Is you selected the random structure as the initial configuration, you can also check what stage the code is in while it builds the random configuration. After that, the algorithm creates the remaining folders and subfolders.
+</p>
+
+<p align="justify">
+  Next, the algorithm checks if the initial configuration has any overlapping configurations. This is more relevant when using a preset initial configuration. If the algorithm detects an overlapping configuration, it'll inform which particles are overlapping before exiting the program.
+</p>
+
+<p align="justify">
+  Next, property files are created and the real simulation starts. You can see what stage the simulation is at through the progress bar. When the simulation finishes, the program will write out a simulation log. This is automatically done after every simulation. The first simulation creates the simulation log file. Future simulations will only append information to the already existing log file.
 </p>
 
 ## <a name="reporting"></a>Reporting Errors
@@ -357,7 +369,7 @@ The following features are supported in the current version:
 
 ## <a name="citation"></a>Citing Us
 
-Not finished.
+Not available.
 
 ---
 
