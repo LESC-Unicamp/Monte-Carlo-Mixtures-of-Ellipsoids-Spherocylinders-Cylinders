@@ -305,6 +305,10 @@ The following features are supported in the current version:
   <b>OBS. III</b>: The total number of particles can be modified depending on the selected mole fractions.
 </p>
 
+<p align="justify">
+  <b>OBS. IV</b>: The absolute temperature is only required to calculate the real pressure in MPa.
+</p>
+
 ## <a name="filesandfolders"></a>Files and Folders
 
 ## <a name="reporting"></a>Reporting Errors
