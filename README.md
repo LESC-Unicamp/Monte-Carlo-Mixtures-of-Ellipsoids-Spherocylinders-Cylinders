@@ -48,8 +48,9 @@ Luís Fernando Mercier Franco<br></p>
 5. [Building and Compiling](#installation)
 6. [Data Input](#datainput)
 7. [Files and Folders](#filesandfolders)
-8. [Reporting Errors](#reporting)
-9. [Citing Us](#citation)
+8. [Running the Code](#running)
+9. [Reporting Errors](#reporting)
+10. [Citing Us](#citation)
 
 ## <a name="disclaimer"></a>Disclaimer
 
@@ -310,6 +311,40 @@ The following features are supported in the current version:
 </p>
 
 ## <a name="filesandfolders"></a>Files and Folders
+
+<p align="justify">
+  The program organizes the output files and directories automatically. It creates <b>5</b> directories in total. To better organize the output files, all directories (or subdirectories) contains a date subfolder, corresponding to the starting date/hour of the simulation.
+</p>
+
+<p align="justify">
+  The <code>Initial_Configuration/</code> directory stores the preset initial configuration file. It also contains the <code>OVITO/</code> subdirectory, which holds preformatted information on the position and orientation of particles, as well as their molecular geometry, that can be visualized directly on <a href="https://www.ovito.org/">OVITO</a> software. The <code>OVITO/</code> subdirectory also contains an 'RND' configuration file that is constantly updated to allow you to keep up with the development of the random configuration.
+</p>
+
+<p align="justify">
+  The <code>Order_Parameter/</code> directory stores the nematic order parameter. This property is written out every <code>saving_frequency</code> cycles.
+</p>
+
+<p align="justify">
+  The <code>Ratio/</code> directory stores information on equilibration cycles (acceptance ratio, maximum displacements, etc.). This information is sorted out into four subfolders: the <code>Rotation/</code> subfolder holds information on rotational moves; the <code>Translation/</code> subfolder holds information on translational moves; the <code>Volume/</code> subfolder holds information on volumetric moves (only valid for <i>NPT</i>-simulations); and the <code>Box/</code> subfolder holds information on the box volume and box length (only valid for <i>NPT</i>-simulations). These properties are only written out every <code>adjustment_frequency</code> equilibration cycles.
+</p>
+  
+<p align="justify">
+  The <code>Results/</code> directory stores relavant results of the <i>NPT</i>-simulation, including the packing fraction, number density, and box volume. These properties are written out every <code>saving_frequency</code> cycles.
+</p>
+
+<p align="justify">
+  The <code>Trajectories/</code> directory stores the trajectory file containing preformatted information on the position and orientation of particles, as well as their molecular geometry, that can be visualized directly on <a href="https://www.ovito.org/">OVITO</a> software. These properties are written out every <code>saving_frequency</code> cycles.<br><b>NOTE</b>: the trajectory is only written out if the parameter <code>print_trajectory</code> is set to <code>Y</code>.
+</p>
+
+<p align="justify">
+  The aforementioned folders are created by executing a shell command via an intrinsic function called <code>SYSTEM</code> which works in Linux operating systems. Please note that which shell is used to invoke the command line is system-dependent and environment-dependent. Check this <a href="https://gcc.gnu.org/onlinedocs/gfortran/SYSTEM.html">link</a> for more information.
+</p>
+
+<p align="justify">
+  Filenames are based on the information they hold, followed by the packing fraction (<i>NVT</i>-simulations) or reduced pressure (<i>NPT</i>-simulations) and the number of components that were used to create them. To prevent identically named files from being overwritten, a time prefix indicating when the simulation started is added to the file.
+</p>
+
+## <a name="running"></a>Running the Code
 
 ## <a name="reporting"></a>Reporting Errors
 <p align="justify">
