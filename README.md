@@ -179,7 +179,7 @@ The following features are supported in the current version:
 | Unrotated axis | <code>unrotated_axis</code> | Used to select the unrotated reference axis (initial configurations only) | <ul><li><code>X</code> to select the _x_-axis</li><li><code>Y</code> to select the _y_-axis</li><li><code>Z</code> to select the _z_-axis</li></ul> |
 | Quaternion angle | <code>quaternion_angle</code> | Used to select the orientation angle in degrees (initial configurations only) | Any <code>FLOAT</code> number |
 | Maximum attempts<br> (<code>RND</code> only) | <code>max_attempts_rnd</code> | Used to select the maximum number of attempts to randomly distribute particles inside a cubic box (random configuration only) | Any positive, non-zero <code>INTEGER</code> number |
-| Packing fraction<br> (<code>RND</code> only) | <code>packing_fraction_rnd</code> | Used to define the initial volume of the simulation box (random configuration only)<br>**NOTE**: Smaller packing fractions (larger box volumes) are recommended | Any positive, non-zero <code>FLOAT</code> number |
+| Packing fraction<br> (<code>RND</code> only) | <code>packing_fraction_rnd</code> | Used to define the initial volume of the simulation box (random configuration only)<br>**NOTE**: Smaller packing fractions (larger box volumes) are recommended | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
 | Reduced pressure¹<br> (<code>RND</code> only) | <code>pressure_npt_rnd</code> | Used to correct the initial packing fraction of the simulation box to the target packing fraction (random configuration only)<br>**NOTE**: Higher pressures are recommended | Any positive, non-zero <code>FLOAT</code> number |
 | Preset configuration | <code>preset_initial_configuration</code> | Used to replace the current configuration with a previously generated configuration<br> **NOTE**: This overrides most of the simulation settings | <ul><li><code>.TRUE.</code> to use a preset configuration</li><li><code>.FALSE.</code> to use the current configuration</li></ul> |
 
@@ -221,13 +221,13 @@ The following features are supported in the current version:
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
 | Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
 | Adjustment frequency<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd</code> | Used to define how often displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
-| Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any non-zero <code>FLOAT</code> number |
-| Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any non-zero <code>FLOAT</code> number |
-| Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any non-zero <code>FLOAT</code> number |
-| Maximum rotational displacement<br> (<code>RND</code> only) | <code>max_rotational_displc_rnd</code> | Used to define the maximum rotational displacement \[+/-\] in radians (random configuration only) | Any non-zero <code>FLOAT</code> number |
-| Maximum volumetric displacement | <code>max_volumetric_displc</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ | Any non-zero <code>FLOAT</code> number |
-| Maximum volumetric displacement<br> (<code>RND</code> only) | <code>max_volumetric_displc_rnd</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number |
-| Minimum volumetric displacement<br> (<code>RND</code> only) | <code>min_volumetric_displc_rnd</code> | Used to define the minimum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number less than the maximum volumetric displacement |
+| Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any positive, non-zero <code>FLOAT</code> number |
+| Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any positive, non-zero <code>FLOAT</code> number |
+| Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any positive, non-zero <code>FLOAT</code> number |
+| Maximum rotational displacement<br> (<code>RND</code> only) | <code>max_rotational_displc_rnd</code> | Used to define the maximum rotational displacement \[+/-\] in radians (random configuration only) | Any positive, non-zero <code>FLOAT</code> number |
+| Maximum volumetric displacement | <code>max_volumetric_displc</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ | Any positive, non-zero <code>FLOAT</code> number |
+| Maximum volumetric displacement<br> (<code>RND</code> only) | <code>max_volumetric_displc_rnd</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any positive, non-zero <code>FLOAT</code> number |
+| Minimum volumetric displacement<br> (<code>RND</code> only) | <code>min_volumetric_displc_rnd</code> | Used to define the minimum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any positive, non-zero <code>FLOAT</code> number less than the maximum volumetric displacement |
 | Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isobaric-isothermal ensemble</li></ul> |
 
 <p align="justify">
@@ -264,9 +264,9 @@ The following features are supported in the current version:
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
 |:---:|:---:|:--- | --- |
-| Translation | <code>ratio_translation</code> | | |
-| | <code>ratio_rotation</code> | | |
-| | <code>ratio_volume</code> | | |
+| Translational threshold | <code>ratio_translation</code> | Used to define the acceptance threshold of translational moves | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Rotational threshold | <code>ratio_rotation</code> | Used to define the acceptance threshold of rotational moves | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Volumetric threshold | <code>ratio_volume</code> | Used to define the acceptance threshold of volumetric moves | Any positive <code>FLOAT</code> number between 0 and 1 |
 
 <p align="justify">
   Adjustments to maximum diplacements are only made during the equilibration phase for every <code>adjustment_frequency</code> cycles. Let's call the number of accepted moves <b>n_accepted</b> and the number of trialed moves <b>n_trialed</b>. If <b>n_accepted</b> / <b>n_trialed</b> > <b>threshold</b>, the corresponding maximum displacement is increased by 5% of its current value; otherwise, it is decreased by 5% of its current value.
@@ -274,16 +274,36 @@ The following features are supported in the current version:
 
 ### The System File<br> <sub><code>ini_system.ini</code></sub>
 
-    * The molecular configuration: `<SC>` for a simple cubic structure, `<BCC>` for a body-centered cubic structure, `<FCC>` for a face-centered cubic structure, and `<RND>` for a random cubic structure
-    * The unrotated reference axis (initial configuration only): `<SC>` for the X-axis
-    * The
+<p align="justify">
+  This file is used to set up system-related variables, including geometric properties. The table below shows some options that can be used to define the system parameters:
+</p>
 
-2. a
-3. a
-4. a
-5. 
+| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
+|:---:|:---:|:--- | --- |
+| Packing fraction | <code>packing_fraction</code> | Used to define the target packing fraction of an <b>NVT</b>-simulation or the initial packing fraction (initial volume) of an <b>NPT</b>-simulation | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
+| Number of components | <code>components</code> | Used to define the number of components in the mixture | Any positive, non-zero <code>INTEGER</code> number |
+| Molecular diameter | <code>diameter</code> | Use to define the molecular diameter in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
+| Molecular length | <code>length</code> | Use to define the molecular length in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
+| Mole fraction | <code>molar_fraction</code> | Use to define the mole fraction of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
+| Number of particles | <code>number_of_particles</code> | Used to define the total number of particles | Any positive, non-zero <code>INTEGER</code> number |
+| Temperature | <code>absolute_temperature</code> | Used to define the temperature of the system in K | Any positive, non-zero <code>FLOAT</code> number |
+| Reduced pressure¹ | <code>reduced_pressure</code> | Used to define the reduced pressure (only valid for an <b>NPT</b>-simulation) | Any positive, non-zero <code>FLOAT</code> number |
 
-a configuration file for selecting the molecular geometry and the molecular configuration, including some aditional information on the 'Random' structure (if selected); <b>II</b> a control file
+<p align="justify">
+  <sup>¹P<sup>*</sup> = P&sigma;<sub>0</sub>³/(k<sub>B</sub>T), where <i>P</i> is the real pressure, <i>k<sub>B</sub></i> is the Boltzmann constant, <i>T</i> is the absolute temperature, and <i>&sigma;<sub>0</sub></i> is a reference diameter, such that &sigma;<sub>0</sub> = 1Å.</sup>
+</p>
+
+<p align="justify">
+  <b>OBS. I</b>: If the number of components is greater than 1, the molecular diameters, molecular lengths, and mole fractions must be entered successively on the same respective line, separated by a single space, as shown in the provided *.ini file.
+</p>
+
+<p align="justify">
+  <b>OBS. II</b>: If, for any reason, the total mole fraction exceeds 1, it will be automatically normalized.
+</p>
+
+<p align="justify">
+  <b>OBS. III</b>: The total number of particles can be modified depending on the selected mole fractions.
+</p>
 
 ## <a name="filesandfolders"></a>Files and Folders
 
