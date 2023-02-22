@@ -359,7 +359,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  Next, property files are created and the real simulation starts. You can see what stage the simulation is at through the progress bar. When the simulation finishes, the program will write out a simulation log. This is automatically done after every simulation. The first simulation creates the simulation log file. Future simulations will only append information to the already existing log file.
+  Next, the property files are created and the real simulation starts. You can see what stage the simulation is at through the progress bar. When the simulation finishes, the program will write out a simulation log. This is automatically done after every simulation. The first simulation creates the simulation log file. Future simulations will only append information to the already existing log file.
 </p>
 
 ## <a name="reporting"></a>Reporting Errors
