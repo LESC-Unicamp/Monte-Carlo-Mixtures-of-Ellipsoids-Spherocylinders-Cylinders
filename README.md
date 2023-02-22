@@ -269,7 +269,7 @@ The following features are supported in the current version:
 | Volumetric threshold | <code>ratio_volume</code> | Used to define the acceptance threshold of volumetric moves | Any positive <code>FLOAT</code> number between 0 and 1 |
 
 <p align="justify">
-  Adjustments to maximum diplacements are only made during the equilibration phase for every <code>adjustment_frequency</code> cycles. Let's call the number of accepted moves <b>n_accepted</b> and the number of trialed moves <b>n_trialed</b>. If <b>n_accepted</b> / <b>n_trialed</b> > <b>threshold</b>, the corresponding maximum displacement is increased by 5% of its current value; otherwise, it is decreased by 5% of its current value.
+  <b>OBS.</b>: Adjustments to maximum diplacements are only made during the equilibration phase for every <code>adjustment_frequency</code> cycles. Let's call the number of accepted moves <b>n_accepted</b> and the number of trialed moves <b>n_trialed</b>. If <b>n_accepted</b> / <b>n_trialed</b> > <b>threshold</b>, the corresponding maximum displacement is increased by 5% of its current value; otherwise, it is decreased by 5% of its current value.
 </p>
 
 ### The System File<br> <sub><code>ini_system.ini</code></sub>
