@@ -346,12 +346,18 @@ The following features are supported in the current version:
 
 ## <a name="running"></a>Running the Code
 
+<p align="justify">
+  Finally, it's time to run the code! After compilation, the executable(s) can be found in the <code>/bin/</code> folder. First, when running the code, a summary of every property previously defined in the <b>*.ini</b> files will be printed out on the screen. If everything is OK, enter "Y". Otherwise, enter "N" to exit and edit something.
+</p>
+
 ## <a name="reporting"></a>Reporting Errors
 <p align="justify">
   If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/issues">Issues</a> tab.
 </p>
 
 ## <a name="citation"></a>Citing Us
+
+Not finished.
 
 ---
 
