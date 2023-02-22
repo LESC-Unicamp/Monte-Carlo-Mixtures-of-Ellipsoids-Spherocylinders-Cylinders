@@ -174,7 +174,7 @@ The following features are supported in the current version:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:|:--- | --- |
+|:---:|:---:| --- | --- |
 | Geometry selection | <code>geometry_selection</code> | Used to select the molecular geometry | <ul><li><code>EOR</code> for ellipsoids of revolution</li><li><code>SPC</code> for spherocylinders</li><li><code>CYL</code> for cylinders</li></ul> |
 | Configuration selection | <code>molecular_configuration</code> | Used to select the initial configuration | <ul><li><code>SC</code> for a simple cubic structure</li><li><code>BCC</code> for a body-centered cubic structure</li><li><code>FCC</code> for a face-centered cubic structure</li><li><code>RND</code> for a random cubic structure</li></ul> |
 | Unrotated axis | <code>unrotated_axis</code> | Used to select the unrotated reference axis (initial configurations only) | <ul><li><code>X</code> to select the _x_-axis</li><li><code>Y</code> to select the _y_-axis</li><li><code>Z</code> to select the _z_-axis</li></ul> |
@@ -205,7 +205,7 @@ The following features are supported in the current version:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:|:--- | --- |
+|:---:|:---:| --- | --- |
 | Trajectory printing | <code>print_trajectory</code> | Used to specify whether the trajectory files will be written out or not | <ul><li><code>Y</code> to write out the trajectory file</li><li><code>N</code> to NOT write out the trajectory file</li></ul> |
 | Seed type | <code>fixed_seed</code> | Used to control the type of pseudorandom number generator seed | <ul><li><code>Y</code> for a fixed seed</li><li><code>N</code> for a random seed</li></ul> |
 
@@ -216,7 +216,7 @@ The following features are supported in the current version:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:|:--- | --- |
+|:---:|:---:| --- | --- |
 | Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as a single random move of all particles in the system | Any positive, non-zero <code>INTEGER</code> number |
 | Number of equilibration cycles | <code>equilibration_cycles</code> | Used to define the number of equilibration cycles within the maximum number of cycles | Any positive, non-zero <code>INTEGER</code> number less than the maximum number of cycles |
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
@@ -246,7 +246,7 @@ The following features are supported in the current version:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:|:--- | --- |
+|:---:|:---:| --- | --- |
 | Probability of movement | <code>prob_movement</code> | Used to define the probability a movement (translation/rotation) will occur during a trial move | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Probability of movement<br> (<code>RND</code> only) | <code>prob_movement_rnd</code> | Used to define the probability a movement (translation/rotation) will occur during a trial move (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Probability of translation | <code>prob_translation</code> | Used to define the probability a translation will occur during a trial movement | Any positive <code>FLOAT</code> number between 0 and 1 |
@@ -264,7 +264,7 @@ The following features are supported in the current version:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:|:--- | --- |
+|:---:|:---:| --- | --- |
 | Translational threshold | <code>ratio_translation</code> | Used to define the acceptance threshold of translational moves | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Rotational threshold | <code>ratio_rotation</code> | Used to define the acceptance threshold of rotational moves | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Volumetric threshold | <code>ratio_volume</code> | Used to define the acceptance threshold of volumetric moves | Any positive <code>FLOAT</code> number between 0 and 1 |
