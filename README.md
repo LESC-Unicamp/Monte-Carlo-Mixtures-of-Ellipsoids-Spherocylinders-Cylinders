@@ -231,7 +231,11 @@ The following features are supported in the current version:
 | Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isobaric-isothermal ensemble</li></ul> |
 
 <p align="justify">
-  <b>OBS.</b>: The number of production cycles is defined automatically by subtracting the number of equilibration cycles from the total number of cycles.
+  <b>OBS. I</b>: The number of production cycles is defined automatically by subtracting the number of equilibration cycles from the total number of cycles.
+</p>
+
+<p align="justify">
+  <b>OBS. II</b>: The minimum volumetric displacement is really necessary only when the target packing fraction is above 0.6, as the algorithm may take hours to reach it.
 </p>
 
 ### The Probabilities File<br> <sub><code>ini_probabilities.ini</code></sub>
@@ -255,14 +259,18 @@ The following features are supported in the current version:
 ### The Acceptance Ratios File<br> <sub><code>ini_ratio.ini</code></sub>
 
 <p align="justify">
-  This file is used to set up the acceptace ratios of trial moves. The table below shows some options that can be used to define the acceptance ratio parameters:
+  This file is used to set up the acceptance ratio thresholds of trial moves. The table below shows some options that can be used to define the threshold parameters:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
 |:---:|:---:|:--- | --- |
-| | <code>ratio_translation</code> | | |
+| Translation | <code>ratio_translation</code> | | |
 | | <code>ratio_rotation</code> | | |
 | | <code>ratio_volume</code> | | |
+
+<p align="justify">
+  Adjustments to maximum diplacements are only made during the equilibration phase for every <code>adjustment_frequency</code> cycles. Let's call the number of accepted moves <b>n_accepted</b> and the number of trialed moves <b>n_trialed</b>. If <b>n_accepted</b> / <b>n_trialed</b> > <b>threshold</b>, the corresponding maximum displacement is increased by 5% of its current value; otherwise, it is decreased by 5% of its current value.
+</p>
 
 ### The System File<br> <sub><code>ini_system.ini</code></sub>
 
