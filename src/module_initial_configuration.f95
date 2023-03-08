@@ -710,11 +710,11 @@ HIT_AND_MISS_NVT: DO
     END DO
 
     ! Forbid rotation if component is spherical
-    IF( ASPECT_RATIO(CI) == 1.D0 .AND. GEOM_SELEC(1) ) THEN
+    IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
       MOV_TRANS = .TRUE.   ! Enable translation
       MOV_ROT   = .FALSE.  ! Disable rotation
       MOVT      = MOVT + 1 ! Increment move counter
-    ELSE IF( ASPECT_RATIO(CI) == 0.D0 .AND. GEOM_SELEC(2) ) THEN
+    ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
       MOV_TRANS = .TRUE.   ! Enable translation
       MOV_ROT   = .FALSE.  ! Disable rotation
       MOVT      = MOVT + 1 ! Increment move counter
@@ -1182,11 +1182,11 @@ NPT_SIMULATION: DO
       END DO
 
       ! Forbid rotation if component is spherical
-      IF( ASPECT_RATIO(CI) == 1.D0 .AND. GEOM_SELEC(1) ) THEN
+      IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
         MOV_TRANS = .TRUE.   ! Enable translation
         MOV_ROT   = .FALSE.  ! Disable rotation
         MOVT      = MOVT + 1 ! Increment move counter
-      ELSE IF( ASPECT_RATIO(CI) == 0.D0 .AND. GEOM_SELEC(2) ) THEN
+      ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
         MOV_TRANS = .TRUE.   ! Enable translation
         MOV_ROT   = .FALSE.  ! Disable rotation
         MOVT      = MOVT + 1 ! Increment move counter
@@ -1899,11 +1899,11 @@ IF( ETA_NPT > PACKING_F ) THEN
         END DO
 
         ! Forbid rotation if component is spherical
-        IF( ASPECT_RATIO(CI) == 1.D0 .AND. GEOM_SELEC(1) ) THEN
+        IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
           MOV_TRANS = .TRUE.   ! Enable translation
           MOV_ROT   = .FALSE.  ! Disable rotation
           MOVT      = MOVT + 1 ! Increment move counter
-        ELSE IF( ASPECT_RATIO(CI) == 0.D0 .AND. GEOM_SELEC(2) ) THEN
+        ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
           MOV_TRANS = .TRUE.   ! Enable translation
           MOV_ROT   = .FALSE.  ! Disable rotation
           MOVT      = MOVT + 1 ! Increment move counter

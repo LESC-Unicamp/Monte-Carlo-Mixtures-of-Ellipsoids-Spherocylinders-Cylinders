@@ -675,7 +675,8 @@ QABI(:,:) = 0.D0
 N_S = 0
 DO C = 1, COMPONENTS
   ! Skip if component is spherical
-  IF( ( ASPECT_RATIO(C) == 1.D0 .AND. GEOM_SELEC(1) ) .OR. ( ASPECT_RATIO(C) == 0.D0 .AND. GEOM_SELEC(2) ) ) THEN
+  IF( ( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(C) - 1.D0 ) < EPSILON( 1.D0 ) ) .OR. &
+  &   ( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(C) - 0.D0 ) < EPSILON( 1.D0 ) ) ) THEN
     CYCLE
   END IF
   DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
@@ -701,7 +702,7 @@ END DO
 QAB(:,:) = QABI(:,:) / DBLE( N_S )
 
 ! All components are spherical
-IF( SUM( QAB ) == 0.D0 ) THEN
+IF( DABS( SUM( QAB ) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
   S = 0.D0
   RETURN
 END IF

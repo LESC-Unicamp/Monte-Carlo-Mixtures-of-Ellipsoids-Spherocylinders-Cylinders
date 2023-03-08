@@ -237,7 +237,7 @@ DO C = 1, COMPONENTS
   TOTAL_MOLAR_F = TOTAL_MOLAR_F + MOLAR_F(C)
 END DO
 WRITE( *, * ) " "
-IF( TOTAL_MOLAR_F /= 1.D0 ) THEN
+IF( DABS( TOTAL_MOLAR_F - 1.D0 ) >= EPSILON(1.D0) ) THEN
   WRITE( *, "(G0)" ) "Total molar fraction not equal to unit! Recalculating... "
   WRITE( *, * ) " "
   DO C = 1, COMPONENTS

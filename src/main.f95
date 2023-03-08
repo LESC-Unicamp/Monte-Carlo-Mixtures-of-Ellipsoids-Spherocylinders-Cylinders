@@ -260,7 +260,7 @@ CALL INITFOLDER(  )
 IF( CONFIG_SELEC(1) ) THEN
   IF( .NOT. INIT_CONF ) THEN
     DO C = 1, COMPONENTS - 1
-      IF( DIAMETER(C) /= DIAMETER(C+1) .OR. LENGTH(C) /= LENGTH(C+1) ) THEN
+      IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
         WRITE( *, "(6G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
         &                   "The simple cubic structure cannot be selected. Try selecting the random configuration."
         CALL SLEEP( 1 )
@@ -378,7 +378,7 @@ IF( CONFIG_SELEC(1) ) THEN
 ELSE IF( CONFIG_SELEC(2) ) THEN
   IF( .NOT. INIT_CONF ) THEN
     DO C = 1, COMPONENTS - 1
-      IF( DIAMETER(C) /= DIAMETER(C+1) .OR. LENGTH(C) /= LENGTH(C+1) ) THEN
+      IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
         WRITE( *, "(6G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
         &                   "The body-centered cubic structure cannot be selected. Try selecting the random configuration."
         CALL SLEEP( 1 )
@@ -496,7 +496,7 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
 ELSE IF( CONFIG_SELEC(3) ) THEN
   IF( .NOT. INIT_CONF ) THEN
     DO C = 1, COMPONENTS - 1
-      IF( DIAMETER(C) /= DIAMETER(C+1) .OR. LENGTH(C) /= LENGTH(C+1) ) THEN
+      IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
         WRITE( *, "(6G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
         &                   "The face-centered cubic structure cannot be selected. Try selecting the random configuration."
         CALL SLEEP( 1 )
@@ -1349,11 +1349,11 @@ DO CYCLES = 1, MAX_CYCLES
       END DO
 
       ! Forbid rotation if component is spherical
-      IF( ASPECT_RATIO(CI) == 1.D0 .AND. GEOM_SELEC(1) ) THEN
+      IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
         MOV_TRANS = .TRUE.   ! Enable translation
         MOV_ROT   = .FALSE.  ! Disable rotation
         MOVT      = MOVT + 1 ! Increment move counter
-      ELSE IF( ASPECT_RATIO(CI) == 0.D0 .AND. GEOM_SELEC(2) ) THEN
+      ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
         MOV_TRANS = .TRUE.   ! Enable translation
         MOV_ROT   = .FALSE.  ! Disable rotation
         MOVT      = MOVT + 1 ! Increment move counter

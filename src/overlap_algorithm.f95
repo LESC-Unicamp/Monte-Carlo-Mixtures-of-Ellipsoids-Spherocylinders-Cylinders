@@ -96,7 +96,7 @@ REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: IDMATRIX    ! Identity matrix
 LOGICAL :: OVERLAP_HER ! Detects overlap between two ellipsoids of revolution: TRUE = overlap detected; FALSE = overlap not detected
 
 ! Ellipsoid centers of mass coincide (FA = FB = 0 | Bissection method cannot be used)
-IF( RIJSQ == 0.D0 ) THEN
+IF( DABS( RIJSQ - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
   OVERLAP_HER = .TRUE.
   INTFUNC     = 0.D0
   CONTACT_D   = 0.D0
@@ -151,7 +151,7 @@ EYIEYI(:,:) = EYIEYI(:,:) / ( SEMIAI(2) * SEMIAI(2) )
 EZIEZI(:,:) = EZIEZI(:,:) / ( SEMIAI(3) * SEMIAI(3) )
 AI(:,:)     = EXIEXI(:,:) + EYIEYI(:,:) + EZIEZI(:,:)
 ! Degenerate case (sphere)
-IF( SEMIAI(1) == SEMIAI(2) .AND. SEMIAI(1) == SEMIAI(3) ) THEN
+IF( DABS( SEMIAI(1) - SEMIAI(2) ) < EPSILON( 1.D0 ) .AND. DABS( SEMIAI(1) - SEMIAI(3) ) < EPSILON( 1.D0 ) ) THEN
   AI(:,:) = IDMATRIX(:,:) / ( SEMIAI(1) * SEMIAI(1) )
 END IF
 
@@ -161,7 +161,7 @@ EYJEYJ(:,:) = EYJEYJ(:,:) / ( SEMIBJ(2) * SEMIBJ(2) )
 EZJEZJ(:,:) = EZJEZJ(:,:) / ( SEMIBJ(3) * SEMIBJ(3) )
 BJ(:,:)     = EXJEXJ(:,:) + EYJEYJ(:,:) + EZJEZJ(:,:)
 ! Degenerate case (sphere)
-IF( SEMIBJ(1) == SEMIBJ(2) .AND. SEMIBJ(1) == SEMIBJ(3) ) THEN
+IF( DABS( SEMIBJ(1) - SEMIBJ(2) ) < EPSILON( 1.D0 ) .AND. DABS( SEMIBJ(1) - SEMIBJ(3) ) < EPSILON( 1.D0 ) ) THEN
   BJ(:,:) = IDMATRIX(:,:) / ( SEMIBJ(1) * SEMIBJ(1) )
 END IF
 
