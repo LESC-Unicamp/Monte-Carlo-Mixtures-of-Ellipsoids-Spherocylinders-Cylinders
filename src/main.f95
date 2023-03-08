@@ -1478,7 +1478,8 @@ DO CYCLES = 1, MAX_CYCLES
       MATRIX_C = INT( RANDOM_N * 9.D0 ) + 1
       ! Random stretching/shortening of the box length component
       CALL RANF(  )
-      BOXLN(MATRIX_C) = BOXLN(MATRIX_C) + DVMAX * (RANDOM_N - 0.5D0)
+      BOXLN(:)        = BOXLM(:)
+      BOXLN(MATRIX_C) = BOXLM(MATRIX_C) + DVMAX * (RANDOM_N - 0.5D0)
       VOL_TYPE = "AN"
       ! Calculate the new reciprocal box basis vectors and the volume of the system
       CALL INVERSE_COF( BOXLN, BOXLN_I, BOXVN )
