@@ -170,8 +170,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K, COUNTER  ! Counters
-INTEGER( KIND= REAL64 ) :: N_CELLS           ! Number of unit cells
+INTEGER( KIND= INT64 ) :: I, J, K, COUNTER  ! Counters
+INTEGER( KIND= INT64 ) :: N_CELLS           ! Number of unit cells
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -268,8 +268,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K, COUNTER  ! Counters
-INTEGER( KIND= REAL64 ) :: N_CELLS           ! Number of unit cells
+INTEGER( KIND= INT64 ) :: I, J, K, COUNTER  ! Counters
+INTEGER( KIND= INT64 ) :: N_CELLS           ! Number of unit cells
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -373,8 +373,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K, COUNTER  ! Counters
-INTEGER( KIND= REAL64 ) :: N_CELLS           ! Number of unit cells
+INTEGER( KIND= INT64 ) :: I, J, K, COUNTER  ! Counters
+INTEGER( KIND= INT64 ) :: N_CELLS           ! Number of unit cells
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -492,16 +492,16 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K   ! Counters
-INTEGER( KIND= REAL64 ) :: C, CI, CJ ! Component index
-INTEGER( KIND= REAL64 ) :: ATTEMPTS  ! Counter
-INTEGER( KIND= REAL64 ) :: CYCLES    ! Counter of cycles
-INTEGER( KIND= REAL64 ) :: NACCT     ! Move acceptance counter: Translation
-INTEGER( KIND= REAL64 ) :: NACCR     ! Move acceptance counter: Rotation
-INTEGER( KIND= REAL64 ) :: NACCV     ! Move acceptance counter: Volume
-INTEGER( KIND= REAL64 ) :: MOVT      ! Move counter (Translation)
-INTEGER( KIND= REAL64 ) :: MOVR      ! Move counter (Rotation)
-INTEGER( KIND= REAL64 ) :: MOVV      ! Move counter (Volume)
+INTEGER( KIND= INT64 ) :: I, J, K   ! Counters
+INTEGER( KIND= INT64 ) :: C, CI, CJ ! Component index
+INTEGER( KIND= INT64 ) :: ATTEMPTS  ! Counter
+INTEGER( KIND= INT64 ) :: CYCLES    ! Counter of cycles
+INTEGER( KIND= INT64 ) :: NACCT     ! Move acceptance counter: Translation
+INTEGER( KIND= INT64 ) :: NACCR     ! Move acceptance counter: Rotation
+INTEGER( KIND= INT64 ) :: NACCV     ! Move acceptance counter: Volume
+INTEGER( KIND= INT64 ) :: MOVT      ! Move counter (Translation)
+INTEGER( KIND= INT64 ) :: MOVR      ! Move counter (Rotation)
+INTEGER( KIND= INT64 ) :: MOVV      ! Move counter (Volume)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -2063,7 +2063,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: C ! Component index
+INTEGER( KIND= INT64 ) :: C ! Component index
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -2136,7 +2136,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K ! Counters
+INTEGER( KIND= INT64 ) :: I, J, K ! Counters
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
@@ -2190,7 +2190,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I ! Counter
+INTEGER( KIND= INT64 ) :: I ! Counter
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -2300,7 +2300,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: J ! Counter
+INTEGER( KIND= INT64 ) :: J ! Counter
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
@@ -2341,7 +2341,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, C ! Counter
+INTEGER( KIND= INT64 ) :: I, C ! Counter
 
 ! *********************************************************************************************** !
 ! Simple cubic structure                                                                          !
