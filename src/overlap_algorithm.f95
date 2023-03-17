@@ -48,7 +48,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: CI, CJ ! Counters
+INTEGER( KIND= INT64 ) :: CI, CJ ! Counters
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (PARAMETER)                                                                      !
@@ -386,7 +386,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: CI, CJ ! Counters (component)
+INTEGER( KIND= INT64 ) :: CI, CJ ! Counters (component)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -559,8 +559,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K ! Counters
-INTEGER( KIND= REAL64 ) :: CI, CJ  ! Counters (component)
+INTEGER( KIND= INT64 ) :: I, J, K ! Counters
+INTEGER( KIND= INT64 ) :: CI, CJ  ! Counters (component)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -907,9 +907,9 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: COUNTER  ! Iteration counter (numerical methods)
-INTEGER( KIND= REAL64 ) :: COUNTERB ! Cycles of the bissection method
-INTEGER( KIND= REAL64 ) :: INTERVAL ! Loop over λ intervals
+INTEGER( KIND= INT64 ) :: COUNTER  ! Iteration counter (numerical methods)
+INTEGER( KIND= INT64 ) :: COUNTERB ! Cycles of the bissection method
+INTEGER( KIND= INT64 ) :: INTERVAL ! Loop over λ intervals
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
