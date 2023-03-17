@@ -72,16 +72,16 @@ INTEGER, DIMENSION( : ), ALLOCATABLE :: RANS
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J, K   ! Counters
-INTEGER( KIND= REAL64 ) :: CI, CJ, C ! Counters (component)
-INTEGER( KIND= REAL64 ) :: MATRIX_C  ! Random matrix component
-INTEGER( KIND= REAL64 ) :: CYCLES    ! Cycles
-INTEGER( KIND= REAL64 ) :: NACCT     ! Move acceptance counter: Translation
-INTEGER( KIND= REAL64 ) :: NACCR     ! Move acceptance counter: Rotation
-INTEGER( KIND= REAL64 ) :: NACCV     ! Move acceptance counter: Volume change
-INTEGER( KIND= REAL64 ) :: MOVT      ! Move counter (Translation)
-INTEGER( KIND= REAL64 ) :: MOVR      ! Move counter (Rotation)
-INTEGER( KIND= REAL64 ) :: MOVV      ! Move counter (Volume change)
+INTEGER( KIND= INT64 ) :: I, J, K   ! Counters
+INTEGER( KIND= INT64 ) :: CI, CJ, C ! Counters (component)
+INTEGER( KIND= INT64 ) :: MATRIX_C  ! Random matrix component
+INTEGER( KIND= INT64 ) :: CYCLES    ! Cycles
+INTEGER( KIND= INT64 ) :: NACCT     ! Move acceptance counter: Translation
+INTEGER( KIND= INT64 ) :: NACCR     ! Move acceptance counter: Rotation
+INTEGER( KIND= INT64 ) :: NACCV     ! Move acceptance counter: Volume change
+INTEGER( KIND= INT64 ) :: MOVT      ! Move counter (Translation)
+INTEGER( KIND= INT64 ) :: MOVR      ! Move counter (Rotation)
+INTEGER( KIND= INT64 ) :: MOVV      ! Move counter (Volume change)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
