@@ -26,8 +26,8 @@
 
 MODULE GLOBALVAR
 
-! Use kind REAL64
-USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: REAL64
+! Use kind REAL64 and INT64
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: REAL64, INT64
 
 IMPLICIT NONE
 
@@ -39,25 +39,25 @@ INTEGER, DIMENSION( 8 ) :: DATE_TIME ! Computer clock (date and time)
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (GENERAL)                                                                     !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: SEED        ! Random number generator seed
-INTEGER( KIND= REAL64 ) :: N_PARTICLES ! Number of particles
-INTEGER( KIND= REAL64 ) :: COMPONENTS  ! Number of components
+INTEGER( KIND= INT64 ) :: SEED        ! Random number generator seed
+INTEGER( KIND= INT64 ) :: N_PARTICLES ! Number of particles
+INTEGER( KIND= INT64 ) :: COMPONENTS  ! Number of components
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (MONTE CARLO PARAMETERS)                                                      !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: MAX_CYCLES    ! Total number of cycles
-INTEGER( KIND= REAL64 ) :: N_EQUIL       ! Number of equilibration cycles
-INTEGER( KIND= REAL64 ) :: N_SAVE        ! Saving frequency
-INTEGER( KIND= REAL64 ) :: N_ADJUST      ! Adjustment frequency
-INTEGER( KIND= REAL64 ) :: N_ADJUST_INIT ! Adjustment frequency (initial configuration)
-INTEGER( KIND= REAL64 ) :: MAX_ATTEMPTS  ! Maximum number of attempts for the hit-and-miss algorithm
+INTEGER( KIND= INT64 ) :: MAX_CYCLES    ! Total number of cycles
+INTEGER( KIND= INT64 ) :: N_EQUIL       ! Number of equilibration cycles
+INTEGER( KIND= INT64 ) :: N_SAVE        ! Saving frequency
+INTEGER( KIND= INT64 ) :: N_ADJUST      ! Adjustment frequency
+INTEGER( KIND= INT64 ) :: N_ADJUST_INIT ! Adjustment frequency (initial configuration)
+INTEGER( KIND= INT64 ) :: MAX_ATTEMPTS  ! Maximum number of attempts for the hit-and-miss algorithm
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (ALLOCATABLE)                                                                 !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE :: N_COMPONENT ! Number of particles of a component
-INTEGER( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE :: INDEX_P     ! Molecule index
+INTEGER( KIND= INT64 ), DIMENSION( : ), ALLOCATABLE :: N_COMPONENT ! Number of particles of a component
+INTEGER( KIND= INT64 ), DIMENSION( : ), ALLOCATABLE :: INDEX_P     ! Molecule index
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (GENERAL)                                                                        !
