@@ -46,9 +46,9 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER PARAMETERS                                                                              !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ), PARAMETER :: L = 1029
-INTEGER( KIND= REAL64 ), PARAMETER :: C = 221591
-INTEGER( KIND= REAL64 ), PARAMETER :: G = 1048576
+INTEGER( KIND= INT64 ), PARAMETER :: L = 1029
+INTEGER( KIND= INT64 ), PARAMETER :: C = 221591
+INTEGER( KIND= INT64 ), PARAMETER :: G = 1048576
 
 ! *********************************************************************************************** !
 ! Finite modulus arithmetic                                                                       !
@@ -75,7 +75,7 @@ implicit none
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J ! Counters
+INTEGER( KIND= INT64 ) :: I, J ! Counters
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -287,8 +287,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, J      ! Counters
-INTEGER( KIND= REAL64 ) :: C, CI, CJ ! Component indexes
+INTEGER( KIND= INT64 ) :: I, J      ! Counters
+INTEGER( KIND= INT64 ) :: C, CI, CJ ! Component indexes
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -646,9 +646,9 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: I, C        ! Counter
-INTEGER( KIND= REAL64 ) :: N_S         ! Non-spherical particles counter
-INTEGER( KIND= REAL64 ) :: ALPHA, BETA ! Unit vector specifiers (î, ĵ, k̂)
+INTEGER( KIND= INT64 ) :: I, C        ! Counter
+INTEGER( KIND= INT64 ) :: N_S         ! Non-spherical particles counter
+INTEGER( KIND= INT64 ) :: ALPHA, BETA ! Unit vector specifiers (î, ĵ, k̂)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -841,8 +841,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: J     ! Counter
-INTEGER( KIND= REAL64 ) :: TOTAL ! Total/Maximum number of cycles
+INTEGER( KIND= INT64 ) :: J     ! Counter
+INTEGER( KIND= INT64 ) :: TOTAL ! Total/Maximum number of cycles
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
@@ -885,8 +885,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= REAL64 ) :: J     ! Counter
-INTEGER( KIND= REAL64 ) :: TOTAL ! Total/Maximum number of cycles
+INTEGER( KIND= INT64 ) :: J     ! Counter
+INTEGER( KIND= INT64 ) :: TOTAL ! Total/Maximum number of cycles
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
