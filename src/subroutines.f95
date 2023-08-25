@@ -294,10 +294,10 @@ INTEGER( KIND= INT64 ) :: C, CI, CJ ! Component indexes
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                          :: RIJSQ     ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                          :: CONTACT_D ! Contact distance (Perram-Wertheim or Vega-Lago Methods)
+REAL( KIND= REAL64 )                          :: CONTACT_D ! Contact distance (Perram-Wertheim or Vega-Lago methods)
 REAL( KIND= REAL64 )                          :: CUTOFF_D  ! Cutoff distance
-REAL( KIND= REAL64 ), DIMENSION( 3 )          :: DLAMBDAEI ! Auxiliar vector (cylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 )          :: DMUEJ     ! Auxiliar vector (cylinder overlap algorithm)
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: DLAMBDAEI ! Auxiliary vector (cylinder overlap algorithm)
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: DMUEJ     ! Auxiliary vector (cylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: RIJ       ! Vector distance between particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: RI, RJ    ! Position of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: EI, EJ    ! Orientation of particles i and j
@@ -319,18 +319,22 @@ LOGICAL :: PARALLEL    ! Checks the relative orientation of two spherocylinders 
 ! Initialization
 OVERLAP     = .FALSE.
 OVERLAP_HER = .FALSE.
+OVERLAP_SPC = .FALSE.
 OVERLAP_CYL = .FALSE.
+PARALLEL    = .FALSE.
 
-! Diameter of circumscribing sphere
-IF( GEOM_SELEC(1) ) THEN
+! Diameter of the circumscribing sphere
+IF( GEOM_SELEC(1) ) THEN ! Ellipsoids of revolution
   DO C = 1, COMPONENTS
+    ! Oblate ellipsoids of revolution or spheres
     IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) <= 1.D0 ) THEN
       CUTOFF(C) = DIAMETER(C)
+    ! Prolate ellipsoids of revolution
     ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
       CUTOFF(C) = LENGTH(C)
     END IF
   END DO
-ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN ! Spherocylinders and cylinders
   DO C = 1, COMPONENTS
     CUTOFF(C) = DIAMETER(C) + LENGTH(C)
   END DO
@@ -343,23 +347,23 @@ DO CJ = 1, CI - 1
   ! Unique loop takes only particles whose component indexes are less than Ci
   DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
     ! Position of particle j
-    RJ(1)  = RMC(1,J)
-    RJ(2)  = RMC(2,J)
-    RJ(3)  = RMC(3,J)
+    RJ(1) = RMC(1,J)
+    RJ(2) = RMC(2,J)
+    RJ(3) = RMC(3,J)
     ! Orientation of particle j
-    EJ(1)  = EMC(1,J)
-    EJ(2)  = EMC(2,J)
-    EJ(3)  = EMC(3,J)
+    EJ(1) = EMC(1,J)
+    EJ(2) = EMC(2,J)
+    EJ(3) = EMC(3,J)
     ! Quaternion of particle j
-    QJ(0)  = QMC(0,J)
-    QJ(1)  = QMC(1,J)
-    QJ(2)  = QMC(2,J)
-    QJ(3)  = QMC(3,J)
+    QJ(0) = QMC(0,J)
+    QJ(1) = QMC(1,J)
+    QJ(2) = QMC(2,J)
+    QJ(3) = QMC(3,J)
     ! Vector distance between particles i and j
     RIJ(1) = RJ(1) - RI(1)
     RIJ(2) = RJ(2) - RI(2)
     RIJ(3) = RJ(3) - RI(3)
-    ! Minimum Image Convention
+    ! Minimum image convention
     CALL MULTI_MATRIX( BLI, RIJ, S12 )
     S12 = S12 - ANINT(S12)
     CALL MULTI_MATRIX( BL, S12, RIJ )
