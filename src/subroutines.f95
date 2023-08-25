@@ -2,7 +2,7 @@
 !               NVT/NPT-Monte Carlo algorithm for cylindrically-symmetric molecules               !
 !                  This code contains all subroutines used in the main program.                   !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -10,7 +10,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 15th, 2023                                       !
+!                                        August 25th, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -31,7 +31,7 @@
 !                               Linear congruential generator (LCG)                               !
 !    This subroutine generates a random number from the uniform distribution over the range       !
 !   0 ≤ x < 1. It does not take any arguments. The number generator seed has an in/out intent,    !
-!             i. e., its value is changed every time the ranf() subroutine is called.             !
+!            i. e., its value is changed every time the ranf(  ) subroutine is called.            !
 !                   This seed is the heart of the pseudorandom number generator                   !
 !                        and also responsible for ensuring repeatability.                         !
 !         See Allen and Tildesley, 2nd Edition (2017), Appendix E, for more information.          !
@@ -61,8 +61,8 @@ RETURN
 END SUBROUTINE RANF
 
 ! *********************************************************************************************** !
-!        This subroutine takes the body-fixed orientation and the rotation quaternion and         !
-!                 generates a space-fixed orientation using a 3D rotation matrix.                 !
+!     This subroutine takes a body-fixed orientation/position and a rotation quaternion and       !
+!            generates a space-fixed orientation/position using a 3D-rotation matrix.             !
 !        See Allen and Tildesley, 2nd Edition (2017), pages 106-111 for more information.         !
 ! *********************************************************************************************** !
 SUBROUTINE ACTIVE_TRANSFORMATION( EFIXED, QP, EP )
