@@ -20,4 +20,4 @@ Luís Fernando Mercier Franco<br></p>
 
 **Version 1.0.0**
 
-- Creation of repository
+- Creation of repository.
