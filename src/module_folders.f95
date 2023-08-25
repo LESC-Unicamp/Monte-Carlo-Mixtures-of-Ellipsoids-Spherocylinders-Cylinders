@@ -16,7 +16,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 15th, 2023                                       !
+!                                        August 11th, 2023                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
@@ -31,8 +31,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL, DIMENSION( 5 ) :: FEXIST  ! Checks whether folder exists or not
-LOGICAL, DIMENSION( 7 ) :: DFEXIST ! Checks whether date folders exist or not
+LOGICAL, DIMENSION( 7 ) :: FEXIST  ! Checks whether folder exists or not
+LOGICAL, DIMENSION( 9 ) :: DFEXIST ! Checks whether date folders exist or not
 LOGICAL, DIMENSION( 5 ) :: SFEXIST ! Checks whether subfolder exists or not
 
 CONTAINS
@@ -107,6 +107,8 @@ INQUIRE( FILE= "Trajectories", EXIST= FEXIST(2) )
 INQUIRE( FILE= "Ratio", EXIST= FEXIST(3) )
 INQUIRE( FILE= "Order_Parameter", EXIST= FEXIST(4) )
 INQUIRE( FILE= "Results", EXIST= FEXIST(5) )
+INQUIRE( FILE= "Potential", EXIST= FEXIST(6) )
+INQUIRE( FILE= "Perturbed_Coefficient", EXIST= FEXIST(7) )
 
 ! *********************************************************************************************** !
 ! Trajectory folder (holds information on orientation and position of particles)                  !
@@ -182,6 +184,28 @@ IF( .NOT. FEXIST(5) ) THEN
   WRITE( *, "(G0)" ) " "
 END IF
 
+! *********************************************************************************************** !
+! Potential folder (holds information on the potential energy of the system)                      !
+! *********************************************************************************************** !
+IF( .NOT. FEXIST(6) ) THEN
+  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating potential folder..."
+  CALL SYSTEM( "mkdir Potential" )
+  CALL SLEEP( 1 )
+  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
+
+! *********************************************************************************************** !
+! Pertured coefficient folder (holds information on the perturbation coefficients)                !
+! *********************************************************************************************** !
+IF( .NOT. FEXIST(7) ) THEN
+  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating perturbed coefficient folder..."
+  CALL SYSTEM( "mkdir Perturbed_Coefficient" )
+  CALL SLEEP( 1 )
+  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
+
 RETURN
 
 END SUBROUTINE INQUIRE_FOLDERS
@@ -201,12 +225,14 @@ INQUIRE( FILE= "Ratio/Volume/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(4) )
 INQUIRE( FILE= "Ratio/Box/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(5) )
 INQUIRE( FILE= "Order_Parameter/"//TRIM( DESCRIPTOR_DATE )//"/", EXIST= DFEXIST(6) )
 INQUIRE( FILE= "Results/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(7) )
+INQUIRE( FILE= "Potential/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(8) )
+INQUIRE( FILE= "Perturbed_Coefficient/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(9) )
 
 ! *********************************************************************************************** !
 ! Date subfolders                                                                                 !
 ! *********************************************************************************************** !
 IF( .NOT. DFEXIST(1) .OR. .NOT. DFEXIST(2) .OR. .NOT. DFEXIST(3) .OR. .NOT. DFEXIST(4) .OR. .NOT. DFEXIST(5) .OR. &
-&   .NOT. DFEXIST(6) .OR. .NOT. DFEXIST(7) ) THEN
+&   .NOT. DFEXIST(6) .OR. .NOT. DFEXIST(7) .OR. .NOT. DFEXIST(8) .OR. .NOT. DFEXIST(9) ) THEN
   WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating date subfolders..."
 END IF
 IF( .NOT. DFEXIST(1) ) THEN
@@ -230,8 +256,14 @@ END IF
 IF( .NOT. DFEXIST(7) ) THEN
   CALL SYSTEM( "mkdir Results/"//TRIM( DESCRIPTOR_DATE )//"/" )
 END IF
+IF( .NOT. DFEXIST(8) ) THEN
+  CALL SYSTEM( "mkdir Potential/"//TRIM( DESCRIPTOR_DATE )//"/" )
+END IF
+IF( .NOT. DFEXIST(9) ) THEN
+  CALL SYSTEM( "mkdir Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/" )
+END IF
 IF( .NOT. DFEXIST(1) .OR. .NOT. DFEXIST(2) .OR. .NOT. DFEXIST(3) .OR. .NOT. DFEXIST(4) .OR. .NOT. DFEXIST(5) .OR. &
-&   .NOT. DFEXIST(6) .OR. .NOT. DFEXIST(7) ) THEN
+&   .NOT. DFEXIST(6) .OR. .NOT. DFEXIST(7) .OR. .NOT. DFEXIST(8) .OR. .NOT. DFEXIST(9) ) THEN
   CALL SLEEP( 1 )
   WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
@@ -240,5 +272,82 @@ END IF
 RETURN
 
 END SUBROUTINE DATE_FOLDERS
+
+! *********************************************************************************************** !
+!                        Initialization of attractive parameter subfolders                        !
+! *********************************************************************************************** !
+SUBROUTINE LAMBDA_FOLDERS(  )
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: C_LAMB ! Counter
+
+! Subfolder descriptor format
+FORMAT_LAMB = "(G0.5)"
+
+! Initialization
+LFEXIST = .FALSE.
+
+! Attractive range subfolders
+DO C_LAMB = 1, N_LAMBDA
+  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
+  INQUIRE( FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", EXIST= LFEXIST(C_LAMB) )
+  IF( .NOT. LFEXIST(C_LAMB) ) THEN
+    WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating potential subfolders..."
+    EXIT
+  END IF
+END DO
+LFEXIST = .FALSE.
+DO C_LAMB = 1, N_LAMBDA
+  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
+  INQUIRE( FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", EXIST= LFEXIST(C_LAMB) )
+  IF( .NOT. LFEXIST(C_LAMB) ) THEN
+    CALL SYSTEM ( "mkdir Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/" )
+  END IF
+END DO
+DO C_LAMB = 1, N_LAMBDA
+  IF( .NOT. LFEXIST(C_LAMB) ) THEN
+    CALL SLEEP( 1 )
+    WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+    WRITE( *, "(G0)" ) " "
+    EXIT
+  END IF
+END DO
+
+! Initialization
+LFEXIST = .FALSE.
+
+! Perturbation coefficients subfolder
+DO C_LAMB = 1, N_LAMBDA
+  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
+  INQUIRE( FILE= "Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", &
+  &        EXIST= LFEXIST(C_LAMB) )
+  IF( .NOT. LFEXIST(C_LAMB) ) THEN
+    WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating perturbation coefficients subfolders..."
+    EXIT
+  END IF
+END DO
+LFEXIST = .FALSE.
+DO C_LAMB = 1, N_LAMBDA
+  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
+  INQUIRE( FILE= "Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", &
+  &        EXIST= LFEXIST(C_LAMB) )
+  IF( .NOT. LFEXIST(C_LAMB) ) THEN
+    CALL SYSTEM( "mkdir Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/" )
+  END IF
+END DO
+DO C_LAMB = 1, N_LAMBDA
+  IF( .NOT. LFEXIST(C_LAMB) ) THEN
+    CALL SLEEP( 1 )
+    WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+    WRITE( *, "(G0)" ) " "
+    EXIT
+  END IF
+END DO
+
+END SUBROUTINE LAMBDA_FOLDERS
 
 END MODULE FOLDERS

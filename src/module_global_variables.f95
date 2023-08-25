@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 15th, 2023                                       !
+!                                        August 11th, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -39,9 +39,16 @@ INTEGER, DIMENSION( 8 ) :: DATE_TIME ! Computer clock (date and time)
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (GENERAL)                                                                     !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: SEED        ! Random number generator seed
-INTEGER( KIND= INT64 ) :: N_PARTICLES ! Number of particles
-INTEGER( KIND= INT64 ) :: COMPONENTS  ! Number of components
+INTEGER( KIND= INT64 ) :: SEED           ! Random number generator seed
+INTEGER( KIND= INT64 ) :: N_PARTICLES    ! Number of particles
+INTEGER( KIND= INT64 ) :: COMPONENTS     ! Number of components
+INTEGER( KIND= INT64 ) :: N_LAMBDA       ! Number of attractive range parameters
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES (BLOCK-AVERAGING PARAMETERS)                                                  !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: MIN_BLOCKS ! Minimum number of blocks
+INTEGER( KIND= INT64 ) :: MAX_BLOCKS ! Maximum number of blocks
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (MONTE CARLO PARAMETERS)                                                      !
@@ -68,6 +75,7 @@ REAL( KIND= REAL64 )                 :: PRESS_RND          ! Reduced pressure (f
 REAL( KIND= REAL64 )                 :: TOTAL_RHO          ! Total number density (reduced)
 REAL( KIND= REAL64 )                 :: TOTAL_VP           ! Total particle volume (reduced)
 REAL( KIND= REAL64 )                 :: TEMP               ! Absolute temperature
+REAL( KIND= REAL64 )                 :: RED_TEMP           ! Reduced temperature
 REAL( KIND= REAL64 )                 :: PRESS              ! Reduced pressure
 REAL( KIND= REAL64 )                 :: BOX_VOLUME, BOXVMC ! Reduced volume of the simulation box
 REAL( KIND= REAL64 )                 :: CHECK_ROOT         ! Checks the cube root for the number of particles, N, in each crystalline structure
@@ -77,6 +85,10 @@ REAL( KIND= REAL64 )                 :: TOTAL_MOLAR_F      ! Total molar fractio
 REAL( KIND= REAL64 )                 :: START_TIMER        ! Start timer of Monte Carlo simulation
 REAL( KIND= REAL64 )                 :: STOP_TIMER         ! Stop timer of Monte Carlo simulation
 REAL( KIND= REAL64 )                 :: PACKING_F          ! Packing fraction
+REAL( KIND= REAL64 )                 :: MAXARG             ! Largest exponential argument (see Supplementary Material of Abreu and Escobedo, J. Chem. Phys. 124)
+REAL( KIND= REAL64 )                 :: BETA_ENERGY        ! Boltzmann factor argument, -βU
+REAL( KIND= REAL64 )                 :: MAX_LENGTH_RATIO   ! Maximum length ratio of simulation box during anisotropic volume changes
+REAL( KIND= REAL64 )                 :: MAX_ANGLE          ! Maximum angle between box vectors during anisotropic volume changes
 REAL( KIND= REAL64 )                 :: ANYNUMBER          ! Dummy (number)
 REAL( KIND= REAL64 ), DIMENSION( 9 ) :: BOX_LENGTH         ! Length (x,y,z) of the simulation box
 REAL( KIND= REAL64 ), DIMENSION( 9 ) :: BOX_LENGTH_I       ! Length (x,y,z) of simulation box (inverse)
@@ -90,10 +102,12 @@ REAL( KIND= REAL64 ), DIMENSION( 3 ) :: AXISN              ! Body-fixed axis of 
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 ) :: MAX_TRANS       ! User maximum displacement [+/-] (Translation)
 REAL( KIND= REAL64 ) :: MAX_ROT         ! User maximum displacement [+/-] (Rotation)
-REAL( KIND= REAL64 ) :: MAX_VOL         ! User maximum displacement [+/-] (Volume)
+REAL( KIND= REAL64 ) :: MAX_VOLI        ! User maximum displacement [+/-] (Isotropic Volume Change)
+REAL( KIND= REAL64 ) :: MAX_VOLA        ! User maximum displacement [+/-] (Anisotropic Volume Change)
 REAL( KIND= REAL64 ) :: DRMAX           ! Maximum displacement [+/-] (Translation)
 REAL( KIND= REAL64 ) :: ANGMAX          ! Maximum displacement [+/-] (Rotation)
-REAL( KIND= REAL64 ) :: DVMAX           ! Maximum displacement [+/-] (Volume)
+REAL( KIND= REAL64 ) :: DVMAXISO        ! Maximum displacement [+/-] (Isotropic volume change)
+REAL( KIND= REAL64 ) :: DVMAXANI        ! Maximum displacement [+/-] (Anisotropic volume change)
 REAL( KIND= REAL64 ) :: PROB_MOV        ! Movement probability
 REAL( KIND= REAL64 ) :: PROB_TRANS      ! Movement probability (Translation)
 REAL( KIND= REAL64 ) :: PROB_ROT        ! Movement probability (Rotation)
@@ -103,14 +117,19 @@ REAL( KIND= REAL64 ) :: PROB_VOL_ANISO  ! Volume change probability (Anisotropic
 REAL( KIND= REAL64 ) :: PROB_MOV_INIT   ! Movement probability for the initial configuration
 REAL( KIND= REAL64 ) :: PROB_TRANS_INIT ! Movement probability for the initial configuration (Translation)
 REAL( KIND= REAL64 ) :: PROB_ROT_INIT   ! Movement probability for the initial configuration (Rotation)
-REAL( KIND= REAL64 ) :: PROB_VOL_INIT   ! Volume change probability for the initial configuration (Isotropic)
+REAL( KIND= REAL64 ) :: PROB_VOL_INIT   ! Volume change probability for the initial configuration
+REAL( KIND= REAL64 ) :: PROB_ISO_INIT   ! Volume change probability for the initial configuration (Isotropic)
+REAL( KIND= REAL64 ) :: PROB_ANISO_INIT ! Volume change probability for the initial configuration (Anisotropic)
 REAL( KIND= REAL64 ) :: DRMAX_INIT      ! Maximum displacement [+/-] (Translation)
 REAL( KIND= REAL64 ) :: ANGMAX_INIT     ! Maximum displacement [+/-] (Rotation)
-REAL( KIND= REAL64 ) :: DVMAX_INIT      ! Maximum displacement [+/-] (Volume)
+REAL( KIND= REAL64 ) :: DVMAXISO_INIT   ! Maximum displacement [+/-] (Isotropic Volume Change)
+REAL( KIND= REAL64 ) :: DVMAXANISO_INIT ! Maximum displacement [+/-] (Anisotropic Volume Change)
 REAL( KIND= REAL64 ) :: DVMIN_INIT      ! Minimum displacement [+]   (Volume)
 REAL( KIND= REAL64 ) :: R_ACC_T         ! Acceptance ratio threshold (Translation)
 REAL( KIND= REAL64 ) :: R_ACC_R         ! Acceptance ratio threshold (Rotation)
-REAL( KIND= REAL64 ) :: R_ACC_V         ! Acceptance ratio threshold (Volume)
+REAL( KIND= REAL64 ) :: R_ACC_VI        ! Acceptance ratio threshold (Isotropic volume change)
+REAL( KIND= REAL64 ) :: R_ACC_VA        ! Acceptance ratio threshold (Anisotropic volume change)
+REAL( KIND= REAL64 ) :: BOX_DIST        ! Maximum box distortion before lattice reduction
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (ALLOCATABLE)                                                                    !
@@ -121,9 +140,13 @@ REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: MOLAR_F       ! Molar fr
 REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: PARTICLE_VOL  ! Particle volume of component c
 REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: RHO_PARTICLE  ! Number density of component c
 REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: ASPECT_RATIO  ! Aspect ratio of component c
+REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: SIGSPHERE     ! Diameter of a sphere with same volume of the nonspherical geometry of component c
+REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: V, VMC        ! Potential energy array
+REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: L_RANGE       ! Attractive range parameter
 REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: Q, QMC        ! Rotation quaternion array
 REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: R, RMC        ! Position array
 REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: E, EMC        ! Orientation array
+REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: SWRANGE       ! Effective range of attraction
 
 ! *********************************************************************************************** !
 ! REAL PARAMETERS                                                                                 !
@@ -141,17 +164,23 @@ CHARACTER( LEN= 10 ) :: DESCRIPTOR_FILE2 ! Descriptor for output file
 CHARACTER( LEN= 10 ) :: DESCRIPTOR_FILE3 ! Descriptor for output file
 CHARACTER( LEN= 10 ) :: DESCRIPTOR_HOUR  ! Descriptor for output file
 CHARACTER( LEN= 10 ) :: DESCRIPTOR_DATE  ! Descriptor for output folder
+CHARACTER( LEN= 10 ) :: DESCRIPTOR_LAMB  ! Descriptor for output folder
 CHARACTER( LEN= 32 ) :: FORMAT_FILE1     ! String format for output file
 CHARACTER( LEN= 32 ) :: FORMAT_FILE2     ! String format for output file
 CHARACTER( LEN= 32 ) :: FORMAT_FILE3     ! String format for output file
 CHARACTER( LEN= 32 ) :: FORMAT_HOUR      ! String format for output file
 CHARACTER( LEN= 32 ) :: FORMAT_DATE      ! String format for output folder
+CHARACTER( LEN= 32 ) :: FORMAT_LAMB      ! String format for output folder
 CHARACTER( LEN= 64 ) :: FORMAT_SELF      ! String format (general)
 CHARACTER( LEN= 01 ) :: TRAJ_INQ         ! Trajectory output inquiry
 CHARACTER( LEN= 03 ) :: CONFIG_INQ       ! Molecular structure inquiry
 CHARACTER( LEN= 03 ) :: GEOM_INQ         ! Molecular geometry inquiry
+CHARACTER( LEN= 01 ) :: POT_INQ          ! Potential output inquiry
+CHARACTER( LEN= 01 ) :: COEF_INQ         ! Coefficient output inquiry
 CHARACTER( LEN= 32 ) :: GET              ! Variable names (.ini input files)
 CHARACTER( LEN= 32 ) :: CONFIGURATION    ! Molecular structure
+CHARACTER( LEN= 03 ) :: LRTYPE           ! Lattice reduction type
+CHARACTER( LEN= 32 ) :: POTENTIAL_TYPE   ! Potential type
 CHARACTER( LEN= 32 ) :: GEOMETRY         ! Molecular geometry (extended)
 CHARACTER( LEN= 03 ) :: GEO_ACRONYM      ! Molecular geometry (acronym)
 CHARACTER( LEN= 01 ) :: UNROT_AXIS       ! Unrotated axis inquiry
@@ -185,12 +214,21 @@ CHARACTER( LEN= 3 ), PARAMETER :: C_FUL = "█" ! Box drawing symbol
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL                 :: FILE_EXIST   ! Checks whether a file exists or not
-LOGICAL                 :: TRAJ_CHECK   ! Checks whether the trajectory file will be written out
-LOGICAL                 :: INIT_CONF    ! Checks whether the initial configuration will be read from an external file
-LOGICAL                 :: FSEED        ! Checks whether the seed for the random number generator will be fixed or random
-LOGICAL, DIMENSION( 5 ) :: CONFIG_SELEC ! Checks the selected molecular configuration
-LOGICAL, DIMENSION( 3 ) :: GEOM_SELEC   ! Checks the selected molecular geometry
-LOGICAL, DIMENSION( 3 ) :: AXIS_SELEC   ! Checks the selected unrotated reference axis
+LOGICAL                 :: FILE_EXIST      ! Checks whether a file exists or not
+LOGICAL                 :: TRAJ_CHECK      ! Checks whether the trajectory file will be written out
+LOGICAL                 :: POTENTIAL_CHECK ! Checks whether the potential file will be written out for production-related cycles or for all cycles
+LOGICAL                 :: COEF_CHECK      ! Checks whether the perturbation coefficients will be calculated
+LOGICAL                 :: INIT_CONF       ! Checks whether the initial configuration will be read from an external file
+LOGICAL                 :: FSEED           ! Checks whether the seed for the random number generator will be fixed or random
+LOGICAL, DIMENSION( 5 ) :: CONFIG_SELEC    ! Checks the selected molecular configuration
+LOGICAL, DIMENSION( 3 ) :: GEOM_SELEC      ! Checks the selected molecular geometry
+LOGICAL, DIMENSION( 2 ) :: LRED_SELEC      ! Lattice reduction selection
+LOGICAL, DIMENSION( 3 ) :: AXIS_SELEC      ! Checks the selected unrotated reference axis
+LOGICAL, DIMENSION( 5 ) :: POTENTIAL_SELEC ! Checks the selected potential type
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES (ALLOCATABLE)                                                                 !
+! *********************************************************************************************** !
+LOGICAL, DIMENSION( : ), ALLOCATABLE :: LFEXIST ! Checks whether the attractive parameter subfolders exist or not
 
 END MODULE GLOBALVAR

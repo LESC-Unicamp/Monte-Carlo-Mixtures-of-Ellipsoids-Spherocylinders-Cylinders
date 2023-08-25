@@ -634,6 +634,294 @@ RETURN ! No overlaps detected
 END SUBROUTINE CHECK_OVERLAP
 
 ! *********************************************************************************************** !
+!   This subroutine computes the total potential energy for the initial molecular configuration   !
+! *********************************************************************************************** !
+SUBROUTINE COMPUTE_TOTAL_ENERGY(  )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: I, J   ! Counters
+INTEGER( KIND= INT64 ) :: CI, CJ ! Counters (component)
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                        :: RIJSQ  ! Magnitude of the vector distance between particles i and j (squared)
+REAL( KIND= REAL64 ), DIMENSION( 3 )        :: RI, RJ ! Position of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )        :: RIJ    ! Vector distance between particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )        :: S12    ! Position (unit box)
+REAL( KIND= REAL64 ), DIMENSION( N_LAMBDA ) :: VIJ    ! Pair potential energy
+
+! Initialization
+V(:) = 0.D0
+
+! Anisomorphic molecules (unlike components)
+DO CI = 1, COMPONENTS - 1
+  DO CJ = CI + 1, COMPONENTS
+    ! First loop represents all particles with indexes i of component Ci
+    DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
+      ! Second loop represents all particles with indexes j of component Cj
+      DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
+        ! Position of particle i
+        RI(1)  = R(1,I)
+        RI(2)  = R(2,I)
+        RI(3)  = R(3,I)
+        ! Position of particle j
+        RJ(1)  = R(1,J)
+        RJ(2)  = R(2,J)
+        RJ(3)  = R(3,J)
+        ! Vector distance between particles i and j
+        RIJ(1) = RJ(1) - RI(1)
+        RIJ(2) = RJ(2) - RI(2)
+        RIJ(3) = RJ(3) - RI(3)
+        ! Minimum Image Convention
+        CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
+        S12 = S12 - ANINT(S12)
+        CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
+        ! Magnitude of the vector distance (squared)
+        RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+        ! Compute pair potential
+        IF( POTENTIAL_SELEC(2) ) THEN
+          CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+        END IF
+        ! Increment total potential energy
+        V(:) = V(:) + VIJ(:)
+      END DO
+    END DO
+  END DO
+END DO
+! Isomorphic molecules (like components)
+DO CI = 1, COMPONENTS
+  CJ = CI
+  ! First loop represents a particle with an index i of component Ci
+  DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
+    ! Second loop represents all other particles with indexes j > i of component Cj = Ci
+    DO J = I + 1, SUM( N_COMPONENT(0:CI) )
+      ! Position of particle i
+      RI(1)  = R(1,I)
+      RI(2)  = R(2,I)
+      RI(3)  = R(3,I)
+      ! Position of particle j
+      RJ(1)  = R(1,J)
+      RJ(2)  = R(2,J)
+      RJ(3)  = R(3,J)
+      ! Vector distance between particles i and j
+      RIJ(1) = RJ(1) - RI(1)
+      RIJ(2) = RJ(2) - RI(2)
+      RIJ(3) = RJ(3) - RI(3)
+      ! Minimum Image Convention
+      CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
+      S12 = S12 - ANINT(S12)
+      CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
+      ! Magnitude of the vector distance (squared)
+      RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+      ! Compute pair potential
+      IF( POTENTIAL_SELEC(2) ) THEN
+        CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+      END IF
+      ! Increment total potential energy
+      V(:) = V(:) + VIJ(:)
+    END DO
+  END DO
+END DO
+
+RETURN
+
+END SUBROUTINE
+
+! *********************************************************************************************** !
+!              This subroutine computes the potential energy of a random particle i               !
+! *********************************************************************************************** !
+SUBROUTINE COMPUTE_PARTICLE_ENERGY( CI, I, RI, VI, BL, BLI )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: I, J   ! Counters
+INTEGER( KIND= INT64 ) :: CI, CJ ! Counters (component)
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                        :: RIJSQ  ! Magnitude of the vector distance between particles i and j (squared)
+REAL( KIND= REAL64 ), DIMENSION( 3 )        :: RI, RJ ! Position of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )        :: RIJ    ! Vector distance between particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )        :: S12    ! Position (unit box)
+REAL( KIND= REAL64 ), DIMENSION( 9 )        :: BL     ! Box length
+REAL( KIND= REAL64 ), DIMENSION( 9 )        :: BLI    ! Box length (inverse)
+REAL( KIND= REAL64 ), DIMENSION( N_LAMBDA ) :: VI     ! Potential energy of particle i
+REAL( KIND= REAL64 ), DIMENSION( N_LAMBDA ) :: VIJ    ! Pair potential energy
+
+! Initialization
+VI(:) = 0.D0
+
+! *********************************************************************************************** !
+! Component and Particle Loops (Component index less than Ci)                                     !
+! *********************************************************************************************** !
+DO CJ = 1, CI - 1
+  ! Unique loop takes only particles whose component indexes are less than Ci
+  DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
+    ! Position of particle j
+    RJ(1)  = RMC(1,J)
+    RJ(2)  = RMC(2,J)
+    RJ(3)  = RMC(3,J)
+    ! Vector distance between particles i and j
+    RIJ(1) = RJ(1) - RI(1)
+    RIJ(2) = RJ(2) - RI(2)
+    RIJ(3) = RJ(3) - RI(3)
+    ! Minimum Image Convention
+    CALL MULTI_MATRIX( BLI, RIJ, S12 )
+    S12 = S12 - ANINT(S12)
+    CALL MULTI_MATRIX( BL, S12, RIJ )
+    ! Magnitude of the vector distance (squared)
+    RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+    ! Compute pair potential
+    IF( POTENTIAL_SELEC(2) ) THEN
+      CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+    END IF
+    ! Increment total potential energy
+    VI(:) = VI(:) + VIJ(:)
+  END DO
+END DO
+
+! *********************************************************************************************** !
+! Component and Particle Loops (Component index greater than Ci)                                  !
+! *********************************************************************************************** !
+DO CJ = CI + 1, COMPONENTS
+  ! Unique loop takes only particles whose component indexes are greater than Ci
+  DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
+    ! Position of particle j
+    RJ(1)  = RMC(1,J)
+    RJ(2)  = RMC(2,J)
+    RJ(3)  = RMC(3,J)
+    ! Vector distance between particles i and j
+    RIJ(1) = RJ(1) - RI(1)
+    RIJ(2) = RJ(2) - RI(2)
+    RIJ(3) = RJ(3) - RI(3)
+    ! Minimum Image Convention
+    CALL MULTI_MATRIX( BLI, RIJ, S12 )
+    S12 = S12 - ANINT(S12)
+    CALL MULTI_MATRIX( BL, S12, RIJ )
+    ! Magnitude of the vector distance (squared)
+    RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+    ! Compute pair potential
+    IF( POTENTIAL_SELEC(2) ) THEN
+      CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+    END IF
+    ! Increment total potential energy
+    VI(:) = VI(:) + VIJ(:)
+  END DO
+END DO
+
+! *********************************************************************************************** !
+! Component and Particle Loops (Component index equals Ci)                                        !
+! *********************************************************************************************** !
+CJ = CI
+! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
+DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
+  ! Position of particle j
+  RJ(1)  = RMC(1,J)
+  RJ(2)  = RMC(2,J)
+  RJ(3)  = RMC(3,J)
+  ! Vector distance between particles i and j
+  RIJ(1) = RJ(1) - RI(1)
+  RIJ(2) = RJ(2) - RI(2)
+  RIJ(3) = RJ(3) - RI(3)
+  ! Minimum Image Convention
+  CALL MULTI_MATRIX( BLI, RIJ, S12 )
+  S12 = S12 - ANINT(S12)
+  CALL MULTI_MATRIX( BL, S12, RIJ )
+  ! Magnitude of the vector distance (squared)
+  RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+  ! Compute pair potential
+  IF( POTENTIAL_SELEC(2) ) THEN
+    CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+  END IF
+  ! Increment total potential energy
+  VI(:) = VI(:) + VIJ(:)
+END DO
+! Second loop takes only particles whose j-indexes are above the i-index of the particles of the component Ci
+DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
+  ! Position of particle j
+  RJ(1)  = RMC(1,J)
+  RJ(2)  = RMC(2,J)
+  RJ(3)  = RMC(3,J)
+  ! Vector distance between particles i and j
+  RIJ(1) = RJ(1) - RI(1)
+  RIJ(2) = RJ(2) - RI(2)
+  RIJ(3) = RJ(3) - RI(3)
+  ! Minimum Image Convention
+  CALL MULTI_MATRIX( BLI, RIJ, S12 )
+  S12 = S12 - ANINT(S12)
+  CALL MULTI_MATRIX( BL, S12, RIJ )
+  ! Magnitude of the vector distance (squared)
+  RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+  ! Compute pair potential
+  IF( POTENTIAL_SELEC(2) ) THEN
+    CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+  END IF
+  ! Increment total potential energy
+  VI(:) = VI(:) + VIJ(:)
+END DO
+
+RETURN
+
+END SUBROUTINE COMPUTE_PARTICLE_ENERGY
+
+! *********************************************************************************************** !
+!              This subroutine computes the pair potential between particles i and j              !
+!           It applies a discrete square-well potential to compute the pair potential.            !
+! *********************************************************************************************** !
+SUBROUTINE SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: CI, CJ ! Counters (component)
+INTEGER( KIND= INT64 ) :: C_LAMB ! Counter
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                        :: RIJSQ     ! Magnitude of the vector distance between particles i and j (squared)
+REAL( KIND= REAL64 )                        :: SWRANGESQ ! Effective range of attraction (squared)
+REAL( KIND= REAL64 ), DIMENSION( N_LAMBDA ) :: VIJ       ! Pair potential energy
+
+! Compute pair potential for every attractive range
+DO C_LAMB = 1, N_LAMBDA
+  ! Effective range of attraction (squared)
+  SWRANGESQ = 0.5D0 * ( SWRANGE(CI,C_LAMB) + SWRANGE(CJ,C_LAMB) )
+  SWRANGESQ = SWRANGESQ * SWRANGESQ
+  ! Overlap in the region of attraction
+  IF( RIJSQ <= SWRANGESQ ) THEN
+    ! Pair potential (reduced units)
+    VIJ(C_LAMB) = -1.D0
+  ELSE
+    VIJ(C_LAMB) = 0.D0 ! No overlap
+  END IF
+END DO
+
+RETURN
+
+END SUBROUTINE SW_POTENTIAL
+
+! *********************************************************************************************** !
 !    This subroutine calculates the order parameter of a nematic phase via the Q-tensor method    !
 ! *********************************************************************************************** !
 SUBROUTINE ORDER_PARAMETER( S, EP )
@@ -828,6 +1116,711 @@ C(3) = A(3) * B(1) + A(6) * B(2) + A(9) * B(3)
 RETURN
 
 END SUBROUTINE MULTI_MATRIX
+
+! *********************************************************************************************** !
+!     This subroutine uses a block-averaging method to calculate the first- and second-order      !
+!         TPT coefficients, the perturbed Helmholtz free energy, and their uncertainties          !
+! *********************************************************************************************** !
+!                        Original developer: Luis Fernando Mercier Franco                         !
+!                     University of Campinas, School of Chemical Engineering                      !
+! *********************************************************************************************** !
+!         See Allen and Tildesley, 2nd Edition (2017), pages 281-287 for more information         !
+! *********************************************************************************************** !
+SUBROUTINE BLOCK_AVERAGING( FLAG, A1, A2, APERT, DPA1, DPA2, DPAPERT, EXEC_TIME )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 )            :: EQUIL_SAVE               ! Equilibration data points in the potential file
+INTEGER( KIND= INT64 )            :: N_RUN                    ! Production data points in the potential file
+INTEGER( KIND= INT64 )            :: N_BLOCK                  ! Counter for the number of blocks
+INTEGER( KIND= INT64 )            :: N_DATA                   ! Number of data points in a block
+INTEGER( KIND= INT64 )            :: I, J, K, COUNT_AUX, STEP ! Auxiliary counters
+INTEGER( KIND= INT64 ), PARAMETER :: MAX_DATA = 1.D4          ! Maximum number of block data for linear regression
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ) :: PERTURBED_MOMENT1              ! First moment (average), <exp(-U*/T*)>
+REAL( KIND= REAL64 ) :: PERTURBED_MOMENT2              ! Second moment, <exp(-2U*/T*)>
+REAL( KIND= REAL64 ) :: MOMENT1                        ! First moment (average), <U*>
+REAL( KIND= REAL64 ) :: MOMENT2                        ! Second moment, <U*²>
+REAL( KIND= REAL64 ) :: MOMENT3                        ! Third moment, <U*³>
+REAL( KIND= REAL64 ) :: MOMENT4                        ! Fourth moment, <U*4>
+REAL( KIND= REAL64 ) :: PERTURBED_VAR1_TOT             ! Variance of the 1st moment, <exp(-2U*/T*)> - <exp(-U*/T*)>²
+REAL( KIND= REAL64 ) :: VAR1_TOT                       ! Variance of the 1st moment, <U*²> - <U*>²
+REAL( KIND= REAL64 ) :: VAR2_TOT                       ! Variance of the 2nd moment, <U*4> - <U*²>²
+REAL( KIND= REAL64 ) :: PERTURBED_AVG_BLK, AVG_BLK     ! Block average
+REAL( KIND= REAL64 ) :: PERTURBED_VAR_BLOCK, VAR_BLOCK ! Block variance
+REAL( KIND= REAL64 ) :: PERTURBED_VAR_SUM, VAR_SUM     ! Auxiliary summation variable for the block variance
+REAL( KIND= REAL64 ) :: A, B                           ! Parameters of linear regression
+REAL( KIND= REAL64 ) :: R2, PERTURBED_R2               ! Coefficient of determination
+REAL( KIND= REAL64 ) :: PERTURBED_S_RUN, S_RUN         ! Statistical inefficiency
+REAL( KIND= REAL64 ) :: PERTURBED_SIGSQ1               ! Variance of <exp(-U*/T*)>
+REAL( KIND= REAL64 ) :: SIGSQ1                         ! Variance of <U*>
+REAL( KIND= REAL64 ) :: SIGSQ2                         ! Variance of <U*²>
+REAL( KIND= REAL64 ) :: COV                            ! Covariance between U* and U*²
+REAL( KIND= REAL64 ) :: CORR                           ! Correlation between U* and U*²
+REAL( KIND= REAL64 ) :: EXPARGUMENT                    ! Boltzmann factor argument
+REAL( KIND= REAL64 ) :: APERT                          ! Perturbed Helmholtz free energy
+REAL( KIND= REAL64 ) :: A1, A2                         ! TPT coefficients
+REAL( KIND= REAL64 ) :: DPAPERT                        ! Perturbed Helmholtz free energy (standard deviation)
+REAL( KIND= REAL64 ) :: DPA1, DPA2                     ! TPT coefficients (standard deviation)
+REAL( KIND= REAL64 ) :: INITIAL_TIME                   ! Initial time
+REAL( KIND= REAL64 ) :: FINAL_TIME                     ! Final time
+REAL( KIND= REAL64 ) :: EXEC_TIME                      ! Execution time
+
+! *********************************************************************************************** !
+! REAL VARIABLES (ALLOCATABLE)                                                                    !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE :: STEP_BLOCKS      ! Inverse of the number of data points in each block
+REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE :: PERTURBED_SB, SB ! Statistical inefficiency per number of blocks
+
+! *********************************************************************************************** !
+! REAL VARIABLES (ALLOCATABLE)                                                                    !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE :: POT ! Potential energy (production only)
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES                                                                               !
+! *********************************************************************************************** !
+LOGICAL :: FLAG ! Generic true/false flag
+
+! Number of data points
+N_RUN      = INT( ( DBLE( MAX_CYCLES ) - DBLE( N_EQUIL ) ) / DBLE( N_SAVE ) ) ! Production points
+EQUIL_SAVE = INT( DBLE( N_EQUIL ) / DBLE( N_SAVE ) )                          ! Equilibration points
+
+! Return to main program if number of block data exceeds max_data parameter
+IF ( MAX_BLOCKS - MIN_BLOCKS >= MAX_DATA ) THEN
+  FLAG = .TRUE.
+  RETURN
+END IF
+
+! Initialization of variables
+PERTURBED_MOMENT1 = 0.D0
+PERTURBED_MOMENT2 = 0.D0
+MOMENT1 = 0.D0
+MOMENT2 = 0.D0
+MOMENT3 = 0.D0
+MOMENT4 = 0.D0
+
+! Allocation
+ALLOCATE( POT(N_RUN) )
+ALLOCATE( STEP_BLOCKS(MAX_DATA), PERTURBED_SB(MAX_DATA), SB(MAX_DATA) )
+
+! Start subroutine timer
+CALL CPU_TIME( INITIAL_TIME )
+
+! *********************************************************************************************** !
+! Initialization of the Largest Exponential Argument                                              !
+! *********************************************************************************************** !
+!  This corresponds to a method to calculate the natural logarithm of large exponential           !
+!  iterations, avoiding mathematical inaccuracies. This is applied to determine the Helmholtz     !
+!  free energy of the perturbed system by taking the negative natural logarithm of the canonical  !
+!  ensemble average over the configurations visited by the reference fluid.                       !
+! *********************************************************************************************** !
+!  See Supplementary Material of Abreu and Escobedo (2006) for more information.                  !
+! *********************************************************************************************** !
+MAXARG = 0.D0
+
+! Largest Exponential Argument and Potential Energy
+OPEN( UNIT= 150, FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/"//TRIM( DESCRIPTOR_HOUR )// &
+&                      "_thermo_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_"//TRIM( DESCRIPTOR_FILE3 )// &
+&                      ".dat" )
+! Skip header
+READ ( 150, * )
+! Skip equilibration data points (if necessary)
+IF( .NOT. POTENTIAL_CHECK ) THEN
+  DO I = 1, EQUIL_SAVE
+    READ ( 150, * )
+  END DO
+END IF
+! Read production data points
+DO I = 1, N_RUN
+  READ ( 150, * ) STEP, POT(I)
+  BETA_ENERGY = -POT(I) / RED_TEMP
+  IF( BETA_ENERGY > MAXARG ) THEN
+    MAXARG = BETA_ENERGY
+  END IF
+END DO
+CLOSE( 150 )
+
+! Iterative process
+DO I = 1, N_RUN
+  EXPARGUMENT = ( -POT(I) / RED_TEMP ) - MAXARG
+  PERTURBED_MOMENT1 = PERTURBED_MOMENT1 + DEXP( EXPARGUMENT )
+  PERTURBED_MOMENT2 = PERTURBED_MOMENT2 + DEXP( 2.D0 * EXPARGUMENT )
+  MOMENT1 = MOMENT1 + ( POT(I) )
+  MOMENT2 = MOMENT2 + ( POT(I) * POT(I) )
+  MOMENT3 = MOMENT3 + ( POT(I) * POT(I) * POT(I) )
+  MOMENT4 = MOMENT4 + ( POT(I) * POT(I) * POT(I) * POT(I) )
+END DO
+
+! First moments (average)
+PERTURBED_MOMENT1 = PERTURBED_MOMENT1 / DBLE( N_RUN )
+MOMENT1           = MOMENT1 / DBLE( N_RUN )
+
+! Second moments
+PERTURBED_MOMENT2 = PERTURBED_MOMENT2 / DBLE( N_RUN )
+MOMENT2           = MOMENT2 / DBLE( N_RUN )
+
+! Third moment
+MOMENT3 = MOMENT3 / DBLE( N_RUN )
+
+! Fourth moment
+MOMENT4 = MOMENT4 / DBLE( N_RUN )
+
+! Variances of <X>
+PERTURBED_VAR1_TOT = PERTURBED_MOMENT2 - ( PERTURBED_MOMENT1 * PERTURBED_MOMENT1 )
+VAR1_TOT           = MOMENT2 - ( MOMENT1 * MOMENT1 )
+
+! Variance of <U*²>
+VAR2_TOT = MOMENT4 - ( MOMENT2 * MOMENT2 )
+
+! Covariance
+COV = MOMENT3 - ( MOMENT1 * MOMENT2 )
+
+! Block Average
+DO N_BLOCK = MIN_BLOCKS, MAX_BLOCKS
+
+  ! Steps in each block for a certain number of blocks
+  N_DATA = INT( DBLE( N_RUN ) / DBLE( N_BLOCK ) )
+
+  ! Initialization
+  PERTURBED_VAR_SUM = 0.D0
+  VAR_SUM = 0.D0
+  J = 1
+
+  DO K = 1, N_BLOCK
+    PERTURBED_AVG_BLK = 0.D0 ! Reset
+    AVG_BLK = 0.D0 ! Reset
+    DO I = 1, N_DATA
+      EXPARGUMENT = ( -POT(J) / RED_TEMP ) - MAXARG
+      PERTURBED_AVG_BLK = PERTURBED_AVG_BLK + DEXP( EXPARGUMENT )
+      AVG_BLK = AVG_BLK + POT(J)
+      ! Increment counter
+      J = J + 1
+    END DO
+    PERTURBED_AVG_BLK = PERTURBED_AVG_BLK / DBLE( N_DATA )
+    PERTURBED_VAR_SUM = PERTURBED_VAR_SUM + ( PERTURBED_AVG_BLK - PERTURBED_MOMENT1 ) ** 2.D0
+    AVG_BLK = AVG_BLK / DBLE( N_DATA )
+    VAR_SUM = VAR_SUM + ( AVG_BLK - MOMENT1 ) ** 2.D0
+  END DO
+
+  ! Variance of the block averages
+  PERTURBED_VAR_BLOCK = PERTURBED_VAR_SUM / DBLE( N_BLOCK - 1 )
+  VAR_BLOCK = VAR_SUM / DBLE( N_BLOCK - 1 )
+
+  ! Auxiliary counter
+  COUNT_AUX = N_BLOCK - MIN_BLOCKS + 1
+
+  ! Inverse of block size
+  STEP_BLOCKS(COUNT_AUX) = 1.D0 / DBLE( N_DATA )
+
+  ! Statistical inefficiency
+  PERTURBED_SB(COUNT_AUX) = DBLE( N_DATA ) * ( PERTURBED_VAR_BLOCK / PERTURBED_VAR1_TOT )
+  SB(COUNT_AUX) = DBLE( N_DATA ) * ( VAR_BLOCK / VAR1_TOT )
+END DO
+
+! Deallocation
+DEALLOCATE( POT )
+
+! Linear regression (perturbed Helmholtz free energy)
+CALL LINEAR_FIT( STEP_BLOCKS, PERTURBED_SB, A, B, PERTURBED_R2, COUNT_AUX )
+
+! Statistical inefficiency (perturbed Helmholtz free energy)
+PERTURBED_S_RUN = A
+
+! Linear regression (TPT coefficients)
+CALL LINEAR_FIT( STEP_BLOCKS, SB, A, B, R2, COUNT_AUX )
+
+! Statistical inefficiency (TPT coefficients)
+S_RUN = A
+
+! Deallocation
+DEALLOCATE( STEP_BLOCKS, PERTURBED_SB, SB )
+
+! Variances of <X>
+PERTURBED_SIGSQ1 = PERTURBED_VAR1_TOT * ( PERTURBED_S_RUN / DBLE( N_RUN ) )
+SIGSQ1 = VAR1_TOT * ( S_RUN / DBLE( N_RUN ) )
+
+! Variance of <U*²>
+SIGSQ2 = VAR2_TOT * ( S_RUN / DBLE( N_RUN ) )
+
+! Covariance between U* and U*²
+COV  = COV * ( S_RUN / DBLE( N_RUN ) )
+
+! Correlation between U* and U*²
+CORR = COV / ( DSQRT( SIGSQ1 ) ) / ( DSQRT( SIGSQ2 ) )
+
+! TPT Coefficients
+A1 = MOMENT1 / N_PARTICLES
+A2 = - 0.5D0 * ( MOMENT2 - ( MOMENT1 * MOMENT1 ) ) / N_PARTICLES
+
+! TPT Coefficients (Uncertainty propagation)
+DPA1 = DSQRT( SIGSQ1 ) / N_PARTICLES
+DPA2 = 0.5D0 * ( DSQRT( ( 4.D0 * SIGSQ1 * MOMENT1 * MOMENT1 ) + SIGSQ2 - ( 4.D0 * MOMENT1 * COV ) ) ) / N_PARTICLES
+
+! Perturbed Helmholtz free energy
+APERT = - ( 1.D0 / N_PARTICLES ) * ( DLOG( PERTURBED_MOMENT1 ) + MAXARG )
+
+! Perturbed Helmholtz free energy (Uncertainty propagation)
+DPAPERT = ( 1.D0 / N_PARTICLES ) * ( DSQRT( ( PERTURBED_SIGSQ1 ) / ( PERTURBED_MOMENT1 * PERTURBED_MOMENT1 ) ) )
+
+! Finish subroutine timer
+CALL CPU_TIME( FINAL_TIME )
+
+! Execution time
+EXEC_TIME = FINAL_TIME - INITIAL_TIME
+
+RETURN
+
+END SUBROUTINE BLOCK_AVERAGING
+
+! *********************************************************************************************** !
+!                    This subroutine makes a linear regression of x and y data                    !
+! *********************************************************************************************** !
+SUBROUTINE LINEAR_FIT( X, Y, A, B, R2, N )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: I, N
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ) :: SX                ! Sum of X
+REAL( KIND= REAL64 ) :: SY                ! Sum of Y
+REAL( KIND= REAL64 ) :: SXX               ! Sum of X²
+REAL( KIND= REAL64 ) :: SXY               ! Sum of XY
+REAL( KIND= REAL64 ) :: SYY               ! Sum of Y²
+REAL( KIND= REAL64 ) :: A                 ! Y-intercept
+REAL( KIND= REAL64 ) :: B                 ! Slope
+REAL( KIND= REAL64 ) :: R2                ! Coefficient of determination
+REAL( KIND= REAL64 ), DIMENSION( N ) :: X ! Independent variable
+REAL( KIND= REAL64 ), DIMENSION( N ) :: Y ! Dependent variable
+
+! Initialization
+SX  = 0.D0
+SY  = 0.D0
+SXX = 0.D0
+SXY = 0.D0
+SYY = 0.D0
+
+! Iteration
+DO I = 1, N
+  SX  = SX + X(I)
+  SY  = SY + Y(I)
+  SXX = SXX + ( X(I) * X(I) )
+  SXY = SXY + ( X(I) * Y(I) )
+  SYY = SYY + ( Y(I) * Y(I) )
+END DO
+
+! Slope
+B  = ( ( DBLE( N ) * SXY ) - ( SX * SY ) ) / ( ( DBLE( N ) * SXX ) - ( SX * SX ) )
+! Y-intercept
+A  = ( SY - ( B * SX ) ) / DBLE( N )
+! Coefficient of correlation
+R2 = ( ( DBLE( N ) * SXY ) - ( SX * SY ) ) / DSQRT( ( ( DBLE( N ) * SXX ) - ( SX * SX ) ) * ( ( DBLE( N ) * SYY ) - ( SY * SY ) ) )
+! Coefficient of determination
+R2 = ( R2 * R2 )
+
+RETURN
+
+END SUBROUTINE LINEAR_FIT
+
+! *********************************************************************************************** !
+!           This subroutine calculates the lattice reduction and reshapes the box size            !
+! *********************************************************************************************** !
+SUBROUTINE LATTICE_REDUCTION( BOXL, DISTORTION, LATTICER )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ), PARAMETER :: DIM = 3 ! Lattice dimension
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                     :: DISTORTION             ! Distortion parameter (surface-to-volume ratio)
+REAL( KIND= REAL64 )                     :: MODV1, MODV2, MODV3    ! Magnitude of the box vectors
+REAL( KIND= REAL64 )                     :: MODCROSS1              ! Magnitude of the cross product between vectors vx and vy of the simulation box (area of plane xy)
+REAL( KIND= REAL64 )                     :: MODCROSS2              ! Magnitude of the cross product between vectors vx and vz of the simulation box (area of plane xz)
+REAL( KIND= REAL64 )                     :: MODCROSS3              ! Magnitude of the cross product between vectors vy and vz of the simulation box (area of plane yz)
+REAL( KIND= REAL64 )                     :: DOTVC                  ! Dot product of vector vx and the cross product of vectors vy and vz (volume)
+REAL( KIND= REAL64 )                     :: SURFAREA               ! Surface area
+REAL( KIND= REAL64 ), DIMENSION( 3 )     :: V1, V2, V3             ! Vectors vx, vy, and vz of the simulation box
+REAL( KIND= REAL64 ), DIMENSION( 3 )     :: CROSS1, CROSS2, CROSS3 ! Cross product of box vectors
+REAL( KIND= REAL64 ), DIMENSION( 9 )     :: BOXL                   ! Box vector matrix
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES                                                                               !
+! *********************************************************************************************** !
+LOGICAL :: LATTICER ! Checks whether a lattice reduction is necessary based on the distortion parameter value
+
+! Box vectors
+V1(:) = BOXL(1:3) ! vx
+V2(:) = BOXL(4:6) ! vy
+V3(:) = BOXL(7:9) ! vz
+
+! Vector moduli
+MODV1 = ( V1(1) * V1(1) ) + ( V1(2) * V1(2) ) + ( V1(3) * V1(3) )
+MODV1 = DSQRT( MODV1 )
+MODV2 = ( V2(1) * V2(1) ) + ( V2(2) * V2(2) ) + ( V2(3) * V2(3) )
+MODV2 = DSQRT( MODV2 )
+MODV3 = ( V3(1) * V3(1) ) + ( V3(2) * V3(2) ) + ( V3(3) * V3(3) )
+MODV3 = DSQRT( MODV3 )
+
+! Cross product of vx and vy
+CROSS1(1) = ( V1(2) * V2(3) ) - ( V1(3) * V2(2) )
+CROSS1(2) = ( V1(3) * V2(1) ) - ( V1(1) * V2(3) )
+CROSS1(3) = ( V1(1) * V2(2) ) - ( V1(2) * V2(1) )
+
+! Cross product of vx and vz
+CROSS2(1) = ( V1(2) * V3(3) ) - ( V1(3) * V3(2) )
+CROSS2(2) = ( V1(3) * V3(1) ) - ( V1(1) * V3(3) )
+CROSS2(3) = ( V1(1) * V3(2) ) - ( V1(2) * V3(1) )
+
+! Cross product of vy and vz
+CROSS3(1) = ( V2(2) * V3(3) ) - ( V2(3) * V3(2) )
+CROSS3(2) = ( V2(3) * V3(1) ) - ( V2(1) * V3(3) )
+CROSS3(3) = ( V2(1) * V3(2) ) - ( V2(2) * V3(1) )
+
+! Dot product of vx and the cross product of vy and vz
+DOTVC = ( V1(1) * CROSS3(1) ) + ( V1(2) * CROSS3(2) ) + ( V1(3) * CROSS3(3) )
+
+! Vector moduli
+MODCROSS1 = ( CROSS1(1) * CROSS1(1) ) + ( CROSS1(2) * CROSS1(2) ) + ( CROSS1(3) * CROSS1(3) )
+MODCROSS1 = DSQRT( MODCROSS1 )
+MODCROSS2 = ( CROSS2(1) * CROSS2(1) ) + ( CROSS2(2) * CROSS2(2) ) + ( CROSS2(3) * CROSS2(3) )
+MODCROSS2 = DSQRT( MODCROSS2 )
+MODCROSS3 = ( CROSS3(1) * CROSS3(1) ) + ( CROSS3(2) * CROSS3(2) ) + ( CROSS3(3) * CROSS3(3) )
+MODCROSS3 = DSQRT( MODCROSS3 )
+
+! Lattice distortion
+DISTORTION = (MODV1 + MODV2 + MODV3) * (MODCROSS1 + MODCROSS2 + MODCROSS3) / DOTVC
+DISTORTION = DISTORTION / 9.D0
+
+! Surface area
+SURFAREA = 2.D0 * MODCROSS1 + 2.D0 * MODCROSS2 + 2.D0 * MODCROSS3
+
+! Verification
+IF( DISTORTION > BOX_DIST ) THEN
+  LATTICER = .TRUE.
+  ! Lattice reduction method
+  IF( LRED_SELEC(1) ) THEN
+    ! Gottwald method
+    CALL GOTTWALD( V1, V2, V3, SURFAREA )
+    ! Update box vectors
+    BOXL(1:3) = V1(:)
+    BOXL(4:6) = V2(:)
+    BOXL(7:9) = V3(:)
+  ELSE IF( LRED_SELEC(2) ) THEN
+    ! Lenstra-Lenstra-Lovász method
+    CALL LLL( BOXL, DIM )
+  END IF
+ELSE
+  LATTICER = .FALSE.
+  RETURN
+END IF
+
+RETURN
+
+END SUBROUTINE LATTICE_REDUCTION
+
+! *********************************************************************************************** !
+!          This subroutine applies the Gottwald method to orthogonalize the box vectors           !
+! *********************************************************************************************** !
+SUBROUTINE GOTTWALD( V1, V2, V3, MINSAREA )
+
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: COMBINATION ! Lattice combination
+INTEGER( KIND= INT64 ) :: MINSAREALOC ! Array location of minimum surface area
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                     :: MODCROSS1              ! Magnitude of the cross product between vectors vx and vy of the simulation box (area of plane xy)
+REAL( KIND= REAL64 )                     :: MODCROSS2              ! Magnitude of the cross product between vectors vx and vz of the simulation box (area of plane xz)
+REAL( KIND= REAL64 )                     :: MODCROSS3              ! Magnitude of the cross product between vectors vy and vz of the simulation box (area of plane yz)
+REAL( KIND= REAL64 )                     :: MINSAREA               ! Minimum surface area
+REAL( KIND= REAL64 ), DIMENSION( 3 )     :: V1, V2, V3             ! Vectors vx, vy, and vz of the simulation box
+REAL( KIND= REAL64 ), DIMENSION( 3 )     :: NEWV1, NEWV2, NEWV3    ! New vectors vx, vy, and vz of the simulation box
+REAL( KIND= REAL64 ), DIMENSION( 3 )     :: CROSS1, CROSS2, CROSS3 ! Cross product of box vectors
+REAL( KIND= REAL64 ), DIMENSION( 12 )    :: SURFACEA               ! Surface area of every lattice combination
+REAL( KIND= REAL64 ), DIMENSION( 12, 9 ) :: LATTICECOMB            ! Lattice combination
+
+! Gottwald orthogonalization process
+LREDUCTION: DO
+  ! Lattice combination
+  DO COMBINATION = 1, 12
+    CALL LATTICE_COMBINATION( COMBINATION, V1, V2, V3, LATTICECOMB(COMBINATION,:) )
+    ! New lattice vectors
+    NEWV1(:) = LATTICECOMB(COMBINATION,1:3)
+    NEWV2(:) = LATTICECOMB(COMBINATION,4:6)
+    NEWV3(:) = LATTICECOMB(COMBINATION,7:9)
+    ! Cross product of vx and vy
+    CROSS1(1) = ( NEWV1(2) * NEWV2(3) ) - ( NEWV1(3) * NEWV2(2) )
+    CROSS1(2) = ( NEWV1(3) * NEWV2(1) ) - ( NEWV1(1) * NEWV2(3) )
+    CROSS1(3) = ( NEWV1(1) * NEWV2(2) ) - ( NEWV1(2) * NEWV2(1) )
+    ! Cross product of vx and vz
+    CROSS2(1) = ( NEWV1(2) * NEWV3(3) ) - ( NEWV1(3) * NEWV3(2) )
+    CROSS2(2) = ( NEWV1(3) * NEWV3(1) ) - ( NEWV1(1) * NEWV3(3) )
+    CROSS2(3) = ( NEWV1(1) * NEWV3(2) ) - ( NEWV1(2) * NEWV3(1) )
+    ! Cross product of vy and vz
+    CROSS3(1) = ( NEWV2(2) * NEWV3(3) ) - ( NEWV2(3) * NEWV3(2) )
+    CROSS3(2) = ( NEWV2(3) * NEWV3(1) ) - ( NEWV2(1) * NEWV3(3) )
+    CROSS3(3) = ( NEWV2(1) * NEWV3(2) ) - ( NEWV2(2) * NEWV3(1) )
+    ! Vector moduli
+    MODCROSS1 = ( CROSS1(1) * CROSS1(1) ) + ( CROSS1(2) * CROSS1(2) ) + ( CROSS1(3) * CROSS1(3) )
+    MODCROSS1 = DSQRT( MODCROSS1 )
+    MODCROSS2 = ( CROSS2(1) * CROSS2(1) ) + ( CROSS2(2) * CROSS2(2) ) + ( CROSS2(3) * CROSS2(3) )
+    MODCROSS2 = DSQRT( MODCROSS2 )
+    MODCROSS3 = ( CROSS3(1) * CROSS3(1) ) + ( CROSS3(2) * CROSS3(2) ) + ( CROSS3(3) * CROSS3(3) )
+    MODCROSS3 = DSQRT( MODCROSS3 )
+    ! Surface area
+    SURFACEA(COMBINATION) = 2.D0 * MODCROSS1 + 2.D0 * MODCROSS2 + 2.D0 * MODCROSS3
+  END DO
+  ! Minimum surface area
+  IF( MINVAL( SURFACEA ) <= MINSAREA ) THEN
+    MINSAREALOC = MINLOC( SURFACEA, DIM= 1 )
+    MINSAREA    = MINVAL( SURFACEA )
+    ! Update box vectors
+    V1(:) = LATTICECOMB(MINSAREALOC,1:3)
+    V2(:) = LATTICECOMB(MINSAREALOC,4:6)
+    V3(:) = LATTICECOMB(MINSAREALOC,7:9)
+  ELSE
+    EXIT LREDUCTION
+  END IF
+END DO LREDUCTION
+
+RETURN
+
+END SUBROUTINE GOTTWALD
+
+! *********************************************************************************************** !
+!                       This subroutine calculates the lattice combinations                       !
+! *********************************************************************************************** !
+SUBROUTINE LATTICE_COMBINATION( COMBINATION, V1, V2, V3, LATTICECOMB )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: COMBINATION ! Lattice combination
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: V1, V2, V3  ! Vectors vx, vy, and vz of the simulation box
+REAL( KIND= REAL64 ), DIMENSION( 9 ) :: LATTICECOMB ! Lattice combination
+
+! Lattice combination (unchanged determinant)
+IF( COMBINATION == 1 ) THEN
+  LATTICECOMB(1:3) = V1(:) + V2(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 2 ) THEN
+  LATTICECOMB(1:3) = V1(:) - V2(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 3 ) THEN
+  LATTICECOMB(1:3) = V1(:) + V3(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 4 ) THEN
+  LATTICECOMB(1:3) = V1(:) - V3(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 5 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:) + V1(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 6 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:) - V1(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 7 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:) + V3(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 8 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:) - V3(:)
+  LATTICECOMB(7:9) = V3(:)
+ELSE IF( COMBINATION == 9 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:) + V1(:)
+ELSE IF( COMBINATION == 10 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:) - V1(:)
+ELSE IF( COMBINATION == 11 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:) + V2(:)
+ELSE IF( COMBINATION == 12 ) THEN
+  LATTICECOMB(1:3) = V1(:)
+  LATTICECOMB(4:6) = V2(:)
+  LATTICECOMB(7:9) = V3(:) - V2(:)
+END IF
+
+RETURN
+
+END SUBROUTINE LATTICE_COMBINATION
+
+! *********************************************************************************************** !
+!  This subroutine applies the Lenstra–Lenstra–Lovász algorithm to orthogonalize the box vectors  !
+! *********************************************************************************************** !
+SUBROUTINE LLL( BOXV, DIM )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 )                 :: I, J, K ! Counters
+INTEGER( KIND= INT64 )                 :: DIM     ! Dimension
+INTEGER( KIND= INT64 ), DIMENSION( 3 ) :: XYZ     ! XYZ positions
+INTEGER( KIND= INT64 ), DIMENSION( 3 ) :: TEMPXYZ ! XYZ positions (temporary)
+
+! *********************************************************************************************** !
+! REAL VARIABLES (PARAMETER)                                                                      !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ), PARAMETER :: DELTA = 0.75D0 ! Lovász delta
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                         :: LFACTOR       ! Lovász factor
+REAL( KIND= REAL64 )                         :: LCONDITION    ! Lovász condition
+REAL( KIND= REAL64 ), DIMENSION( DIM * DIM ) :: BOXV          ! Box vectors
+REAL( KIND= REAL64 ), DIMENSION( DIM, DIM )  :: LATTICE_BASIS ! Lattice basis
+REAL( KIND= REAL64 ), DIMENSION( DIM, DIM )  :: TEMP_BASIS    ! Lattice basis (temporary)
+REAL( KIND= REAL64 ), DIMENSION( DIM, DIM )  :: OLD_LATTICE   ! Lattice basis (old)
+REAL( KIND= REAL64 ), DIMENSION( DIM, DIM )  :: GS_BASIS      ! Gram-Schmidt orthonormal basis
+REAL( KIND= REAL64 ), DIMENSION( DIM, DIM )  :: GS_COEFF      ! Gram-Schmidt coefficients
+
+! Defining the lattice vectors
+DO I = 1, DIM
+  LATTICE_BASIS(:,I) = BOXV((1+DIM*(I-1)):(DIM*I))
+END DO
+
+! X, Y, and Z positions
+XYZ(1) = 1
+XYZ(2) = 2
+XYZ(3) = 3
+
+! Run LLL algorithm until convergence
+LOVASZ_LOOP: DO
+
+  ! Store old lattice vectors
+  OLD_LATTICE(:,:) = LATTICE_BASIS(:,:)
+
+  ! Initialization (working vector)
+  K = 2
+
+  ! Lenstra–Lenstra–Lovász algorithm
+  DO WHILE( K <= DIM )
+    ! Initialize/reset Gram-Schmidt basis vectors and coefficients
+    DO I = 1, K
+      ! Initialization
+      GS_BASIS(:,I) = LATTICE_BASIS(:,I)
+      ! Gram-Schimidt operators
+      DO J = 1, I - 1
+        ! Calculate the necessary Gram-Schmidt coefficients
+        GS_COEFF(I,J) = DOT_PRODUCT( LATTICE_BASIS(:,I), GS_BASIS(:,J) ) / DOT_PRODUCT( GS_BASIS(:,J), GS_BASIS(:,J) )
+        ! Calculate the necessary Gram-Schmidt orthonormal basis vectors
+        GS_BASIS(:,I) = GS_BASIS(:,I) - GS_COEFF(I,J) * GS_BASIS(:,J)
+      END DO
+    END DO
+    ! Calculate the Gram-Schmidt reduction (K > 1)
+    DO J = 1, K - 1
+      ! Recalculate the necessary Gram-Schmidt coefficients
+      GS_COEFF(K,J) = DOT_PRODUCT( LATTICE_BASIS(:,K), GS_BASIS(:,J) ) / DOT_PRODUCT( GS_BASIS(:,J), GS_BASIS(:,J) )
+      ! Compute the reduced lattice vector
+      LATTICE_BASIS(:,K) = LATTICE_BASIS(:,K) - NINT( GS_COEFF(K,J) ) * LATTICE_BASIS(:,J)
+    END DO
+    ! Calculate the Lovász operators
+    LFACTOR    = DELTA - ( GS_COEFF(K,K-1) * GS_COEFF(K,K-1) )
+    LCONDITION = LFACTOR * DOT_PRODUCT( GS_BASIS(:,K-1), GS_BASIS(:,K-1) )
+    ! Check the Lovász condition
+    IF( DOT_PRODUCT( GS_BASIS(:,K), GS_BASIS(:,K) ) >= LCONDITION ) THEN
+      ! Iteration
+      K = K + 1
+    ELSE
+      ! Swap working vector and preceding lattice vector
+      TEMP_BASIS(:,K)      = LATTICE_BASIS(:,K)
+      LATTICE_BASIS(:,K)   = LATTICE_BASIS(:,K-1)
+      LATTICE_BASIS(:,K-1) = TEMP_BASIS(:,K)
+      ! Swap XYZ positions
+      TEMPXYZ(K) = XYZ(K)
+      XYZ(K)     = XYZ(K-1)
+      XYZ(K-1)   = TEMPXYZ(K)
+      ! Return one iteration of K until K = 2
+      K = MAX( K-1, 2 )
+    END IF
+  END DO
+
+  ! Compare new lattice vectors with old lattice vectors
+  DO I = 1, DIM
+    DO J = 1, DIM
+      ! Cycle if they differ
+      IF( DABS( OLD_LATTICE(J,I) - LATTICE_BASIS(J,I) ) >= EPSILON( 1.D0 ) ) CYCLE LOVASZ_LOOP
+    END DO
+  END DO
+
+  EXIT LOVASZ_LOOP
+
+END DO LOVASZ_LOOP
+
+! Redefining the box vectors
+IF( DIM == 3 ) THEN
+  ! Undo LLL swaps (may cause the inversion of the determinant sign)
+  BOXV(1:3) = LATTICE_BASIS(:,MINLOC( XYZ, DIM= 1 )) ! X vector
+  BOXV(7:9) = LATTICE_BASIS(:,MAXLOC( XYZ, DIM= 1 )) ! Z vector
+  DO I = 1, DIM
+    IF( I /= MINLOC( XYZ, DIM= 1 ) .AND. I /= MAXLOC( XYZ, DIM= 1 ) ) THEN
+      BOXV(4:6) = LATTICE_BASIS(:,I) ! Y vector
+    END IF
+  END DO
+ELSE IF( DIM /= 3 ) THEN
+  DO I = 1, DIM
+    BOXV((1+DIM*(I-1)):(DIM*I)) = LATTICE_BASIS(:,I)
+  END DO
+END IF
+
+RETURN
+
+END SUBROUTINE LLL
 
 ! *********************************************************************************************** !
 !             This subroutine generates a progress bar for the initial configuration.             !

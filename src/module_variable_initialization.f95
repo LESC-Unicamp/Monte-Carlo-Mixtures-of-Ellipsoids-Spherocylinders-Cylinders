@@ -14,7 +14,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 15th, 2023                                       !
+!                                        August 11th, 2023                                        !
 ! ############################################################################################### !
 ! Main Reference:                   M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -101,13 +101,34 @@ READ( 10, * ) GET, ANGMAX_INIT
 ! *********************************************************************************************** !
 ! Maximum volumetric displacement                                                                 !
 ! *********************************************************************************************** !
-READ( 10, * ) GET, MAX_VOL
-READ( 10, * ) GET, DVMAX_INIT
+READ( 10, * ) GET, MAX_VOLI
+READ( 10, * ) GET, MAX_VOLA
+READ( 10, * ) GET, DVMAXISO_INIT
+READ( 10, * ) GET, DVMAXANISO_INIT
 
 ! *********************************************************************************************** !
 ! Minimum volumetric displacement (random configuration only)                                     !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, DVMIN_INIT
+
+! *********************************************************************************************** !
+! Maximum box distortion                                                                          !
+! *********************************************************************************************** !
+READ( 10 , * ) GET, BOX_DIST
+
+! *********************************************************************************************** !
+! Lattice reduction method                                                                        !
+! *********************************************************************************************** !
+READ( 10 , * ) GET, LRTYPE
+CALL TO_UPPER( LRTYPE, LEN_TRIM( LRTYPE ), LRTYPE )
+LRED_SELEC(:) = .FALSE.
+! Lattice reduction: Gottwald method
+IF( LRTYPE == "FBM" ) THEN
+  LRED_SELEC(1) = .TRUE.
+! Lattice reduction: Lenstra-Lenstra-Lovász method
+ELSE IF( LRTYPE == "LLL" ) THEN
+  LRED_SELEC(2) = .TRUE.
+END IF
 
 ! *********************************************************************************************** !
 ! Simulation ensemble                                                                             !
@@ -146,9 +167,9 @@ READ( 10, * ) GET, TRAJ_INQ
 CALL TO_UPPER( TRAJ_INQ, LEN_TRIM( TRAJ_INQ ), TRAJ_INQ )
 
 ! Transforms characters into logical variables
-IF ( TRAJ_INQ == "Y" ) THEN
+IF( TRAJ_INQ == "Y" ) THEN
   TRAJ_CHECK = .TRUE.
-ELSE IF ( TRAJ_INQ == "N" ) THEN
+ELSE IF( TRAJ_INQ == "N" ) THEN
   TRAJ_CHECK = .FALSE.
 END IF
 
@@ -164,10 +185,69 @@ READ( 10, * ) GET, SEED_INQ
 CALL TO_UPPER( SEED_INQ, LEN_TRIM( SEED_INQ ), SEED_INQ )
 
 ! Transforms characters into logical variables
-IF ( SEED_INQ == "Y" ) THEN
+IF( SEED_INQ == "Y" ) THEN
   FSEED = .TRUE.
-ELSE IF ( SEED_INQ == "N" ) THEN
+ELSE IF( SEED_INQ == "N" ) THEN
   FSEED = .FALSE.
+END IF
+
+! *********************************************************************************************** !
+! Potential type                                                                                  !
+! *********************************************************************************************** !
+!  Inquires which kind of intermolecular force field will be applied for the perturbed system.    !
+!    'HARDCORE'   = Purely-repulsive hard-core potential (default; disables FF)                   !
+!    'SQUAREWELL' = Spherical square-well potential (independent of the molecular orientation)    !
+! *********************************************************************************************** !
+READ( 10, * ) GET, POTENTIAL_TYPE
+CALL TO_UPPER( POTENTIAL_TYPE, LEN_TRIM( POTENTIAL_TYPE ), POTENTIAL_TYPE )
+
+! Transforms characters into logical variables
+POTENTIAL_SELEC(:) = .FALSE.
+IF( POTENTIAL_TYPE == "HARDCORE" ) THEN
+  POTENTIAL_SELEC(1) = .TRUE.
+ELSE IF( POTENTIAL_TYPE == "SQUAREWELL" ) THEN
+  POTENTIAL_SELEC(2) = .TRUE.
+ELSE
+  WRITE( *, "(3G0)" ) "The force field named [", TRIM( POTENTIAL_TYPE ), "] cannot be used! Exiting..."
+  CALL SLEEP( 1 )
+  CALL EXIT(  )
+END IF
+
+! *********************************************************************************************** !
+! Potential inquiry                                                                               !
+! *********************************************************************************************** !
+!  Inquires whether all potential results will be written out or only production-related ones.    !
+!  Answer Y (Yes) to write out both equilibration- and production-related results or              !
+!         N (No) to write out only production-related results                                     !
+! *********************************************************************************************** !
+IF( .NOT. POTENTIAL_SELEC(1) ) THEN
+  READ( 10, * ) GET, POT_INQ
+  CALL TO_UPPER( POT_INQ, LEN_TRIM( POT_INQ ), POT_INQ )
+  ! Transforms characters into logical variables
+  IF( POT_INQ == "Y" ) THEN
+    POTENTIAL_CHECK = .TRUE.
+  ELSE IF( POT_INQ == "N" ) THEN
+    POTENTIAL_CHECK = .FALSE.
+  END IF
+END IF
+
+! *********************************************************************************************** !
+! TPT coefficients inquiry                                                                        !
+! *********************************************************************************************** !
+!  Inquires whether the post-processing block averaging subroutine will be called.                !
+!  This subroutine calculates the first- and second-order TPT coefficients on the fly.            !
+!  Answer Y (Yes) to calculate TPT coefficients or                                                !
+!         N (No) to ignore it                                                                     !
+! *********************************************************************************************** !
+IF( .NOT. POTENTIAL_SELEC(1) ) THEN
+  READ( 10, * ) GET, COEF_INQ
+  CALL TO_UPPER( COEF_INQ, LEN_TRIM( COEF_INQ ), COEF_INQ )
+  ! Transforms characters into logical variables
+  IF( COEF_INQ == "Y" ) THEN
+    COEF_CHECK = .TRUE.
+  ELSE IF( COEF_INQ == "N" ) THEN
+    COEF_CHECK = .FALSE.
+  END IF
 END IF
 
 CLOSE( 10 )
@@ -199,6 +279,7 @@ READ( 100, * ) GET, COMPONENTS
 ALLOCATE( DIAMETER(COMPONENTS), LENGTH(COMPONENTS), MOLAR_F(COMPONENTS) )
 ALLOCATE( N_COMPONENT(0:COMPONENTS), PARTICLE_VOL(COMPONENTS), RHO_PARTICLE(COMPONENTS) )
 ALLOCATE( ASPECT_RATIO(COMPONENTS) )
+ALLOCATE( SIGSPHERE(COMPONENTS) )
 ! Diameter of component i
 READ( 100, * ) GET, DIAMETER
 ! Length of component i
@@ -375,6 +456,12 @@ WRITE( *, * ) " "
 READ( 100, * ) GET, TEMP
 ! Reduced Pressure
 READ( 100, * ) GET, PRESS
+! Maximum length ratio (box distortion)
+READ( 100, * ) GET, MAX_LENGTH_RATIO
+! Maximum angle (box distortion)
+READ( 100, * ) GET, MAX_ANGLE
+MAX_ANGLE = MAX_ANGLE * PI / 180.D0
+
 CLOSE( 100 )
 
 ! Summary
@@ -445,7 +532,8 @@ END IF
 OPEN( UNIT= 100, FILE= "ini_ratios.ini" )
 READ( 100, * ) GET, R_ACC_T
 READ( 100, * ) GET, R_ACC_R
-READ( 100, * ) GET, R_ACC_V
+READ( 100, * ) GET, R_ACC_VI
+READ( 100, * ) GET, R_ACC_VA
 CLOSE( 100 )
 OPEN( UNIT= 100, FILE= "ini_probabilities.ini" )
 READ( 100, * ) GET, PROB_MOV
@@ -458,6 +546,8 @@ READ( 100, * ) GET, PROB_TRANS_INIT
 PROB_ROT_INIT = 1.D0 - PROB_TRANS_INIT
 READ( 100, * ) GET, PROB_VOL_ISO
 PROB_VOL_ANISO = 1.D0 - PROB_VOL_ISO
+READ( 100, * ) GET, PROB_ISO_INIT
+PROB_ANISO_INIT = 1.D0 - PROB_ISO_INIT
 CLOSE( 100 )
 
 ! Summary
@@ -479,13 +569,16 @@ IF( CONFIG_SELEC(4) ) THEN
   WRITE( *, * ) " "
   WRITE( *, "(G0,G0.5)" ) "Maximum Rotation (Random Configuration): ", DRMAX_INIT
   WRITE( *, "(G0,G0.5)" ) "Maximum Translation (Random Configuration): ", ANGMAX_INIT
-  WRITE( *, "(G0,G0.5)" ) "Maximum Volume Change (Random Configuration): ", DVMAX_INIT
+  WRITE( *, "(G0,G0.5)" ) "Maximum Isotropic Volume Change (Random Configuration): ", DVMAXISO_INIT
+  WRITE( *, "(G0,G0.5)" ) "Maximum Anisotropic Volume Change (Random Configuration): ", DVMAXANISO_INIT
   WRITE( *, "(G0,G0.5)" ) "Minimum Volume Change (Random Configuration): ", DVMIN_INIT
   WRITE( *, * ) " "
   WRITE( *, "(G0,G0.5,G0)" ) "Movement Probability (Random Configuration): ", PROB_MOV_INIT * 100.D0, "%"
   WRITE( *, "(G0,G0.5,G0)" ) "Volume Change Probability (Random Configuration): ", PROB_VOL_INIT * 100.D0, "%"
   WRITE( *, "(G0,G0.5,G0)" ) "Translation Probability (Random Configuration): ", PROB_TRANS_INIT * 100.D0, "%"
   WRITE( *, "(G0,G0.5,G0)" ) "Rotation Probability (Random Configuration): ", PROB_ROT_INIT * 100.D0, "%"
+  WRITE( *, "(G0,G0.5,G0)" ) "Isotropic Volume Change Probability (Random Configuration): ", PROB_ISO_INIT * 100.D0, "%"
+  WRITE( *, "(G0,G0.5,G0)" ) "Anisotropic Volume Change Probability (Random Configuration): ", PROB_ANISO_INIT * 100.D0, "%"
   WRITE( *, * ) " "
 END IF
 IF( INIT_CONF ) THEN
@@ -508,11 +601,13 @@ WRITE( *, "(G0,G0,G0)" ) "Adjustment Frequency: Every ", N_ADJUST, " Equilibrati
 WRITE( *, * ) " "
 WRITE( *, "(G0,G0.5)" ) "Acceptance Ratio (Translation): ", R_ACC_T
 WRITE( *, "(G0,G0.5)" ) "Acceptance Ratio (Rotation): ", R_ACC_R
-WRITE( *, "(G0,G0.5)" ) "Acceptance Ratio (Volume Change): ", R_ACC_V
+WRITE( *, "(G0,G0.5)" ) "Acceptance Ratio (Isotropic Volume Change): ", R_ACC_VI
+WRITE( *, "(G0,G0.5)" ) "Acceptance Ratio (Anisotropic Volume Change): ", R_ACC_VA
 WRITE( *, * ) " "
 WRITE( *, "(G0,G0.5)" ) "Maximum Displacement (Rotation): ", MAX_TRANS
 WRITE( *, "(G0,G0.5)" ) "Maximum Displacement (Translation): ", MAX_ROT
-WRITE( *, "(G0,G0.5)" ) "Maximum Displacement (Volume Change): ", MAX_VOL
+WRITE( *, "(G0,G0.5)" ) "Maximum Displacement (Isotropic Volume Change): ", MAX_VOLI
+WRITE( *, "(G0,G0.5)" ) "Maximum Displacement (Anisotropic Volume Change): ", MAX_VOLA
 WRITE( *, * ) " "
 WRITE( *, "(G0,G0.5,G0)" ) "Global Probability (Movement): ", PROB_MOV * 100.D0, "%"
 WRITE( *, "(G0,G0.5,G0)" ) "Global Probability (Volume Change): ", PROB_VOL * 100.D0, "%"
@@ -521,12 +616,103 @@ WRITE( *, "(G0,G0.5,G0)" ) "Movement Probability (Rotation): ", PROB_ROT * 100.D
 WRITE( *, "(G0,G0.5,G0)" ) "Volume Change Probability (Isotropic): ", PROB_VOL_ISO * 100.D0, "%"
 WRITE( *, "(G0,G0.5,G0)" ) "Volume Change Probability (Anisotropic): ", PROB_VOL_ANISO * 100.D0, "%"
 WRITE( *, * ) " "
+WRITE( *, "(G0,G0.5)" ) "Maximum Box Distortion: ", BOX_DIST
+WRITE( *, "(G0,G0.5)" ) "Maximum Box Length Distortion: ", MAX_LENGTH_RATIO
+WRITE( *, "(G0,G0.5,G0)" ) "Maximum Box Angle Distortion: ", MAX_ANGLE * 180.D0 / PI, "°"
+IF( LRED_SELEC(1) ) THEN
+  WRITE( *, "(G0)" ) "Lattice Reduction Algorithm: Gottwald"
+ELSE IF( LRED_SELEC(2) ) THEN
+  WRITE( *, "(G0)" ) "Lattice Reduction Algorithm: Lenstra-Lenstra-Lovász"
+END IF
+WRITE( *, * ) " "
 IF( TRAJ_CHECK ) THEN
   WRITE( *, "(G0)" ) "Trajectory Files: [YES]"
 ELSE IF( .NOT. TRAJ_CHECK ) THEN
   WRITE( *, "(G0)" ) "Trajectory Files: [NO]"
 END IF
 WRITE( *, * ) " "
+IF( FSEED ) THEN
+  WRITE( *, "(G0)" ) "Seed Type: [FIXED]"
+ELSE IF( .NOT. FSEED ) THEN
+  WRITE( *, "(G0)" ) "Seed Type: [RANDOM]"
+END IF
+
+WRITE( *, * ) " "
+
+RETURN
+
+END SUBROUTINE COMMON_VAR
+
+SUBROUTINE POTENTIAL_VAR(  )
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: C_LAMB ! Counter
+
+! *********************************************************************************************** !
+! Potential variables                                                                             !
+! *********************************************************************************************** !
+OPEN( UNIT= 10, FILE= "ini_potential.ini" )
+
+! Square-well potential
+IF( POTENTIAL_SELEC(2) ) THEN
+  ! Number of attractive range points
+  READ( 10, * ) GET, N_LAMBDA
+  ALLOCATE( L_RANGE(N_LAMBDA), LFEXIST(N_LAMBDA) )
+  ! Attractive range (λ)
+  READ( 10, * ) GET, L_RANGE
+  ! Reduced Temperature
+  READ( 10, * ) GET, RED_TEMP
+  ! Minimum number of blocks (see Allen and Tildesley, 2nd Edition, page 282)
+  READ( 10, * ) GET, MIN_BLOCKS
+  ! Maximum number of blocks (see Allen and Tildesley, 2nd Edition, page 282)
+  READ( 10, * ) GET, MAX_BLOCKS
+END IF
+
+CLOSE( 10 )
+
+! Summary
+WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
+WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"POTENTIAL DETAILS"//REPEAT( " ", 19 )//CH_VS
+WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
+IF( POTENTIAL_SELEC(1) ) THEN
+  WRITE( *, "(G0)" ) "Potential Type: [HARDCORE]"
+ELSE IF( POTENTIAL_SELEC(2) ) THEN
+  WRITE( *, "(G0)" ) "Potential Type: [SQUAREWELL]"
+END IF
+WRITE( *, * ) " "
+IF( .NOT. POTENTIAL_SELEC(1) ) THEN
+  WRITE( *, "(G0,G0)" ) "Number of Attractive Range Points: ", N_LAMBDA
+  WRITE( *, "(G0)", ADVANCE= "NO" ) "Attractive Range Values: ["
+  DO C_LAMB = 1, N_LAMBDA
+    WRITE( *, "(G0.5)", ADVANCE= "NO" ) L_RANGE(C_LAMB)
+    IF( C_LAMB /= N_LAMBDA ) THEN
+      WRITE( *, "(G0)", ADVANCE= "NO" ) ", "
+    ELSE
+      WRITE( *, "(G0)", ADVANCE= "YES" ) "]"
+    END IF
+  END DO
+  WRITE( *, * ) " "
+  WRITE( *, "(G0,G0.5)" ) "Reduced Temperature: ", RED_TEMP
+  WRITE( *, * ) " "
+  IF( POTENTIAL_CHECK ) THEN
+    WRITE( *, "(G0)" ) "Potential Files: Production-Only"
+  ELSE IF( .NOT. POTENTIAL_CHECK ) THEN
+    WRITE( *, "(G0)" ) "Potential Files: Equilibration and Production"
+  END IF
+  WRITE( *, * ) " "
+  IF( COEF_CHECK ) THEN
+    WRITE( *, "(G0)" ) "Perturbation Coefficients: [YES]"
+    WRITE( *, "(2G0)" ) "Minimum Number of Blocks (Block Averaging): ", MIN_BLOCKS
+    WRITE( *, "(2G0)" ) "Maximum Number of Blocks (Block Averaging): ", MAX_BLOCKS
+  ELSE IF( .NOT. COEF_CHECK ) THEN
+    WRITE( *, "(G0)" ) "Perturbation Coefficients: [NO]"
+  END IF
+  WRITE( *, * ) " "
+END IF
 
 ! Summary
 WRITE( *, "(G0)" ) "RESUME? [Y/N]"
@@ -539,6 +725,6 @@ WRITE( *, * ) " "
 
 RETURN
 
-END SUBROUTINE COMMON_VAR
+END SUBROUTINE POTENTIAL_VAR
 
 END MODULE INITVAR

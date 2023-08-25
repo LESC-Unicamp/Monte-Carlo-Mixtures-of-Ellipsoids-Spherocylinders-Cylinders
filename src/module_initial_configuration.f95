@@ -16,7 +16,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 15th, 2023                                       !
+!                                        August 11th, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                 M. P. Allen, D. J. Tildesley                                   !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -492,16 +492,19 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: I, J, K   ! Counters
-INTEGER( KIND= INT64 ) :: C, CI, CJ ! Component index
-INTEGER( KIND= INT64 ) :: ATTEMPTS  ! Counter
-INTEGER( KIND= INT64 ) :: CYCLES    ! Counter of cycles
-INTEGER( KIND= INT64 ) :: NACCT     ! Move acceptance counter: Translation
-INTEGER( KIND= INT64 ) :: NACCR     ! Move acceptance counter: Rotation
-INTEGER( KIND= INT64 ) :: NACCV     ! Move acceptance counter: Volume
-INTEGER( KIND= INT64 ) :: MOVT      ! Move counter (Translation)
-INTEGER( KIND= INT64 ) :: MOVR      ! Move counter (Rotation)
-INTEGER( KIND= INT64 ) :: MOVV      ! Move counter (Volume)
+INTEGER( KIND= INT64 ) :: I, J, K, L ! Counters
+INTEGER( KIND= INT64 ) :: C, CI, CJ  ! Component index
+INTEGER( KIND= INT64 ) :: ATTEMPTS   ! Counter
+INTEGER( KIND= INT64 ) :: CYCLES     ! Counter of cycles
+INTEGER( KIND= INT64 ) :: NACCT      ! Move acceptance counter: Translation
+INTEGER( KIND= INT64 ) :: NACCR      ! Move acceptance counter: Rotation
+INTEGER( KIND= INT64 ) :: NACCVI     ! Move acceptance counter: Isotropic volume change
+INTEGER( KIND= INT64 ) :: NACCVA     ! Move acceptance counter: Anistropic volume change
+INTEGER( KIND= INT64 ) :: MOVT       ! Move counter (Translation)
+INTEGER( KIND= INT64 ) :: MOVR       ! Move counter (Rotation)
+INTEGER( KIND= INT64 ) :: MOVVI      ! Move counter (Isotropic volume change)
+INTEGER( KIND= INT64 ) :: MOVVA      ! Move counter (Anisotropic volume change)
+INTEGER( KIND= INT64 ) :: COMPONENT  ! Box matrix component
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -517,12 +520,26 @@ REAL( KIND= REAL64 )                          :: SCALE_FACTOR     ! Scale factor
 REAL( KIND= REAL64 )                          :: HNM              ! Enthalpy criterion (reduced)
 REAL( KIND= REAL64 )                          :: ETA_NPT          ! Packing fraction (NPT Simulation)
 REAL( KIND= REAL64 )                          :: RATIO            ! Acceptance ratio (Simulation)
+REAL( KIND= REAL64 )                          :: DISTORTION       ! Box distortion
+REAL( KIND= REAL64 )                          :: BOXVROT          ! Volume of simulation box (after undoing box rotation)
+REAL( KIND= REAL64 )                          :: THETA            ! Angle between box vector and coordination system
+REAL( KIND= REAL64 )                          :: RAXISMAG         ! Magnitude of rotation axis
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: PROJY_XY         ! Projection of the y-vector of the box onto the ZY-plane and the unit vector of the y-axis
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: RAXIS            ! Rotation axis
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: AUXV             ! Auxiliary vector
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: V1, V2, V3       ! Box vectors
+REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOXLROT, BOXIROT ! Length of simulation box (after undoing box rotation)
+REAL( KIND= REAL64 ), DIMENSION( 0:3 )        :: QROT             ! Rotation quaternion
+REAL( KIND= REAL64 ), DIMENSION( 0:3 )        :: QAUX             ! Auxiliary quaternion
 REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOX_LENGTH_NVT   ! Box length (NVT Simulation)
 REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOX_LENGTH_NVT_I ! Inverse of box length (NVT Simulation)
 REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOXLMC           ! Box length (NPT Simulation)
 REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOXLMC_I         ! Inverse of box length (NPT Simulation)
 REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOXLM, BOXLN     ! Box length (before/after a trial move)
 REAL( KIND= REAL64 ), DIMENSION( 9 )          :: BOXLM_I, BOXLN_I ! Inverse of box length (before/after a trial move)
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: COSANGLE_VEC     ! Cossine of angle between box vectors
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: LBOX             ! Length of box edges
+REAL( KIND= REAL64 ), DIMENSION( 3 )          :: LBOXR            ! Length ratio of box edges
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: S12              ! Position (unit box)
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: DLAMBDAEI        ! Auxiliar vector (cylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: DMUEJ            ! Auxiliar vector (cylinder overlap algorithm)
@@ -534,11 +551,16 @@ REAL( KIND= REAL64 ), DIMENSION( 3 )          :: RI, RJ           ! Position of 
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: EI, EJ           ! Orientation of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )        :: QI, QJ           ! Quaternions of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( COMPONENTS ) :: CUTOFF           ! Cutoff diameter
+REAL( KIND= REAL64 ), DIMENSION( 2, 3 )       :: BOXVECY          ! New y-vector of the box after a clockwise/counterclockwise rotation about the normal vector of the ZY-plane
+REAL( KIND= REAL64 ), DIMENSION( 2, 0:3 )     :: QROTPROJ         ! Rotation quaternion of projection of the y-vector of the box about the normal vector of the ZY-plane
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (Allocatable)                                                                    !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: RMCV ! Old position of particles
+REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: RMCV  ! Old position of particles
+REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: RPROT ! Position of the center of mass (after undoing box rotation)
+REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: QPROT ! Quaternion of the center of mass (after undoing box rotation)
+REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: EPROT ! Orientation of the center of mass (after undoing box rotation)
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -549,12 +571,18 @@ LOGICAL :: OVERLAP_VALIDATION ! Detects overlap between two particles: TRUE = ov
 LOGICAL :: PARALLEL           ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
 LOGICAL :: DISABLE_TRANS_ADJ  ! Disable translational adjustments
 LOGICAL :: DISABLE_ROT_ADJ    ! Disable rotational adjustments
+LOGICAL :: LATTICER           ! Detects if a lattice reduction is necessary : TRUE = lattice reduction; FALSE = box shape preserved
 LOGICAL :: MOV_ROT            ! Rotation move selection : TRUE = movement selected; FALSE = movement not selected
 LOGICAL :: MOV_TRANS          ! Translation movement selection : TRUE = movement selected; FALSE = movement not selected
-LOGICAL :: MOV_VOL            ! Volume change selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: MOV_VOL_I          ! Isotropic volume change selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: MOV_VOL_A          ! Anisotropic volume change selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: IGNORE             ! Detects if a box deformation is valid or not : TRUE = ignore box deformation; FALSE = consider box deformation
 
 ! Allocation
 ALLOCATE( RMCV(3,N_PARTICLES) )
+ALLOCATE( QPROT(0:3,N_PARTICLES) )
+ALLOCATE( RPROT(3,N_PARTICLES) )
+ALLOCATE( EPROT(3,N_PARTICLES) )
 
 ! Diameter of circumscribing sphere
 IF( GEOM_SELEC(1) ) THEN
@@ -1117,16 +1145,20 @@ DISABLE_TRANS_ADJ = .FALSE.             ! Translational adjustments             
 DISABLE_ROT_ADJ   = .FALSE.             ! Rotational adjustments                (initial value)
 MOV_TRANS         = .FALSE.             ! Translational move selector           (initial value)
 MOV_ROT           = .FALSE.             ! Rotational move selector              (initial value)
-MOV_VOL           = .FALSE.             ! Volume move selector                  (initial value)
+MOV_VOL_I         = .FALSE.             ! Volume move selector                  (initial value)
+MOV_VOL_A         = .FALSE.             ! Volume move selector                  (initial value)
 DRMAX             = DRMAX_INIT          ! Maximum translational displacement    (initial value)
 ANGMAX            = ANGMAX_INIT         ! Maximum rotational displacement       (initial value)
-DVMAX             = DVMAX_INIT          ! Maximum volumetric displacement       (initial value)
+DVMAXISO          = DVMAXISO_INIT       ! Maximum isovolumetric displacement    (initial value)
+DVMAXANI          = DVMAXANISO_INIT     ! Maximum anisovolumetric displacement  (initial value)
 NACCT             = 0                   ! Translational move acceptance counter (initial value)
 NACCR             = 0                   ! Rotational move acceptance counter    (initial value)
-NACCV             = 0                   ! Volumetric move acceptance counter    (initial value)
+NACCVI            = 0                   ! Volumetric move acceptance counter    (initial value)
+NACCVA            = 0                   ! Volumetric move acceptance counter    (initial value)
 MOVT              = 0                   ! Translational move counter            (initial value)
 MOVR              = 0                   ! Rotational move counter               (initial value)
-MOVV              = 0                   ! Volume change counter                 (initial value)
+MOVVI             = 0                   ! Volume change counter                 (initial value)
+MOVVA             = 0                   ! Volume change counter                 (initial value)
 QMC(:,:)          = Q(:,:)              ! Quaternion algebra                    (initial value)
 RMC(:,:)          = R(:,:)              ! Position of particles                 (initial value)
 EMC(:,:)          = E(:,:)              ! Orientation of particles              (initial value)
@@ -1144,11 +1176,13 @@ NPT_SIMULATION: DO
   IF( RANDOM_N < PROB_MOV_INIT ) THEN
     MOV_TRANS = .TRUE.  ! Enable translation
     MOV_ROT   = .TRUE.  ! Enable rotation
-    MOV_VOL   = .FALSE. ! Disable volume change
+    MOV_VOL_I = .FALSE. ! Disable volume change
+    MOV_VOL_A = .FALSE. ! Disable volume change
   ELSE IF( RANDOM_N >= PROB_MOV_INIT ) THEN
     MOV_TRANS = .FALSE. ! Disable translation
     MOV_ROT   = .FALSE. ! Disable rotation
-    MOV_VOL   = .TRUE.  ! Enable volume change
+    MOV_VOL_I = .TRUE.  ! Enable volume change
+    MOV_VOL_A = .TRUE.  ! Enable volume change
   END IF
 
   ! Movement (translation or rotation)
@@ -1273,54 +1307,232 @@ NPT_SIMULATION: DO
 
     END DO
 
-  ELSE IF( MOV_VOL ) THEN
+  ELSE IF( MOV_VOL_I .OR. MOV_VOL_A ) THEN
 
     ! Assignment of previous configuration (microstate m)   
     BOXLM(:)   = BOXLMC(:)   ! Box length
     BOXLM_I(:) = BOXLMC_I(:) ! Box length (inverse)
     BOXVM      = BOXVMC_RND  ! Box volume
 
-    ! Movement counter
-    MOVV = MOVV + 1
-
-    ! Random scale factor
-    CALL RANF(  )
-    SCALE_FACTOR = 1.0D0 + DVMAX * (RANDOM_N - 0.5D0)
-    ! Proportional box length (cubic)
-    BOXLN(:) = BOXLM(:) * SCALE_FACTOR
-    ! New box volume (cubic)
-    CALL INVERSE_COF( BOXLN, BOXLN_I, BOXVN )
-
-    ! Enthalpy (weighing function)
-    HNM = ( PRESS_RND * ( BOXVN - BOXVM ) ) - ( DBLE( N_PARTICLES ) * DLOG( BOXVN / BOXVM ) )
-
-    ! Random number
+    ! Expansion/compression type
     CALL RANF(  )
 
-    ! Enthalpy Criterion
-    IF( DEXP( - HNM ) >= RANDOM_N ) THEN
+    ! Isotropic volume change
+    IF( RANDOM_N < PROB_ISO_INIT ) THEN
+      ! Random scaling factor
+      CALL RANF(  )
+      SCALE_FACTOR = 1.D0 + DVMAXISO * (RANDOM_N - 0.5D0)
+      ! Proportional box length
+      BOXLN(:) = BOXLM(:) * SCALE_FACTOR
+      CALL INVERSE_COF( BOXLN, BOXLN_I, BOXVN )
+      ! Movement counter
+      MOVVI = MOVVI + 1
+      ! Movement type
+      MOV_VOL_I = .TRUE.  ! Enable isotropic volume change
+      MOV_VOL_A = .FALSE. ! Disable anisotropic volume change
+    ! Anisotropic volume change
+    ELSE IF( RANDOM_N >= PROB_ISO_INIT ) THEN
+      ! Random box component
+      CALL RANF(  )
+      COMPONENT = INT( RANDOM_N * 6.D0 ) + 1
+      IF( COMPONENT == 1 ) THEN
+        COMPONENT = 1 ! x vector
+      ELSE IF( COMPONENT == 2 ) THEN
+        COMPONENT = 4 ! y vector
+      ELSE IF( COMPONENT == 3 ) THEN
+        COMPONENT = 5 ! y vector
+      ELSE IF( COMPONENT == 4 ) THEN
+        COMPONENT = 7 ! z vector
+      ELSE IF( COMPONENT == 5 ) THEN
+        COMPONENT = 8 ! z vector
+      ELSE IF( COMPONENT == 6 ) THEN
+        COMPONENT = 9 ! z vector
+      END IF
+      BOXLN(:) = BOXLM(:)
+      ! Random factor
+      CALL RANF(  )
+      BOXLN(COMPONENT) = BOXLM(COMPONENT) + DVMAXANI * (RANDOM_N - 0.5D0)
+      ! Calculate the new reciprocal box basis vectors and the volume of the system
+      CALL INVERSE_COF( BOXLN, BOXLN_I, BOXVN )
+      ! Movement counter
+      MOVVA = MOVVA + 1
+      ! Movement type
+      MOV_VOL_I = .FALSE. ! Disable isotropic volume change
+      MOV_VOL_A = .TRUE.  ! Enable anisotropic volume change
+    END IF
 
-      ! System configuration
-      RMCV(:,:) = RMC(:,:) ! Old configuration
+    ! Reset condition of anisotropic volume change
+    IGNORE = .FALSE.
 
-      ! Rescale positions of particles accordingly
-      DO K = 1, N_PARTICLES
-        RMC(:,K) = RMC(:,K) * SCALE_FACTOR
+    ! Condition of anisotropic volume change (box distortion)
+    IF( MOV_VOL_A ) THEN
+      ! Box length
+      LBOX(1) = DSQRT( DOT_PRODUCT( BOXLN(1:3), BOXLN(1:3) ) )
+      LBOX(2) = DSQRT( DOT_PRODUCT( BOXLN(4:6), BOXLN(4:6) ) )
+      LBOX(3) = DSQRT( DOT_PRODUCT( BOXLN(7:9), BOXLN(7:9) ) )
+      ! Length ratio
+      LBOXR(1) = LBOX(1) / LBOX(2)
+      LBOXR(2) = LBOX(1) / LBOX(3)
+      LBOXR(3) = LBOX(2) / LBOX(3)
+      ! Angle between box vectors
+      COSANGLE_VEC(1) = DOT_PRODUCT( BOXLN(1:3), BOXLN(4:6) ) / ( LBOX(1) * LBOX(2) )
+      COSANGLE_VEC(2) = DOT_PRODUCT( BOXLN(1:3), BOXLN(7:9) ) / ( LBOX(1) * LBOX(3) )
+      COSANGLE_VEC(3) = DOT_PRODUCT( BOXLN(4:6), BOXLN(7:9) ) / ( LBOX(2) * LBOX(3) )
+      ! Avoid big distortions of the simulation box
+      DO L = 1, 3
+        ! Angle distortion
+        IF( COSANGLE_VEC(L) < DCOS( (PI / 2.D0) + MAX_ANGLE ) .OR. &
+        &   COSANGLE_VEC(L) > DCOS( (PI / 2.D0) - MAX_ANGLE ) ) THEN
+          BOXVMC_RND  = BOXVM
+          BOXLMC(:)   = BOXLM(:)
+          BOXLMC_I(:) = BOXLM_I(:)
+          IGNORE = .TRUE.
+          EXIT
+        END IF
+        ! Length distortion
+        IF( LBOXR(L) > MAX_LENGTH_RATIO .OR. LBOXR(L) < 1.D0 / MAX_LENGTH_RATIO ) THEN
+          BOXVMC_RND  = BOXVM
+          BOXLMC(:)   = BOXLM(:)
+          BOXLMC_I(:) = BOXLM_I(:)
+          IGNORE = .TRUE.
+          EXIT
+        END IF
       END DO
+    END IF
 
-      ! Overlap check after expansion/compression of the simulation box
-      LOOP_OVERLAP_NPT: DO
+    ! Box not too distorted
+    IF( .NOT. IGNORE ) THEN
 
-        ! Initialization
-        OVERLAP = .FALSE.
+      ! Enthalpy (weighing function)
+      HNM = ( PRESS_RND * ( BOXVN - BOXVM ) ) - ( DBLE( N_PARTICLES ) * DLOG( BOXVN / BOXVM ) )
 
-        ! Anisomorphic molecules (unlike components)
-        DO CI = 1, COMPONENTS - 1
-          DO CJ = CI + 1, COMPONENTS
-            ! First loop represents all particles with indexes i of component Ci
-            DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
-              ! Second loop represents all particles with indexes j of component Cj
-              DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
+      ! Random number
+      CALL RANF(  )
+
+      ! Enthalpy Criterion
+      IF( DEXP( - HNM ) >= RANDOM_N ) THEN
+
+        ! System configuration
+        RMCV(:,:) = RMC(:,:) ! Old configuration
+
+        ! Isotropic volume change
+        IF( MOV_VOL_I ) THEN
+          ! Rescale positions of particles accordingly
+          DO K = 1, N_PARTICLES
+            RMC(:,K) = RMC(:,K) * SCALE_FACTOR
+          END DO
+        ! Anisotropic volume change
+        ELSE IF( MOV_VOL_A ) THEN
+          ! Rescale positions of particles accordingly
+          DO K = 1, N_PARTICLES
+            ! Scaled coordinates using old dimensions
+            CALL MULTI_MATRIX( BOXLM_I, RMC(:,K), S12 )
+            ! New real coordinates using new dimensions
+            CALL MULTI_MATRIX( BOXLN, S12, RMC(:,K) )
+          END DO
+        END IF
+
+        ! Overlap check after expansion/compression of the simulation box
+        LOOP_OVERLAP_NPT: DO
+
+          ! Initialization
+          OVERLAP = .FALSE.
+
+          ! Anisomorphic molecules (unlike components)
+          DO CI = 1, COMPONENTS - 1
+            DO CJ = CI + 1, COMPONENTS
+              ! First loop represents all particles with indexes i of component Ci
+              DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
+                ! Second loop represents all particles with indexes j of component Cj
+                DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
+                  ! Position of particle i
+                  RI(1)  = RMC(1,I)
+                  RI(2)  = RMC(2,I)
+                  RI(3)  = RMC(3,I)
+                  ! Position of particle j
+                  RJ(1)  = RMC(1,J)
+                  RJ(2)  = RMC(2,J)
+                  RJ(3)  = RMC(3,J)
+                  ! Orientation of particle i
+                  EI(1)  = EMC(1,I)
+                  EI(2)  = EMC(2,I)
+                  EI(3)  = EMC(3,I)
+                  ! Orientation of particle j
+                  EJ(1)  = EMC(1,J)
+                  EJ(2)  = EMC(2,J)
+                  EJ(3)  = EMC(3,J)
+                  ! Quaternion of particle i
+                  QI(0)  = QMC(0,I)
+                  QI(1)  = QMC(1,I)
+                  QI(2)  = QMC(2,I)
+                  QI(3)  = QMC(3,I)
+                  ! Quaternion of particle j
+                  QJ(0)  = QMC(0,J)
+                  QJ(1)  = QMC(1,J)
+                  QJ(2)  = QMC(2,J)
+                  QJ(3)  = QMC(3,J)
+                  ! Vector distance between particles i and j
+                  RIJ(1) = RJ(1) - RI(1)
+                  RIJ(2) = RJ(2) - RI(2)
+                  RIJ(3) = RJ(3) - RI(3)
+                  ! Minimum Image Convention
+                  CALL MULTI_MATRIX( BOXLN_I, RIJ, S12 )
+                  S12 = S12 - ANINT( S12 )
+                  CALL MULTI_MATRIX( BOXLN, S12, RIJ )
+                  ! Magnitude of the vector distance (squared)
+                  RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+                  ! Cutoff distance (squared)
+                  CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
+                  CUTOFF_D = CUTOFF_D * CUTOFF_D
+                  ! Preliminary test (circumscribing spheres)
+                  IF( RIJSQ <= CUTOFF_D ) THEN
+                    ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+                    IF( GEOM_SELEC(1) ) THEN
+                      CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
+                      ! Overlap criterion
+                      IF( OVERLAP ) THEN
+                        ! Overlap detected
+                        EXIT LOOP_OVERLAP_NPT
+                      END IF
+                    ! Overlap test for spherocylinders (Vega-Lago Method)
+                    ELSE IF( GEOM_SELEC(2) ) THEN
+                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP )
+                      ! Overlap criterion
+                      IF( OVERLAP ) THEN
+                        ! Overlap detected
+                        EXIT LOOP_OVERLAP_NPT
+                      END IF
+                    ! Overlap test for cylinders (Lopes et al. Method)
+                    ELSE IF( GEOM_SELEC(3) ) THEN
+                      ! Preliminary test (circumscribing spherocylinders)
+                      OVERLAP_PRELIMINAR = .FALSE.
+                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                      ! Overlap criterion
+                      IF( OVERLAP_PRELIMINAR ) THEN
+                        RJ(1) = RI(1) + RIJ(1)
+                        RJ(2) = RI(2) + RIJ(2)
+                        RJ(3) = RI(3) + RIJ(3)
+                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP )
+                        ! Overlap criterion
+                        IF( OVERLAP ) THEN
+                          ! Overlap detected
+                          EXIT LOOP_OVERLAP_NPT
+                        END IF
+                      END IF
+                    END IF
+                  END IF
+                END DO
+              END DO
+            END DO
+          END DO
+
+          ! Isomorphic molecules (like components)
+          DO CI = 1, COMPONENTS
+            CJ = CI
+            ! First loop represents a particle with an index i of component Ci
+            DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
+              ! Second loop represents all other particles with indexes j > i of component Cj = Ci
+              DO J = I + 1, SUM( N_COMPONENT(0:CI) )
                 ! Position of particle i
                 RI(1)  = RMC(1,I)
                 RI(2)  = RMC(2,I)
@@ -1400,127 +1612,221 @@ NPT_SIMULATION: DO
               END DO
             END DO
           END DO
-        END DO
 
-        ! Isomorphic molecules (like components)
-        DO CI = 1, COMPONENTS
-          CJ = CI
-          ! First loop represents a particle with an index i of component Ci
-          DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
-            ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-            DO J = I + 1, SUM( N_COMPONENT(0:CI) )
-              ! Position of particle i
-              RI(1)  = RMC(1,I)
-              RI(2)  = RMC(2,I)
-              RI(3)  = RMC(3,I)
-              ! Position of particle j
-              RJ(1)  = RMC(1,J)
-              RJ(2)  = RMC(2,J)
-              RJ(3)  = RMC(3,J)
-              ! Orientation of particle i
-              EI(1)  = EMC(1,I)
-              EI(2)  = EMC(2,I)
-              EI(3)  = EMC(3,I)
-              ! Orientation of particle j
-              EJ(1)  = EMC(1,J)
-              EJ(2)  = EMC(2,J)
-              EJ(3)  = EMC(3,J)
-              ! Quaternion of particle i
-              QI(0)  = QMC(0,I)
-              QI(1)  = QMC(1,I)
-              QI(2)  = QMC(2,I)
-              QI(3)  = QMC(3,I)
-              ! Quaternion of particle j
-              QJ(0)  = QMC(0,J)
-              QJ(1)  = QMC(1,J)
-              QJ(2)  = QMC(2,J)
-              QJ(3)  = QMC(3,J)
-              ! Vector distance between particles i and j
-              RIJ(1) = RJ(1) - RI(1)
-              RIJ(2) = RJ(2) - RI(2)
-              RIJ(3) = RJ(3) - RI(3)
+          ! No overlaps
+          OVERLAP = .FALSE.
+          EXIT LOOP_OVERLAP_NPT
+
+        END DO LOOP_OVERLAP_NPT
+
+        ! Acceptance Criterion
+        IF( .NOT. OVERLAP ) THEN
+          ! Assigns the simulation box properties of a trial volume change to the system configuration.
+          BOXVMC_RND  = BOXVN      ! Update volume
+          BOXLMC(:)   = BOXLN(:)   ! Update length
+          BOXLMC_I(:) = BOXLN_I(:) ! Update length (inverse)
+          ! Displacement counter update
+          IF( MOV_VOL_I ) THEN
+            NACCVI = NACCVI + 1 ! Isotropic move counter
+          ELSE IF( MOV_VOL_A ) THEN
+            NACCVA = NACCVA + 1 ! Anisotropic move counter
+          END IF
+          ! Update packing fraction
+          ETA_NPT = TOTAL_VP / BOXVN
+          ! Re-initialization
+          IGNORE = .FALSE.
+          ! Lattice reduction
+          LATTICER = .FALSE.
+          CALL LATTICE_REDUCTION( BOXLMC, DISTORTION, LATTICER )
+          IF( LATTICER ) THEN
+            ! Calculate the new reciprocal box basis vectors
+            CALL INVERSE_COF( BOXLMC, BOXLMC_I, BOXVMC_RND )
+            DO K = 1, N_PARTICLES
               ! Minimum Image Convention
-              CALL MULTI_MATRIX( BOXLN_I, RIJ, S12 )
+              CALL MULTI_MATRIX( BOXLMC_I, RMC(:,K), S12 )
               S12 = S12 - ANINT( S12 )
-              CALL MULTI_MATRIX( BOXLN, S12, RIJ )
-              ! Magnitude of the vector distance (squared)
-              RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-              ! Cutoff distance (squared)
-              CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-              CUTOFF_D = CUTOFF_D * CUTOFF_D
-              ! Preliminary test (circumscribing spheres)
-              IF( RIJSQ <= CUTOFF_D ) THEN
-                ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
-                IF( GEOM_SELEC(1) ) THEN
-                  CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
-                  ! Overlap criterion
-                  IF( OVERLAP ) THEN
-                    ! Overlap detected
-                    EXIT LOOP_OVERLAP_NPT
-                  END IF
-                ! Overlap test for spherocylinders (Vega-Lago Method)
-                ELSE IF( GEOM_SELEC(2) ) THEN
-                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP )
-                  ! Overlap criterion
-                  IF( OVERLAP ) THEN
-                    ! Overlap detected
-                    EXIT LOOP_OVERLAP_NPT
-                  END IF
-                ! Overlap test for cylinders (Lopes et al. Method)
-                ELSE IF( GEOM_SELEC(3) ) THEN
-                  ! Preliminary test (circumscribing spherocylinders)
-                  OVERLAP_PRELIMINAR = .FALSE.
-                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                  ! Overlap criterion
-                  IF( OVERLAP_PRELIMINAR ) THEN
-                    RJ(1) = RI(1) + RIJ(1)
-                    RJ(2) = RI(2) + RIJ(2)
-                    RJ(3) = RI(3) + RIJ(3)
-                    CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP )
-                    ! Overlap criterion
-                    IF( OVERLAP ) THEN
-                      ! Overlap detected
-                      EXIT LOOP_OVERLAP_NPT
-                    END IF
-                  END IF
+              CALL MULTI_MATRIX( BOXLMC, S12, RMC(:,K) )
+            END DO
+            ! Undo box rotation
+            IF( DABS( BOXLMC(2) - 0.D0 ) >= EPSILON( 1.D0 ) .OR. DABS( BOXLMC(3) - 0.D0 ) >= EPSILON( 1.D0 ) .OR. &
+            &   DABS( BOXLMC(6) - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
+              ! Initialization
+              BOXLM   = BOXLMC
+              BOXLM_I = BOXLMC_I
+              ! Box vectors
+              V1 = BOXLMC(1:3)
+              V2 = BOXLMC(4:6)
+              V3 = BOXLMC(7:9)
+              ! Angle between x-vector and x-axis
+              THETA = DACOS( DOT_PRODUCT( V1, [1.D0,0.D0,0.D0] ) / DSQRT( DOT_PRODUCT( V1, V1 ) ) )
+              ! Cross product between x-vector and x-axis (rotation axis)
+              RAXIS(1) = 0.D0
+              RAXIS(2) = V1(3)
+              RAXIS(3) = - V1(2)
+              ! Magnitude of rotation axis
+              RAXISMAG = DSQRT( DOT_PRODUCT( RAXIS, RAXIS ) )
+              ! Avoid null vectors
+              IF( DABS( RAXISMAG - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+                RAXIS(:) = 0.D0
+              ELSE
+                RAXIS(:) = RAXIS(:) / RAXISMAG
+              END IF
+              ! Rotation quaternion
+              QROT(0) = DCOS( THETA * 0.5D0 )            ! Real part
+              QROT(1) = DSIN( THETA * 0.5D0 ) * RAXIS(1) ! Imaginary part (Vector)
+              QROT(2) = DSIN( THETA * 0.5D0 ) * RAXIS(2) ! Imaginary part (Vector)
+              QROT(3) = DSIN( THETA * 0.5D0 ) * RAXIS(3) ! Imaginary part (Vector)
+              ! Make box x-vector parallel to x-axis of coordination system
+              IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
+                ! Auxiliary vector
+                CALL ACTIVE_TRANSFORMATION( V1 / ( DSQRT( DOT_PRODUCT( V1, V1 ) ) ), QROT, AUXV )
+                ! New x-vector of the simulation box
+                BOXLROT(1:3) = DSQRT( DOT_PRODUCT( BOXLMC(1:3), BOXLMC(1:3) ) ) * AUXV
+                BOXLROT(2:3) = 0.D0
+                ! Auxiliary vector
+                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROT, AUXV )
+                ! New y-vector of the simulation box
+                BOXLROT(4:6) = DSQRT( DOT_PRODUCT( BOXLMC(4:6), BOXLMC(4:6) ) ) * AUXV
+                ! Auxiliary vector
+                CALL ACTIVE_TRANSFORMATION( V3 / ( DSQRT( DOT_PRODUCT( V3, V3 ) ) ), QROT, AUXV )
+                ! New z-vector of the simulation box
+                BOXLROT(7:9) = DSQRT( DOT_PRODUCT( BOXLMC(7:9), BOXLMC(7:9) ) ) * AUXV
+                ! Calculate the new reciprocal box basis vectors
+                CALL INVERSE_COF( BOXLROT, BOXIROT, BOXVROT )
+                ! Rescale positions and orientations of particles accordingly
+                DO K = 1, N_PARTICLES
+                  ! Scaled coordinates using old dimensions
+                  CALL MULTI_MATRIX( BOXLM_I, RMC(:,K), S12 )
+                  ! New real coordinates using new dimensions
+                  CALL MULTI_MATRIX( BOXLROT, S12, RPROT(:,K) )
+                  ! Reorient particles
+                  QAUX(:) = QMC(:,K)
+                  CALL MULTIPLY_QUATERNIONS( QROT, QAUX, QPROT(:,K) )
+                  ! Active transformation (rotation)
+                  CALL ACTIVE_TRANSFORMATION( AXISZ, QPROT(:,K), EPROT(:,K) )
+                END DO
+              ! Box x-vector already parallel to x-axis of coordination system
+              ELSE
+                ! Retrive old box properties
+                BOXLROT(:) = BOXLMC(:)
+                BOXIROT(:) = BOXLMC_I(:)
+                BOXVROT    = BOXVMC_RND
+                ! Retrive old molecular properties
+                RPROT(:,:) = RMC(:,:)
+                QPROT(:,:) = QMC(:,:)
+                EPROT(:,:) = EMC(:,:)
+              END IF
+              ! Initialization
+              BOXLM   = BOXLROT
+              BOXLM_I = BOXIROT
+              ! Box vectors
+              V1 = BOXLROT(1:3)
+              V2 = BOXLROT(4:6)
+              V3 = BOXLROT(7:9)
+              ! Axis of rotation
+              RAXIS = V1
+              ! Magnitude of rotation axis
+              RAXISMAG = DSQRT( DOT_PRODUCT( RAXIS, RAXIS ) )
+              ! Avoid null vectors
+              IF( DABS( RAXISMAG - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+                RAXIS(:) = 0.D0
+              ELSE
+                RAXIS(:) = RAXIS(:) / RAXISMAG
+              END IF
+              ! Projection of the y-vector of the box onto the ZY-plane
+              PROJY_XY = V2 - ( DOT_PRODUCT( V2, RAXIS ) ) * RAXIS
+              ! Versor of the projection of the y-vector of the box onto the ZY-plane
+              PROJY_XY = PROJY_XY / DSQRT( DOT_PRODUCT( PROJY_XY, PROJY_XY ) )
+              ! Angle between the projection of the y-vector of the box and the y-axis of the coordination system
+              THETA = DACOS( DOT_PRODUCT( PROJY_XY, [0.D0,1.D0,0.D0] ) / DSQRT( DOT_PRODUCT( PROJY_XY, PROJY_XY ) ) )
+              ! Rotation quaternion (clockwise rotation)
+              QROTPROJ(1,0) = DCOS( THETA * 0.5D0 )              ! Real part
+              QROTPROJ(1,1) = DSIN( THETA * 0.5D0 ) * RAXIS(1)   ! Imaginary part (Vector)
+              QROTPROJ(1,2) = DSIN( THETA * 0.5D0 ) * RAXIS(2)   ! Imaginary part (Vector)
+              QROTPROJ(1,3) = DSIN( THETA * 0.5D0 ) * RAXIS(3)   ! Imaginary part (Vector)
+              ! Rotation quaternion (counterclockwise rotation)
+              QROTPROJ(2,0) = DCOS( - THETA * 0.5D0 )            ! Real part
+              QROTPROJ(2,1) = DSIN( - THETA * 0.5D0 ) * RAXIS(1) ! Imaginary part (Vector)
+              QROTPROJ(2,2) = DSIN( - THETA * 0.5D0 ) * RAXIS(2) ! Imaginary part (Vector)
+              QROTPROJ(2,3) = DSIN( - THETA * 0.5D0 ) * RAXIS(3) ! Imaginary part (Vector)
+              ! Check the z-coordinate of the y-vector of the box after a clockwise/counterclockwise rotation
+              IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
+                ! Auxiliary vector (clockwise rotation)
+                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROTPROJ(1,:), AUXV )
+                ! New y-vector of the simulation box (clockwise rotation)
+                BOXVECY(1,:) = DSQRT( DOT_PRODUCT( BOXLROT(4:6), BOXLROT(4:6) ) ) * AUXV
+                ! Auxiliary vector (counterclockwise rotation)
+                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROTPROJ(2,:), AUXV )
+                ! New y-vector of the simulation box (counterclockwise rotation)
+                BOXVECY(2,:) = DSQRT( DOT_PRODUCT( BOXLROT(4:6), BOXLROT(4:6) ) ) * AUXV
+                ! Check which z-component of the y-vector is close to 0 (there must be at least one)
+                IF( DABS( BOXVECY(1,3) ) <= DABS( BOXVECY(2,3) ) ) THEN
+                  ! Perform a clockwise rotation
+                  QROT(:) = QROTPROJ(1,:)
+                ELSE
+                  ! Perform a counterclockwise rotation
+                  QROT(:) = QROTPROJ(2,:)
                 END IF
               END IF
-            END DO
-          END DO
-        END DO
+              ! Make box y-vector coplanar with the XY-plane of the coordination system
+              IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
+                ! Auxiliary vector
+                CALL ACTIVE_TRANSFORMATION( V1 / ( DSQRT( DOT_PRODUCT( V1, V1 ) ) ), QROT, AUXV )
+                ! New x-vector of the simulation box
+                BOXLROT(1:3) = DSQRT( DOT_PRODUCT( BOXLROT(1:3), BOXLROT(1:3) ) ) * AUXV
+                BOXLROT(2:3) = 0.D0
+                ! Auxiliary vector
+                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROT, AUXV )
+                ! New y-vector of the simulation box
+                BOXLROT(4:6) = DSQRT( DOT_PRODUCT( BOXLROT(4:6), BOXLROT(4:6) ) ) * AUXV
+                BOXLROT(6)   = 0.D0
+                ! Auxiliary vector
+                CALL ACTIVE_TRANSFORMATION( V3 / ( DSQRT( DOT_PRODUCT( V3, V3 ) ) ), QROT, AUXV )
+                ! New z-vector of the simulation box
+                BOXLROT(7:9) = DSQRT( DOT_PRODUCT( BOXLROT(7:9), BOXLROT(7:9) ) ) * AUXV
+                ! Calculate the new reciprocal box basis vectors
+                CALL INVERSE_COF( BOXLROT, BOXIROT, BOXVROT )
+                ! Rescale positions and orientations of particles accordingly
+                DO K = 1, N_PARTICLES
+                  ! Scaled coordinates using old dimensions
+                  CALL MULTI_MATRIX( BOXLM_I, RPROT(:,K), S12 )
+                  ! New real coordinates using new dimensions
+                  CALL MULTI_MATRIX( BOXLROT, S12, RPROT(:,K) )
+                  ! Reorient particles
+                  QAUX(:) = QPROT(:,K)
+                  CALL MULTIPLY_QUATERNIONS( QROT, QAUX, QPROT(:,K) )
+                  ! Active transformation (rotation)
+                  CALL ACTIVE_TRANSFORMATION( AXISZ, QPROT(:,K), EPROT(:,K) )
+                END DO
+              END IF
+              ! Update box properties
+              BOXLMC(:)   = BOXLROT(:)
+              BOXLMC_I(:) = BOXIROT(:)
+              BOXVMC_RND  = BOXVROT
+              ! Update molecular properties
+              RMC(:,:) = RPROT(:,:)
+              QMC(:,:) = QPROT(:,:)
+              EMC(:,:) = EPROT(:,:)
+            END IF
+          END IF
+        ! Retrieve old properties of the system configuration and the simulation box
+        ELSE IF( OVERLAP ) THEN
+          BOXVMC_RND  = BOXVM      ! Retrieve box volume
+          BOXLMC(:)   = BOXLM(:)   ! Retrieve box length
+          BOXLMC_I(:) = BOXLM_I(:) ! Retrieve box length (inverse)
+          RMC(:,:)    = RMCV(:,:)  ! Retrieve position of particles
+        END IF
 
-        ! No overlaps
-        OVERLAP = .FALSE.
-        EXIT LOOP_OVERLAP_NPT
+      ! Retrieve old properties of the simulation box
+      ELSE
 
-      END DO LOOP_OVERLAP_NPT
-
-      ! Acceptance Criterion
-      IF( .NOT. OVERLAP ) THEN
-        ! Assigns the simulation box properties of a trial volume change to the system configuration.
-        BOXVMC_RND  = BOXVN      ! Update volume
-        BOXLMC(:)   = BOXLN(:)   ! Update length
-        BOXLMC_I(:) = BOXLN_I(:) ! Update length (inverse)
-        ! Displacement counter update
-        NACCV = NACCV + 1 ! Volumetric move counter
-        ! Update packing fraction
-        ETA_NPT = TOTAL_VP / BOXVN
-      ! Retrieve old properties of the system configuration and the simulation box
-      ELSE IF( OVERLAP ) THEN
         BOXVMC_RND  = BOXVM      ! Retrieve box volume
         BOXLMC(:)   = BOXLM(:)   ! Retrieve box length
         BOXLMC_I(:) = BOXLM_I(:) ! Retrieve box length (inverse)
-        RMC(:,:)    = RMCV(:,:)  ! Retrieve position of particles
-      END IF
 
-    ! Retrieve old properties of the simulation box
-    ELSE
+      END IF ! Enthalpy criterion
 
-      BOXVMC_RND  = BOXVM      ! Retrieve box volume
-      BOXLMC(:)   = BOXLM(:)   ! Retrieve box length
-      BOXLMC_I(:) = BOXLM_I(:) ! Retrieve box length (inverse)
-
-    END IF ! Enthalpy criterion
+    END IF ! Box distortion criterion
 
   END IF
 
@@ -1570,24 +1876,42 @@ NPT_SIMULATION: DO
       ANGMAX = ANGMAX - 2.D0 * PI
     END IF
 
-    ! Volumetric adjustment
-    IF( MOVV > 50 ) THEN
+    ! Volumetric adjustment (isotropic)
+    IF( MOVVI >= 25 ) THEN
       ! Acceptance ratio (non-overlapping microstates over sampled microstates)
-      RATIO = DBLE( NACCV ) / DBLE( MOVV )
+      RATIO = DBLE( NACCVI ) / DBLE( MOVVI )
       ! Volumetric adjustment
-      IF( RATIO <= R_ACC_V ) THEN
-        DVMAX = 0.95D0 * DVMAX
+      IF( RATIO <= R_ACC_VI ) THEN
+        DVMAXISO = 0.95D0 * DVMAXISO
       ELSE
-        DVMAX = 1.05D0 * DVMAX
+        DVMAXISO = 1.05D0 * DVMAXISO
       END IF
       ! Reset counter
-      NACCV = 0
-      MOVV  = 0
+      NACCVI = 0
+      MOVVI  = 0
+    END IF
+
+    ! Volumetric adjustment (anisotropic)
+    IF( MOVVA >= 25 ) THEN
+      ! Acceptance ratio (non-overlapping microstates over sampled microstates)
+      RATIO = DBLE( NACCVA ) / DBLE( MOVVA )
+      ! Volumetric adjustment
+      IF( RATIO <= R_ACC_VA ) THEN
+        DVMAXANI = 0.95D0 * DVMAXANI
+      ELSE
+        DVMAXANI = 1.05D0 * DVMAXANI
+      END IF
+      ! Reset counter
+      NACCVA = 0
+      MOVVA  = 0
     END IF
 
     ! Avoid low volume changes
-    IF( DVMAX <= DVMIN_INIT ) THEN
-      DVMAX = DVMAX_INIT
+    IF( DVMAXISO <= DVMIN_INIT ) THEN
+      DVMAXISO = DVMIN_INIT
+    END IF
+    IF( DVMAXANI <= DVMIN_INIT ) THEN
+      DVMAXANI = DVMIN_INIT
     END IF
 
   END IF
@@ -1649,8 +1973,15 @@ MOVT              = 0                 ! Translational move counter            (i
 MOVR              = 0                 ! Rotational move counter               (initial value)
 ATTEMPTS          = 0                 ! Number of attempts                    (initial value)
 
-! Scale factor (cubic box)
-SCALE_FACTOR = BOX_LENGTH(1) / BOXLMC(1)
+! Scale factor
+SCALE_FACTOR = ETA_NPT / PACKING_F
+SCALE_FACTOR = SCALE_FACTOR ** ( 1.D0 / 3.D0 )
+
+! Scaled box length
+BOX_LENGTH(:) = BOXLMC(:) * SCALE_FACTOR
+
+! Inverse of box length
+CALL INVERSE_COF( BOX_LENGTH, BOX_LENGTH_I, BOXVMC )
 
 ! Fix packing fraction with a volume expansion
 IF( ETA_NPT > PACKING_F ) THEN
@@ -1669,7 +2000,10 @@ IF( ETA_NPT > PACKING_F ) THEN
 
     ! Rescale positions of particles accordingly
     DO K = 1, N_PARTICLES
-      R(:,K) = RMC(:,K) * SCALE_FACTOR
+      ! Scaling coordinates using the old box length
+      CALL MULTI_MATRIX( BOXLMC_I, RMC(:,K), S12 )
+      ! New real coordinates using the new box length
+      CALL MULTI_MATRIX( BOX_LENGTH, S12, R(:,K) )
     END DO
 
     ! Overlap check after expansion of the simulation box
@@ -1697,13 +2031,13 @@ IF( ETA_NPT > PACKING_F ) THEN
               RJ(2)  = R(2,J)
               RJ(3)  = R(3,J)
               ! Orientation of particle i
-              EI(1)  = EMC(1,I)
-              EI(2)  = EMC(2,I)
-              EI(3)  = EMC(3,I)
+              EI(1)  = E(1,I)
+              EI(2)  = E(2,I)
+              EI(3)  = E(3,I)
               ! Orientation of particle j
-              EJ(1)  = EMC(1,J)
-              EJ(2)  = EMC(2,J)
-              EJ(3)  = EMC(3,J)
+              EJ(1)  = E(1,J)
+              EJ(2)  = E(2,J)
+              EJ(3)  = E(3,J)
               ! Quaternion of particle i
               QI(0)  = Q(0,I)
               QI(1)  = Q(1,I)
@@ -1785,13 +2119,13 @@ IF( ETA_NPT > PACKING_F ) THEN
             RJ(2)  = R(2,J)
             RJ(3)  = R(3,J)
             ! Orientation of particle i
-            EI(1)  = EMC(1,I)
-            EI(2)  = EMC(2,I)
-            EI(3)  = EMC(3,I)
+            EI(1)  = E(1,I)
+            EI(2)  = E(2,I)
+            EI(3)  = E(3,I)
             ! Orientation of particle j
-            EJ(1)  = EMC(1,J)
-            EJ(2)  = EMC(2,J)
-            EJ(3)  = EMC(3,J)
+            EJ(1)  = E(1,J)
+            EJ(2)  = E(2,J)
+            EJ(3)  = E(3,J)
             ! Quaternion of particle i
             QI(0)  = Q(0,I)
             QI(1)  = Q(1,I)
@@ -2034,6 +2368,9 @@ IF( ETA_NPT > PACKING_F ) THEN
   END DO LOOP_PFRACTION_FIX
 
 END IF
+
+! Deallocation
+DEALLOCATE( RMCV, QPROT, RPROT, EPROT )
 
 ! Summary
 IF( ATTEMPTS > 1 ) THEN
