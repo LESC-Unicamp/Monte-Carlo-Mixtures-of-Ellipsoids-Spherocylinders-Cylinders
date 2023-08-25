@@ -68,9 +68,9 @@ END SUBROUTINE RANF
 SUBROUTINE ACTIVE_TRANSFORMATION( EFIXED, QP, EP )
 
 ! Uses one module: global variables
-use globalvar
+USE GLOBALVAR
 
-implicit none
+IMPLICIT NONE
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
@@ -80,8 +80,8 @@ INTEGER( KIND= INT64 ) :: I, J ! Counters
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EFIXED ! Body-fixed orientation
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EP     ! Space-fixed orientation
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EFIXED ! Body-fixed orientation/position
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EP     ! Space-fixed orientation/position
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QP     ! Rotation quaternion
 REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: A      ! Rotation matrix
 REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: AT     ! Transpose of rotation matrix
@@ -112,7 +112,7 @@ DO I = 1, 3
 END DO
 
 ! *********************************************************************************************** !
-! Active tranformation (dot product of body-fixed orientation and transpose of rotation matrix)   !
+! Active tranformation (dot product of body-fixed vector and transpose of rotation matrix)        !
 ! *********************************************************************************************** !
 EP(1) = ( EFIXED(1) * AT(1,1) ) + ( EFIXED(2) * AT(1,2) ) + ( EFIXED(3) * AT(1,3) )
 EP(2) = ( EFIXED(1) * AT(2,1) ) + ( EFIXED(2) * AT(2,2) ) + ( EFIXED(3) * AT(2,3) )
@@ -244,8 +244,8 @@ RETURN
 END SUBROUTINE RANDOM_VECTOR
 
 ! *********************************************************************************************** !
-!             This subroutine creates a composed rotation quaternion by multiplying a             !
-!                          reference quaternion and a random quaternion                           !
+!            This subroutine creates a composed rotation quaternion by multiplying the            !
+!                         reference quaternion with a random quaternion                           !
 ! *********************************************************************************************** !
 SUBROUTINE MULTIPLY_QUATERNIONS( QR, QM, QN )
 
