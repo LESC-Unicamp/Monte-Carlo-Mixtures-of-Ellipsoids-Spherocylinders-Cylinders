@@ -31,7 +31,7 @@
                         |  ██████/  | ██ \  ██   /██████  |  ██████/  | ██  | ██  | ██ \/  | ██  | ██
                          \______/   |__/  \__/  |______/   \______/   |__/  |__/  |__/     |__/  |__/
 ```
-<p align="right"><b><sub>Version: 1.0.0</sub></b></p>
+<p align="right"><b><sub>Version: 1.1.0</sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
