@@ -1,6 +1,11 @@
- Update README.md
+<p align="right"><b><sub>Version: 1.1.0</sub></b></p>
 
-Version 1.1.0
+<p align="center"><b>Authors</b></p>
+<p align="center">
+Nathan Barros de Souza<br>
+Luís Fernando Mercier Franco<br></p>
+
+**Version 1.1.0**
 
 a) Fixed an issue when attempting to perform anisotropic volume changes which deforms the shape of the simulation box;
 
