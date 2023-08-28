@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 15th, 2023                                       !
+!                                        August 25th, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                 J. W. Perram, M. S. Wertheim                                   !
 !                               J. Comput. Phys 15, 409-416 (1985)                                !
@@ -35,7 +35,7 @@
 ! *********************************************************************************************** !
 !    This subroutine takes the rotation quaternions of two molecular ellipsoids of revolution     !
 !     i and j and the distance vector joining their centers of mass and determinates whether      !
-!                                    they overlap each other.                                     !
+!                                 they overlap each other or not.                                 !
 !          See Perram and Rasmussen, Phys. Rev. E 54, 6565 (1996), for more information.          !
 ! *********************************************************************************************** !
 SUBROUTINE ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, OVERLAP_HER )
