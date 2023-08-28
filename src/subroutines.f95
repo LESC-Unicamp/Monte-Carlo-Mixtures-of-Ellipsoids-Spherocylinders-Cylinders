@@ -319,7 +319,6 @@ LOGICAL :: PARALLEL    ! Checks the relative orientation of two spherocylinders 
 ! Initialization
 OVERLAP     = .FALSE.
 OVERLAP_HER = .FALSE.
-OVERLAP_SPC = .FALSE.
 OVERLAP_CYL = .FALSE.
 PARALLEL    = .FALSE.
 
@@ -341,7 +340,7 @@ ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN ! Spherocylinders and cylinders
 END IF
 
 ! *********************************************************************************************** !
-! Component and Particle Loops (Component index less than Ci)                                     !
+! Component and Particle Loops (Component index less than Ci) - ANISOMORPHIC SYSTEM I             !
 ! *********************************************************************************************** !
 DO CJ = 1, CI - 1
   ! Unique loop takes only particles whose component indexes are less than Ci
@@ -365,7 +364,7 @@ DO CJ = 1, CI - 1
     RIJ(3) = RJ(3) - RI(3)
     ! Minimum image convention
     CALL MULTI_MATRIX( BLI, RIJ, S12 )
-    S12 = S12 - ANINT(S12)
+    S12 = S12 - ANINT( S12 ) ! Unit box
     CALL MULTI_MATRIX( BL, S12, RIJ )
     ! Magnitude of the vector distance (squared)
     RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -374,7 +373,7 @@ DO CJ = 1, CI - 1
     CUTOFF_D = CUTOFF_D * CUTOFF_D
     ! Preliminary test (circumscribing spheres)
     IF( RIJSQ <= CUTOFF_D ) THEN
-      ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+      ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
       IF( GEOM_SELEC(1) ) THEN
         CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, OVERLAP_HER )
         ! Overlap criterion
@@ -383,7 +382,7 @@ DO CJ = 1, CI - 1
           OVERLAP = .TRUE.
           RETURN
         END IF
-      ! Overlap test for spherocylinders (Vega-Lago Method)
+      ! Overlap test for spherocylinders (Vega-Lago method)
       ELSE IF( GEOM_SELEC(2) ) THEN
         CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
         ! Overlap criterion
@@ -392,13 +391,15 @@ DO CJ = 1, CI - 1
           OVERLAP = .TRUE.
           RETURN
         END IF
-      ! Overlap test for cylinders (Lopes et al. Method)
+      ! Overlap test for cylinders (modified algorithm of Lopes et al.)
       ELSE IF( GEOM_SELEC(3) ) THEN
-        ! Preliminary test (circumscribing spherocylinders)
+        ! Initialization
         OVERLAP_SPC = .FALSE.
+        ! Preliminary test (circumscribing spherocylinders)
         CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
         ! Overlap criterion
         IF( OVERLAP_SPC ) THEN
+          ! Apply periodic boundary conditions on the position of particle j
           RJ(1) = RI(1) + RIJ(1)
           RJ(2) = RI(2) + RIJ(2)
           RJ(3) = RI(3) + RIJ(3)
@@ -416,7 +417,7 @@ DO CJ = 1, CI - 1
 END DO
 
 ! *********************************************************************************************** !
-! Component and Particle Loops (Component index greater than Ci)                                  !
+! Component and Particle Loops (Component index greater than Ci) - ANISOMORPHIC SYSTEM II         !
 ! *********************************************************************************************** !
 DO CJ = CI + 1, COMPONENTS
   ! Unique loop takes only particles whose component indexes are greater than Ci
@@ -438,9 +439,9 @@ DO CJ = CI + 1, COMPONENTS
     RIJ(1) = RJ(1) - RI(1)
     RIJ(2) = RJ(2) - RI(2)
     RIJ(3) = RJ(3) - RI(3)
-    ! Minimum Image Convention
+    ! Minimum image convention
     CALL MULTI_MATRIX( BLI, RIJ, S12 )
-    S12 = S12 - ANINT(S12)
+    S12 = S12 - ANINT(S12) ! Unit box
     CALL MULTI_MATRIX( BL, S12, RIJ )
     ! Magnitude of the vector distance (squared)
     RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -449,7 +450,7 @@ DO CJ = CI + 1, COMPONENTS
     CUTOFF_D = CUTOFF_D * CUTOFF_D
     ! Preliminary test (circumscribing spheres)
     IF( RIJSQ <= CUTOFF_D ) THEN
-      ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+      ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
       IF( GEOM_SELEC(1) ) THEN
         CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, OVERLAP_HER )
         ! Overlap criterion
@@ -458,7 +459,7 @@ DO CJ = CI + 1, COMPONENTS
           OVERLAP = .TRUE.
           RETURN
         END IF
-      ! Overlap test for spherocylinders (Vega-Lago Method)
+      ! Overlap test for spherocylinders (Vega-Lago method)
       ELSE IF( GEOM_SELEC(2) ) THEN
         CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
         ! Overlap criterion
@@ -467,13 +468,15 @@ DO CJ = CI + 1, COMPONENTS
           OVERLAP = .TRUE.
           RETURN
         END IF
-      ! Overlap test for cylinders (Lopes et al. Method)
+      ! Overlap test for cylinders (modified algorithm of Lopes et al.)
       ELSE IF( GEOM_SELEC(3) ) THEN
-        ! Preliminary test (circumscribing spherocylinders)
+        ! Initialization
         OVERLAP_SPC = .FALSE.
+        ! Preliminary test (circumscribing spherocylinders)
         CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
         ! Overlap criterion
         IF( OVERLAP_SPC ) THEN
+          ! Apply periodic boundary conditions on the position of particle j
           RJ(1) = RI(1) + RIJ(1)
           RJ(2) = RI(2) + RIJ(2)
           RJ(3) = RI(3) + RIJ(3)
@@ -491,7 +494,7 @@ DO CJ = CI + 1, COMPONENTS
 END DO
 
 ! *********************************************************************************************** !
-! Component and Particle Loops (Component index equals Ci)                                        !
+! Component and Particle Loops (Component index equals Ci) - ISOMORPHIC SYSTEM                    !
 ! *********************************************************************************************** !
 CJ = CI
 ! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
@@ -513,9 +516,9 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
   RIJ(1) = RJ(1) - RI(1)
   RIJ(2) = RJ(2) - RI(2)
   RIJ(3) = RJ(3) - RI(3)
-  ! Minimum Image Convention
+  ! Minimum image convention
   CALL MULTI_MATRIX( BLI, RIJ, S12 )
-  S12 = S12 - ANINT(S12)
+  S12 = S12 - ANINT(S12) ! Unit box
   CALL MULTI_MATRIX( BL, S12, RIJ )
   ! Magnitude of the vector distance (squared)
   RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -524,7 +527,7 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
   CUTOFF_D = CUTOFF_D * CUTOFF_D
   ! Preliminary test (circumscribing spheres)
   IF( RIJSQ <= CUTOFF_D ) THEN
-    ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
     IF( GEOM_SELEC(1) ) THEN
       CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, OVERLAP_HER )
       ! Overlap criterion
@@ -533,7 +536,7 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
         OVERLAP = .TRUE.
         RETURN
       END IF
-    ! Overlap test for spherocylinders (Vega-Lago Method)
+    ! Overlap test for spherocylinders (Vega-Lago method)
     ELSE IF( GEOM_SELEC(2) ) THEN
       CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
       ! Overlap criterion
@@ -542,13 +545,15 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
         OVERLAP = .TRUE.
         RETURN
       END IF
-    ! Overlap test for cylinders (Lopes et al. Method)
+    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
     ELSE IF( GEOM_SELEC(3) ) THEN
-      ! Preliminary test (circumscribing spherocylinders)
+      ! Initialization
       OVERLAP_SPC = .FALSE.
+      ! Preliminary test (circumscribing spherocylinders)
       CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
       ! Overlap criterion
       IF( OVERLAP_SPC ) THEN
+        ! Apply periodic boundary conditions on the position of particle j
         RJ(1) = RI(1) + RIJ(1)
         RJ(2) = RI(2) + RIJ(2)
         RJ(3) = RI(3) + RIJ(3)
@@ -582,9 +587,9 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
   RIJ(1) = RJ(1) - RI(1)
   RIJ(2) = RJ(2) - RI(2)
   RIJ(3) = RJ(3) - RI(3)
-  ! Minimum Image Convention
+  ! Minimum image convention
   CALL MULTI_MATRIX( BLI, RIJ, S12 )
-  S12 = S12 - ANINT(S12)
+  S12 = S12 - ANINT(S12) ! Unit box
   CALL MULTI_MATRIX( BL, S12, RIJ )
   ! Magnitude of the vector distance (squared)
   RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -593,7 +598,7 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
   CUTOFF_D = CUTOFF_D * CUTOFF_D
   ! Preliminary test (circumscribing spheres)
   IF( RIJSQ <= CUTOFF_D ) THEN
-    ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
     IF( GEOM_SELEC(1) ) THEN
       CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, OVERLAP_HER )
       ! Overlap criterion
@@ -602,7 +607,7 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
         OVERLAP = .TRUE.
         RETURN
       END IF
-    ! Overlap test for spherocylinders (Vega-Lago Method)
+    ! Overlap test for spherocylinders (Vega-Lago method)
     ELSE IF( GEOM_SELEC(2) ) THEN
       CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
       ! Overlap criterion
@@ -611,13 +616,15 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
         OVERLAP = .TRUE.
         RETURN
       END IF
-    ! Overlap test for cylinders (Lopes et al. Method)
+    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
     ELSE IF( GEOM_SELEC(3) ) THEN
-      ! Preliminary test (circumscribing spherocylinders)
+      ! Initialization
       OVERLAP_SPC = .FALSE.
+      ! Preliminary test (circumscribing spherocylinders)
       CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
       ! Overlap criterion
       IF( OVERLAP_SPC ) THEN
+        ! Apply periodic boundary conditions on the position of particle j
         RJ(1) = RI(1) + RIJ(1)
         RJ(2) = RI(2) + RIJ(2)
         RJ(3) = RI(3) + RIJ(3)
