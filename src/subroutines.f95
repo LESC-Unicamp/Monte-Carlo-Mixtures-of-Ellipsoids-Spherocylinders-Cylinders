@@ -935,7 +935,7 @@ END SUBROUTINE SW_POTENTIAL
 ! *********************************************************************************************** !
 !    This subroutine calculates the order parameter of a nematic phase via the Q-tensor method    !
 ! *********************************************************************************************** !
-SUBROUTINE ORDER_PARAMETER( S, EP )
+SUBROUTINE NEMATIC_ORDER_PARAMETER( S, EP )
 
 ! Uses one module: global variables
 USE GLOBALVAR
@@ -1011,21 +1011,18 @@ QAB(:,:) = QABI(:,:) / DBLE( N_S )
 ! *********************************************************************************************** !
 ! Trace of symmetric Q matrix
 M   = QAB(1,1) + QAB(2,2) + QAB(3,3)
-! One-third of the trace of the symmetric Q matrix
 M   = M / 3.D0
 ! Determinant of (Q - mI), where I is the identity matrix
 DET = ( QAB(1,1) - M ) * ( QAB(2,2) - M ) * ( QAB(3,3) - M ) + ( QAB(1,2) * QAB(2,3) * QAB(3,1) ) + &
 &     ( QAB(1,3) * QAB(3,2) * QAB(2,1) ) - ( QAB(1,3) * ( QAB(2,2) - M ) * QAB(3,1) ) - &
 &     ( QAB(2,3) * QAB(3,2) * ( QAB(1,1) - M ) ) - ( ( QAB(3,3) - M ) * QAB(2,1) * QAB(1,2) )
-! Half of the determinant of (Q - mI)
 HQ  = 0.5D0 * DET
 ! Sum of squares of elements of (Q - mI)
 P   = ( QAB(1,1) - M ) * ( QAB(1,1) - M ) + ( QAB(1,2) * QAB(1,2) ) + ( QAB(1,3) * QAB(1,3) ) + &
 &     ( QAB(2,2) - M ) * ( QAB(2,2) - M ) + ( QAB(2,1) * QAB(2,1) ) + ( QAB(2,3) * QAB(2,3) ) + &
 &     ( QAB(3,3) - M ) * ( QAB(3,3) - M ) + ( QAB(3,1) * QAB(3,1) ) + ( QAB(3,2) * QAB(3,2) )
-! One-sixth of the sum of squares of elements of (Q - mI)
 P   = P / 6.D0
-! Test condition (Discriminant)
+! Test condition (Cardano's discriminant)
 PQ  = ( P * P * P ) - ( HQ * HQ )
 ! Real eigenvalues condition (p³ ≥ hq²)                                     
 IF ( PQ >= 0.D0 ) THEN
@@ -1048,7 +1045,7 @@ S = MAXVAL( EIGENVECTOR ) ! Largest eigenvalue
 
 RETURN
 
-END SUBROUTINE ORDER_PARAMETER
+END SUBROUTINE NEMATIC_ORDER_PARAMETER
 
 ! *********************************************************************************************** !
 !               This subroutine calculates the inverse of a matrix using cofactors                !
