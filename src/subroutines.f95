@@ -995,16 +995,16 @@ DO C = 1, COMPONENTS
   END DO
 END DO
 
+! All components are spherical
+IF( N_S == 0 ) THEN
+  S = 0.D0
+  RETURN
+END IF
+
 ! *********************************************************************************************** !
 ! Arithmetic mean                                                                                 !
 ! *********************************************************************************************** !
 QAB(:,:) = QABI(:,:) / DBLE( N_S )
-
-! All components are spherical
-IF( DABS( SUM( QAB ) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  S = 0.D0
-  RETURN
-END IF
 
 ! *********************************************************************************************** !
 ! Cardano's trigonometric solution                                                                !
