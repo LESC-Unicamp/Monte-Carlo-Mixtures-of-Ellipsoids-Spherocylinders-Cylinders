@@ -127,8 +127,6 @@ REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QROT             ! Rotation quatern
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QAUX             ! Auxiliary quaternion
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QM, QN           ! Quaternion (before/after a trial move)
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QI, QJ           ! Quaternion of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 2, 3 )   :: BOXVECY          ! New y-vector of the box after a clockwise/counterclockwise rotation about the normal vector of the ZY-plane
-REAL( KIND= REAL64 ), DIMENSION( 2, 0:3 ) :: QROTPROJ         ! Rotation quaternion of projection of the y-vector of the box about the normal vector of the ZY-plane
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (ALLOCATABLE)                                                                    !
