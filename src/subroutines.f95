@@ -23,6 +23,18 @@
 !                                          G. Marsaglia                                           !
 !                            Ann. Math. Statist. 43(2), 645-646 (1972)                            !
 !                                  DOI: 10.1214/aoms/1177692644                                   !
+!                             --------------------------------------                              !
+!                  J. de Graaf, L. Filion, M. Marechal, R. von Roij, M. Dijkstra                  !
+!                                J. Chem. Phys. 137, 214101 (2012)                                !
+!                                     DOI: 10.1063/1.4767529                                      !
+!                             --------------------------------------                              !
+!                                D. Gottwald, G. Kahl, C. N. Likos                                !
+!                                J. Chem. Phys. 122, 204503 (2005)                                !
+!                                     DOI: 10.1063/1.1901585                                      !
+!                             --------------------------------------                              !
+!                           A. K. Lenstra, H. W. Lenstra Jr., L. Lovász                           !
+!                                 Math. Ann. 261, 515-534 (1982)                                  !
+!                                     DOI: 10.1007/BF01457454                                     !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
@@ -935,6 +947,12 @@ END SUBROUTINE SW_POTENTIAL
 ! *********************************************************************************************** !
 !    This subroutine calculates the order parameter of a nematic phase via the Q-tensor method    !
 ! *********************************************************************************************** !
+!                               Programmed by: Joyce Tavares Lopes                                !
+!                               Modified by: Nathan Barros de Souza                               !
+!                     University of Campinas, School of Chemical Engineering                      !
+! *********************************************************************************************** !
+!        See O. K. Smith, Communications of the ACM, 4(4), 168 (1961) for more information        !
+! *********************************************************************************************** !
 SUBROUTINE NEMATIC_ORDER_PARAMETER( S, EP )
 
 ! Uses one module: global variables
@@ -994,7 +1012,6 @@ DO C = 1, COMPONENTS
     N_S = N_S + 1
   END DO
 END DO
-
 ! All components are spherical
 IF( N_S == 0 ) THEN
   S = 0.D0
@@ -1082,9 +1099,8 @@ B(9) = A(1) * A(5) - A(2) * A(4)
 ! Determinant of matrix A                                                                         !
 ! *********************************************************************************************** !
 DET  = A(1) * B(1) + A(4) * B(2) + A(7) * B(3)
-RDET = 0.0D0
-
-IF( DABS( DET ) > 0.0D0 ) THEN
+RDET = 0.D0
+IF( DABS( DET ) > 0.D0 ) THEN
   RDET = 1.0D0 / DET
 END IF
 
@@ -1129,7 +1145,8 @@ END SUBROUTINE MULTI_MATRIX
 !     This subroutine uses a block-averaging method to calculate the first- and second-order      !
 !         TPT coefficients, the perturbed Helmholtz free energy, and their uncertainties          !
 ! *********************************************************************************************** !
-!                        Original developer: Luis Fernando Mercier Franco                         !
+!                           Programmed by: Luis Fernando Mercier Franco                           !
+!                               Modified by: Nathan Barros de Souza                               !
 !                     University of Campinas, School of Chemical Engineering                      !
 ! *********************************************************************************************** !
 !         See Allen and Tildesley, 2nd Edition (2017), pages 281-287 for more information         !
@@ -1149,7 +1166,7 @@ INTEGER( KIND= INT64 )            :: N_RUN                    ! Production data 
 INTEGER( KIND= INT64 )            :: N_BLOCK                  ! Counter for the number of blocks
 INTEGER( KIND= INT64 )            :: N_DATA                   ! Number of data points in a block
 INTEGER( KIND= INT64 )            :: I, J, K, COUNT_AUX, STEP ! Auxiliary counters
-INTEGER( KIND= INT64 ), PARAMETER :: MAX_DATA = 1.D4          ! Maximum number of block data for linear regression
+INTEGER( KIND= INT64 ), PARAMETER :: MAX_DATA = 10000         ! Maximum number of block data for linear regression
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -1159,10 +1176,10 @@ REAL( KIND= REAL64 ) :: PERTURBED_MOMENT2              ! Second moment, <exp(-2U
 REAL( KIND= REAL64 ) :: MOMENT1                        ! First moment (average), <U*>
 REAL( KIND= REAL64 ) :: MOMENT2                        ! Second moment, <U*²>
 REAL( KIND= REAL64 ) :: MOMENT3                        ! Third moment, <U*³>
-REAL( KIND= REAL64 ) :: MOMENT4                        ! Fourth moment, <U*4>
+REAL( KIND= REAL64 ) :: MOMENT4                        ! Fourth moment, <U*⁴>
 REAL( KIND= REAL64 ) :: PERTURBED_VAR1_TOT             ! Variance of the 1st moment, <exp(-2U*/T*)> - <exp(-U*/T*)>²
 REAL( KIND= REAL64 ) :: VAR1_TOT                       ! Variance of the 1st moment, <U*²> - <U*>²
-REAL( KIND= REAL64 ) :: VAR2_TOT                       ! Variance of the 2nd moment, <U*4> - <U*²>²
+REAL( KIND= REAL64 ) :: VAR2_TOT                       ! Variance of the 2nd moment, <U*⁴> - <U*²>²
 REAL( KIND= REAL64 ) :: PERTURBED_AVG_BLK, AVG_BLK     ! Block average
 REAL( KIND= REAL64 ) :: PERTURBED_VAR_BLOCK, VAR_BLOCK ! Block variance
 REAL( KIND= REAL64 ) :: PERTURBED_VAR_SUM, VAR_SUM     ! Auxiliary summation variable for the block variance
@@ -1203,7 +1220,7 @@ LOGICAL :: FLAG ! Generic true/false flag
 N_RUN      = INT( ( DBLE( MAX_CYCLES ) - DBLE( N_EQUIL ) ) / DBLE( N_SAVE ) ) ! Production points
 EQUIL_SAVE = INT( DBLE( N_EQUIL ) / DBLE( N_SAVE ) )                          ! Equilibration points
 
-! Return to main program if number of block data exceeds max_data parameter
+! Return to main program if number of block data exceeds 'max_data' parameter
 IF ( MAX_BLOCKS - MIN_BLOCKS >= MAX_DATA ) THEN
   FLAG = .TRUE.
   RETURN
@@ -1333,6 +1350,7 @@ DO N_BLOCK = MIN_BLOCKS, MAX_BLOCKS
   ! Statistical inefficiency
   PERTURBED_SB(COUNT_AUX) = DBLE( N_DATA ) * ( PERTURBED_VAR_BLOCK / PERTURBED_VAR1_TOT )
   SB(COUNT_AUX) = DBLE( N_DATA ) * ( VAR_BLOCK / VAR1_TOT )
+
 END DO
 
 ! Deallocation
@@ -1393,6 +1411,9 @@ END SUBROUTINE BLOCK_AVERAGING
 ! *********************************************************************************************** !
 !                    This subroutine makes a linear regression of x and y data                    !
 ! *********************************************************************************************** !
+!                           Programmed by: Luis Fernando Mercier Franco                           !
+!                     University of Campinas, School of Chemical Engineering                      !
+! *********************************************************************************************** !
 SUBROUTINE LINEAR_FIT( X, Y, A, B, R2, N )
 
 ! Uses one module: global variables
@@ -1408,16 +1429,16 @@ INTEGER( KIND= INT64 ) :: I, N
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ) :: SX                ! Sum of X
-REAL( KIND= REAL64 ) :: SY                ! Sum of Y
-REAL( KIND= REAL64 ) :: SXX               ! Sum of X²
-REAL( KIND= REAL64 ) :: SXY               ! Sum of XY
-REAL( KIND= REAL64 ) :: SYY               ! Sum of Y²
-REAL( KIND= REAL64 ) :: A                 ! Y-intercept
-REAL( KIND= REAL64 ) :: B                 ! Slope
-REAL( KIND= REAL64 ) :: R2                ! Coefficient of determination
-REAL( KIND= REAL64 ), DIMENSION( N ) :: X ! Independent variable
-REAL( KIND= REAL64 ), DIMENSION( N ) :: Y ! Dependent variable
+REAL( KIND= REAL64 )                 :: SX  ! Sum of X
+REAL( KIND= REAL64 )                 :: SY  ! Sum of Y
+REAL( KIND= REAL64 )                 :: SXX ! Sum of X²
+REAL( KIND= REAL64 )                 :: SXY ! Sum of XY
+REAL( KIND= REAL64 )                 :: SYY ! Sum of Y²
+REAL( KIND= REAL64 )                 :: A   ! Y-intercept
+REAL( KIND= REAL64 )                 :: B   ! Slope
+REAL( KIND= REAL64 )                 :: R2  ! Coefficient of determination
+REAL( KIND= REAL64 ), DIMENSION( N ) :: X   ! Independent variable
+REAL( KIND= REAL64 ), DIMENSION( N ) :: Y   ! Dependent variable
 
 ! Initialization
 SX  = 0.D0
@@ -1450,6 +1471,7 @@ END SUBROUTINE LINEAR_FIT
 
 ! *********************************************************************************************** !
 !           This subroutine calculates the lattice reduction and reshapes the box size            !
+!            See Graaf et al., J. Chem. Phys. 137, 214101 (2012) for more information.            !
 ! *********************************************************************************************** !
 SUBROUTINE LATTICE_REDUCTION( BOXL, DISTORTION, LATTICER )
 
@@ -1483,9 +1505,9 @@ REAL( KIND= REAL64 ), DIMENSION( 9 )     :: BOXL                   ! Box vector 
 LOGICAL :: LATTICER ! Checks whether a lattice reduction is necessary based on the distortion parameter value
 
 ! Box vectors
-V1(:) = BOXL(1:3) ! vx
-V2(:) = BOXL(4:6) ! vy
-V3(:) = BOXL(7:9) ! vz
+V1(:) = BOXL(1:3) ! Vector x
+V2(:) = BOXL(4:6) ! Vector y
+V3(:) = BOXL(7:9) ! Vector z
 
 ! Vector moduli
 MODV1 = ( V1(1) * V1(1) ) + ( V1(2) * V1(2) ) + ( V1(3) * V1(3) )
@@ -1521,7 +1543,7 @@ MODCROSS2 = DSQRT( MODCROSS2 )
 MODCROSS3 = ( CROSS3(1) * CROSS3(1) ) + ( CROSS3(2) * CROSS3(2) ) + ( CROSS3(3) * CROSS3(3) )
 MODCROSS3 = DSQRT( MODCROSS3 )
 
-! Lattice distortion
+! Lattice distortion (relation among perimeter × surface area ÷ volume)
 DISTORTION = (MODV1 + MODV2 + MODV3) * (MODCROSS1 + MODCROSS2 + MODCROSS3) / DOTVC
 DISTORTION = DISTORTION / 9.D0
 
@@ -1554,6 +1576,7 @@ END SUBROUTINE LATTICE_REDUCTION
 
 ! *********************************************************************************************** !
 !          This subroutine applies the Gottwald method to orthogonalize the box vectors           !
+!           See Gottwald et al., J. Chem. Phys. 122, 204503 (2005) for more information           !
 ! *********************************************************************************************** !
 SUBROUTINE GOTTWALD( V1, V2, V3, MINSAREA )
 
@@ -1706,6 +1729,7 @@ END SUBROUTINE LATTICE_COMBINATION
 
 ! *********************************************************************************************** !
 !  This subroutine applies the Lenstra–Lenstra–Lovász algorithm to orthogonalize the box vectors  !
+!       See Lenstra, Lenstra & Lovász, Math. Ann. 261, 515-534 (1982) for more information        !
 ! *********************************************************************************************** !
 SUBROUTINE LLL( BOXV, DIM )
 
@@ -1777,7 +1801,7 @@ LOVASZ_LOOP: DO
       ! Compute the reduced lattice vector
       LATTICE_BASIS(:,K) = LATTICE_BASIS(:,K) - NINT( GS_COEFF(K,J) ) * LATTICE_BASIS(:,J)
     END DO
-    ! Calculate the Lovász operators
+    ! Calculate Lovász operators
     LFACTOR    = DELTA - ( GS_COEFF(K,K-1) * GS_COEFF(K,K-1) )
     LCONDITION = LFACTOR * DOT_PRODUCT( GS_BASIS(:,K-1), GS_BASIS(:,K-1) )
     ! Check the Lovász condition
