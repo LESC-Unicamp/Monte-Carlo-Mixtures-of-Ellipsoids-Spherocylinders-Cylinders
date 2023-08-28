@@ -63,19 +63,19 @@ REAL( KIND= REAL64 )                    :: LAMBDAB     ! Interpolation parameter
 REAL( KIND= REAL64 )                    :: LAMBDAC     ! Interpolation parameter (midpoint) [c]
 REAL( KIND= REAL64 )                    :: FA, FB      ! Derivatives of the interpolating function at the extrema of the interval: λ ∈ [0,1]
 REAL( KIND= REAL64 )                    :: FC          ! Derivative of the interpolating function at the midpoint of the considered interval
-REAL( KIND= REAL64 )                    :: AUX         ! Auxiliar
-REAL( KIND= REAL64 )                    :: INTFUNC     ! Interpolating function (Perram-Wertheim Method)
-REAL( KIND= REAL64 )                    :: DFUNC_DLAMB ! First derivative of the interpolating function with respect to λ (Perram-Wertheim Method)
+REAL( KIND= REAL64 )                    :: AUX         ! Auxiliary variable
+REAL( KIND= REAL64 )                    :: INTFUNC     ! Interpolating function (Perram-Wertheim method)
+REAL( KIND= REAL64 )                    :: DFUNC_DLAMB ! First derivative of the interpolating function with respect to λ (Perram-Wertheim method)
 REAL( KIND= REAL64 )                    :: RIJSQ       ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                    :: CONTACT_D   ! Contact distance (Perram-Wertheim Method)
+REAL( KIND= REAL64 )                    :: CONTACT_D   ! Contact distance (Perram-Wertheim method)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ         ! Vector distance between particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EXI, EXJ    ! Orientation of particles i and j along x-direction
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EYI, EYJ    ! Orientation of particles i and j along y-direction
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EZI, EZJ    ! Orientation of particles i and j along z-direction
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: SEMIAI      ! Semiaxes of particle i
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: SEMIBJ      ! Semiaxes of particle j
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX1_DLAMB ! Auxiliar (derivative)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX2_DLAMB ! Auxiliar (derivative)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX1_DLAMB ! Auxiliary variable (derivative)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX2_DLAMB ! Auxiliary variable (derivative)
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QI, QJ      ! Rotation quaternions of particle i and j
 REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: EXIEXI      ! Outer product of the orientation of particle i along x-direction
 REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: EYIEYI      ! Outer product of the orientation of particle i along y-direction
@@ -112,7 +112,7 @@ IDMATRIX(1,1) = 1.D0
 IDMATRIX(2,2) = 1.D0
 IDMATRIX(3,3) = 1.D0
 
-! Orientation of particle i along x-, y-, and z-direction
+! Orientation of particle i along x-, y-, and z-directions
 CALL ACTIVE_TRANSFORMATION( AXISX, QI, EXI )
 CALL ACTIVE_TRANSFORMATION( AXISY, QI, EYI )
 CALL ACTIVE_TRANSFORMATION( AXISZ, QI, EZI )
@@ -349,7 +349,7 @@ IF( (FA * FB) < 0.D0 ) THEN
   ! Interpolating function, S(λ)
   INTFUNC = LAMBDAC * (1.D0 - LAMBDAC) * AUX
 
-  ! Contact distance (Perram-Wertheim Method)
+  ! Contact distance (Perram-Wertheim method)
   CONTACT_D = INTFUNC * RIJSQ
 
   ! Non-overlapping criterion
@@ -397,7 +397,7 @@ REAL( KIND= REAL64 )                 :: RIJEJ          ! Dot product of vector d
 REAL( KIND= REAL64 )                 :: EIEJ           ! Dot product of both orientations (particles i and j)
 REAL( KIND= REAL64 )                 :: DLAMBDA, DMU   ! Values that minimize r² (∂r²/∂μ = 0 and ∂r²/∂λ = 0)
 REAL( KIND= REAL64 )                 :: CC, AUXI, AUXJ ! Auxiliary variables
-REAL( KIND= REAL64 )                 :: RVL            ! Vega-Lago Contact Distance (variable)
+REAL( KIND= REAL64 )                 :: RVL            ! Vega-Lago contact distance (variable)
 REAL( KIND= REAL64 )                 :: SHORTEST_D     ! Shortest distance
 REAL( KIND= REAL64 )                 :: SHORTEST_DSQ   ! Shortest distance (squared)
 REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFLENGTH     ! Half-length of spherocylinders i and j
@@ -457,7 +457,7 @@ IF( DABS( CC ) < 1.D-10 ) THEN
     DMUEJ(:)     = DMU * EJ(:)
     ! Return immediately
     RETURN
-  ! Parallel spherocylinders almost orthogonal to the intermolecular axis (indeterminate form 0/0)
+  ! Parallel spherocylinders almost orthogonal to the intermolecular axis (avoid the indeterminate form 0/0)
   ELSE
     DLAMBDA = 0.D0
     DMU     = 0.D0
