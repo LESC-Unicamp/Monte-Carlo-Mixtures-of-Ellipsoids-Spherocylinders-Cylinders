@@ -2223,7 +2223,7 @@ DO CYCLES = 1, MAX_CYCLES
   ! Order parameter data
   IF( MOD( CYCLES, N_SAVE ) == 0 ) THEN
     ! Nematic order parameter (Q-tensor method)
-    CALL ORDER_PARAMETER( S, EMC )
+    CALL NEMATIC_ORDER_PARAMETER( S, EMC )
     ! Only production-related data
     WRITE( 60, "(3G0)" ) CYCLES, ",", S
     FLUSH( 60 )
