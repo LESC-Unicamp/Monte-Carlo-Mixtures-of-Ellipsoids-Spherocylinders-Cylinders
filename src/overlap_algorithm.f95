@@ -3,7 +3,7 @@
 !         This code contains the overlap search subroutine for ellipsoids of revolution,          !
 !                                 spherocylinders, and cylinders.                                 !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
