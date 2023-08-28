@@ -441,7 +441,7 @@ DO CJ = CI + 1, COMPONENTS
     RIJ(3) = RJ(3) - RI(3)
     ! Minimum image convention
     CALL MULTI_MATRIX( BLI, RIJ, S12 )
-    S12 = S12 - ANINT(S12) ! Unit box
+    S12 = S12 - ANINT( S12 ) ! Unit box
     CALL MULTI_MATRIX( BL, S12, RIJ )
     ! Magnitude of the vector distance (squared)
     RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -518,7 +518,7 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
   RIJ(3) = RJ(3) - RI(3)
   ! Minimum image convention
   CALL MULTI_MATRIX( BLI, RIJ, S12 )
-  S12 = S12 - ANINT(S12) ! Unit box
+  S12 = S12 - ANINT( S12 ) ! Unit box
   CALL MULTI_MATRIX( BL, S12, RIJ )
   ! Magnitude of the vector distance (squared)
   RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -589,7 +589,7 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
   RIJ(3) = RJ(3) - RI(3)
   ! Minimum image convention
   CALL MULTI_MATRIX( BLI, RIJ, S12 )
-  S12 = S12 - ANINT(S12) ! Unit box
+  S12 = S12 - ANINT( S12 ) ! Unit box
   CALL MULTI_MATRIX( BL, S12, RIJ )
   ! Magnitude of the vector distance (squared)
   RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
@@ -691,14 +691,14 @@ DO CI = 1, COMPONENTS - 1
         RIJ(1) = RJ(1) - RI(1)
         RIJ(2) = RJ(2) - RI(2)
         RIJ(3) = RJ(3) - RI(3)
-        ! Minimum Image Convention
+        ! Minimum image convention
         CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
-        S12 = S12 - ANINT(S12)
+        S12 = S12 - ANINT( S12 ) ! Unit box
         CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
         ! Magnitude of the vector distance (squared)
         RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
         ! Compute pair potential
-        IF( POTENTIAL_SELEC(2) ) THEN
+        IF( POTENTIAL_SELEC(2) ) THEN ! Spherical square-well potential
           CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
         END IF
         ! Increment total potential energy
@@ -713,7 +713,7 @@ DO CI = 1, COMPONENTS
   ! First loop represents a particle with an index i of component Ci
   DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
     ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-    DO J = I + 1, SUM( N_COMPONENT(0:CI) )
+    DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
       ! Position of particle i
       RI(1)  = R(1,I)
       RI(2)  = R(2,I)
@@ -726,14 +726,14 @@ DO CI = 1, COMPONENTS
       RIJ(1) = RJ(1) - RI(1)
       RIJ(2) = RJ(2) - RI(2)
       RIJ(3) = RJ(3) - RI(3)
-      ! Minimum Image Convention
+      ! Minimum image convention
       CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
-      S12 = S12 - ANINT(S12)
+      S12 = S12 - ANINT( S12 ) ! Unit box
       CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
       ! Magnitude of the vector distance (squared)
       RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
       ! Compute pair potential
-      IF( POTENTIAL_SELEC(2) ) THEN
+      IF( POTENTIAL_SELEC(2) ) THEN ! Spherical square-well potential
         CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
       END IF
       ! Increment total potential energy
@@ -778,7 +778,7 @@ REAL( KIND= REAL64 ), DIMENSION( N_LAMBDA ) :: VIJ    ! Pair potential energy
 VI(:) = 0.D0
 
 ! *********************************************************************************************** !
-! Component and Particle Loops (Component index less than Ci)                                     !
+! Component and Particle Loops (Component index less than Ci) - ANISOMORPHIC SYSTEM I             !
 ! *********************************************************************************************** !
 DO CJ = 1, CI - 1
   ! Unique loop takes only particles whose component indexes are less than Ci
@@ -791,14 +791,14 @@ DO CJ = 1, CI - 1
     RIJ(1) = RJ(1) - RI(1)
     RIJ(2) = RJ(2) - RI(2)
     RIJ(3) = RJ(3) - RI(3)
-    ! Minimum Image Convention
+    ! Minimum image convention
     CALL MULTI_MATRIX( BLI, RIJ, S12 )
-    S12 = S12 - ANINT(S12)
+    S12 = S12 - ANINT( S12 ) ! Unit box
     CALL MULTI_MATRIX( BL, S12, RIJ )
     ! Magnitude of the vector distance (squared)
     RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
     ! Compute pair potential
-    IF( POTENTIAL_SELEC(2) ) THEN
+    IF( POTENTIAL_SELEC(2) ) THEN ! Spherical square-well potential
       CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
     END IF
     ! Increment total potential energy
@@ -807,7 +807,7 @@ DO CJ = 1, CI - 1
 END DO
 
 ! *********************************************************************************************** !
-! Component and Particle Loops (Component index greater than Ci)                                  !
+! Component and Particle Loops (Component index greater than Ci) - ANISOMORPHIC SYSTEM II         !
 ! *********************************************************************************************** !
 DO CJ = CI + 1, COMPONENTS
   ! Unique loop takes only particles whose component indexes are greater than Ci
@@ -820,14 +820,14 @@ DO CJ = CI + 1, COMPONENTS
     RIJ(1) = RJ(1) - RI(1)
     RIJ(2) = RJ(2) - RI(2)
     RIJ(3) = RJ(3) - RI(3)
-    ! Minimum Image Convention
+    ! Minimum image convention
     CALL MULTI_MATRIX( BLI, RIJ, S12 )
-    S12 = S12 - ANINT(S12)
+    S12 = S12 - ANINT( S12 ) ! Unit box
     CALL MULTI_MATRIX( BL, S12, RIJ )
     ! Magnitude of the vector distance (squared)
     RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
     ! Compute pair potential
-    IF( POTENTIAL_SELEC(2) ) THEN
+    IF( POTENTIAL_SELEC(2) ) THEN ! Spherical square-well potential
       CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
     END IF
     ! Increment total potential energy
@@ -836,7 +836,7 @@ DO CJ = CI + 1, COMPONENTS
 END DO
 
 ! *********************************************************************************************** !
-! Component and Particle Loops (Component index equals Ci)                                        !
+! Component and Particle Loops (Component index equals Ci) - ISOMORPHIC                           !
 ! *********************************************************************************************** !
 CJ = CI
 ! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
@@ -849,14 +849,14 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
   RIJ(1) = RJ(1) - RI(1)
   RIJ(2) = RJ(2) - RI(2)
   RIJ(3) = RJ(3) - RI(3)
-  ! Minimum Image Convention
+  ! Minimum image convention
   CALL MULTI_MATRIX( BLI, RIJ, S12 )
-  S12 = S12 - ANINT(S12)
+  S12 = S12 - ANINT( S12 ) ! Unit box
   CALL MULTI_MATRIX( BL, S12, RIJ )
   ! Magnitude of the vector distance (squared)
   RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
   ! Compute pair potential
-  IF( POTENTIAL_SELEC(2) ) THEN
+  IF( POTENTIAL_SELEC(2) ) THEN ! Spherical square-well potential
     CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
   END IF
   ! Increment total potential energy
@@ -872,14 +872,14 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
   RIJ(1) = RJ(1) - RI(1)
   RIJ(2) = RJ(2) - RI(2)
   RIJ(3) = RJ(3) - RI(3)
-  ! Minimum Image Convention
+  ! Minimum image convention
   CALL MULTI_MATRIX( BLI, RIJ, S12 )
-  S12 = S12 - ANINT(S12)
+  S12 = S12 - ANINT( S12 ) ! Unit box
   CALL MULTI_MATRIX( BL, S12, RIJ )
   ! Magnitude of the vector distance (squared)
   RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
   ! Compute pair potential
-  IF( POTENTIAL_SELEC(2) ) THEN
+  IF( POTENTIAL_SELEC(2) ) THEN ! Spherical square-well potential
     CALL SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
   END IF
   ! Increment total potential energy
@@ -891,8 +891,8 @@ RETURN
 END SUBROUTINE COMPUTE_PARTICLE_ENERGY
 
 ! *********************************************************************************************** !
-!              This subroutine computes the pair potential between particles i and j              !
-!           It applies a discrete square-well potential to compute the pair potential.            !
+!            This subroutine computes the pair potential between particles i and j by             !
+!             applying a discrete square-well potential to compute the pair potential             !
 ! *********************************************************************************************** !
 SUBROUTINE SW_POTENTIAL( RIJSQ, CI, CJ, VIJ )
 
