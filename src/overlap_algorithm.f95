@@ -1305,7 +1305,7 @@ IF( ALPHA > 0.D0 ) THEN
     ! Initial parameters of the Newton-Raphson method
     DAMPING       = 1.D0    ! Damping factor
     COUNTER       = 0       ! Iteration counter
-    TOLERANCE_NR  = 1D-10   ! Numerical tolerance
+    TOLERANCE_NR  = 1D-8    ! Numerical tolerance
 
     ! Initial guess, λ0 (Newton-Raphson)
     IF( N_POINTS == 4 ) THEN
@@ -1370,7 +1370,7 @@ IF( ALPHA > 0.D0 ) THEN
     IF( BISECT_METHOD ) THEN
       ! Initial parameters of the bissection method
       COUNTERB    = 0      ! Iteration counter
-      TOLERANCE_B = 1.D-10 ! Numerical tolerance
+      TOLERANCE_B = 1.D-8  ! Numerical tolerance
       ! Initial guess, λ0 (Newton-Raphson)
       IF( N_POINTS == 4 ) THEN
         IF( INTERVAL == 1 ) THEN
@@ -1585,7 +1585,7 @@ IF( ALPHA > 0.D0 ) THEN
           ! Iteration
           COUNTERB = COUNTERB + 1
           ! Stop condition
-          IF( COUNTERB > 50 ) THEN
+          IF( COUNTERB > 70 ) THEN
             ! Bissection method will not converge (test other interval)
             CYCLE INTERVAL_LOOP
           END IF
