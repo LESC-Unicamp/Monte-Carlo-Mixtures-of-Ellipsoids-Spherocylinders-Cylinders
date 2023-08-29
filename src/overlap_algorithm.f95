@@ -545,21 +545,12 @@ RETURN
 
 END SUBROUTINE SPHEROCYLINDER_OVERLAP
 
-
-! *********************************************************************************************** !
-!                                   Cylinder Overlap Algorithm                                    !
-! *********************************************************************************************** !
-
 ! *********************************************************************************************** !
 ! This subroutine takes the relative quaternions/orientations of two molecular cylinders i and j  !
 !      as well as the position of their centers of mass and the unit vector joining them and      !
-!                             calculates whether they overlap or not.                             !
+!                        calculates whether the cylinders overlap or not.                         !
 !             See Lopes et al., Chem. Phys. 154, 104902 (2021), for more information.             !
 ! *********************************************************************************************** !
-
-J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti                     !
-!                                 Chem. Phys. 154, 104902 (2021)                                  !
-!                                     DOI: 10.1063/5.0040942                                      !
 SUBROUTINE CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP_CYL )
 
 ! Uses one module: global variables
