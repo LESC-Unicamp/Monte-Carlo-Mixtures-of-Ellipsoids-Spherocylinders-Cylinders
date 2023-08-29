@@ -829,7 +829,7 @@ REAL( KIND= REAL64 )                 :: SPH_SQ ! Magnitude of the vector distanc
 REAL( KIND= REAL64 )                 :: SEG    ! Segment (sum)
 REAL( KIND= REAL64 )                 :: SEGI   ! Segment of cylinder i
 REAL( KIND= REAL64 )                 :: SEGJ   ! Segment of cylinder j
-REAL( KIND= REAL64 )                 :: CC     ! Auxiliar variable
+REAL( KIND= REAL64 )                 :: CC     ! Auxiliary variable
 REAL( KIND= REAL64 )                 :: MODEIJ ! Magnitude of vector eij
 REAL( KIND= REAL64 )                 :: PIPJ   ! Projection of dij on eij
 REAL( KIND= REAL64 ), DIMENSION( 2 ) :: RSQ    ! Radius of cylinders i and j (squared)
@@ -855,8 +855,10 @@ SPH_SQ = ( HALFD(1) + HALFD(2) ) * ( HALFD(1) + HALFD(2) )
 DIJ(1) = DJ(1) - DI(1)
 DIJ(2) = DJ(2) - DI(2)
 DIJ(3) = DJ(3) - DI(3)
+
 ! Magnitude of the vector distance between both disks
 DIJSQ  = ( DIJ(1) * DIJ(1) ) + ( DIJ(2) * DIJ(2) ) + ( DIJ(3) * DIJ(3) )
+
 ! Non-overlapping condition (spheres circumscribing the disks)
 IF( DIJSQ > SPH_SQ ) THEN
   RETURN
@@ -882,20 +884,20 @@ IF( ( IDIJSQ < RSQ(1) ) .AND. ( JDIJSQ < RSQ(2) ) ) THEN
   SEGI = DSQRT( RSQ(1) - IDIJSQ )
   SEGJ = DSQRT( RSQ(2) - JDIJSQ )
   ! Sum of segments
-  SEG  = SEGI + SEGJ
-  ! Cross product of orientations ei and ej (orientation of intersection line)
-  EIJ(1)  = ( EI(2) * EJ(3) ) - ( EI(3) * EJ(2) )
-  EIJ(2)  = ( EI(3) * EJ(1) ) - ( EI(1) * EJ(3) )
-  EIJ(3)  = ( EI(1) * EJ(2) ) - ( EI(2) * EJ(1) )
+  SEG = SEGI + SEGJ
+  ! Cross product of orientations of disks of cylinders i and j (orientation of intersection line)
+  EIJ(1) = ( EI(2) * EJ(3) ) - ( EI(3) * EJ(2) )
+  EIJ(2) = ( EI(3) * EJ(1) ) - ( EI(1) * EJ(3) )
+  EIJ(3) = ( EI(1) * EJ(2) ) - ( EI(2) * EJ(1) )
   ! Magnitude of the orientation of intersection line
-  MODEIJ  = ( EIJ(1) * EIJ(1) ) + ( EIJ(2) * EIJ(2) ) + ( EIJ(3) * EIJ(3) )
-  MODEIJ  = DSQRT( MODEIJ )
+  MODEIJ = ( EIJ(1) * EIJ(1) ) + ( EIJ(2) * EIJ(2) ) + ( EIJ(3) * EIJ(3) )
+  MODEIJ = DSQRT( MODEIJ )
   ! Versor of the orientation of intersection line
   UEIJ(1) = ( EIJ(1) / MODEIJ )
   UEIJ(2) = ( EIJ(2) / MODEIJ )
   UEIJ(3) = ( EIJ(3) / MODEIJ )
   ! Projection of the vector distance of both disks along the intersection line between planes of the disks
-  PIPJ    = ( DIJ(1) * UEIJ(1) ) + ( DIJ(2) * UEIJ(2) ) + ( DIJ(3) * UEIJ(3) )
+  PIPJ = ( DIJ(1) * UEIJ(1) ) + ( DIJ(2) * UEIJ(2) ) + ( DIJ(3) * UEIJ(3) )
   ! Overlap criterion
   IF( DABS( PIPJ ) <= SEG ) THEN
     OVERLAPDISK = .TRUE.
