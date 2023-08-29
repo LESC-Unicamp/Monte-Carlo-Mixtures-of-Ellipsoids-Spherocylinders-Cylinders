@@ -961,6 +961,7 @@ REAL( KIND= REAL64 )                    :: CARDANO_Q, CARDANO_R      ! Cardano's
 REAL( KIND= REAL64 )                    :: CARDANO_S, CARDANO_T      ! Cardano's coefficients
 REAL( KIND= REAL64 )                    :: THETA, ARGUMENT           ! Cardano's coefficients
 REAL( KIND= REAL64 )                    :: DISCRIMINANT              ! Cardano's discriminant
+REAL( KIND= REAL64 )                    :: MAXCOEFF                  ! Largest coefficient (absolute value) of the quartic function
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ROOTS                     ! Roots of the cubic equation
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: F                         ! Objective function
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DF                        ! Derivative of the objective function with respect to λ
@@ -1194,6 +1195,15 @@ IF( ALPHA > 0.D0 ) THEN
   COEFF_QUARTIC(4) = (2.D0 / ALPHA) * ( (ALPHA * BETA * HALFDDISK * HALFDDISK) - (GAMMA * DKRRIM_ERIM) - &
   &                  (BETA * DKRRIM_ERIM * DKRRIM_ERIM) )
   COEFF_QUARTIC(5) = (1.D0 / ALPHA) * ( (DKRRIM_ERIM * DKRRIM_ERIM * GAMMA) - (BETA * BETA * HALFDDISK * HALFDDISK) )
+
+  ! Reduction of the quartic function
+  MAXCOEFF = 0.D0
+  DO I = 1, 5
+    IF( DABS( COEFF_QUARTIC(I) ) >= MAXCOEFF ) THEN
+      MAXCOEFF = COEFF_QUARTIC(I)
+    END IF
+  END DO
+  COEFF_QUARTIC = COEFF_QUARTIC / MAXCOEFF
 
   ! Coefficients of the cubic function (derivative of the objective function with respect to λ)
   COEFF_CARDANO(1) = 4.D0 * COEFF_QUARTIC(1)
