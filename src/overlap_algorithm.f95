@@ -574,12 +574,12 @@ REAL( KIND= REAL64 )                    :: RIJEJ          ! Dot product of vecto
 REAL( KIND= REAL64 )                    :: EIEJ           ! Dot product of both orientations (particles i and j)
 REAL( KIND= REAL64 )                    :: RIJSQ_PARALLEL ! Squared vector distance between particles i and j (parallel)
 REAL( KIND= REAL64 )                    :: RIJSQ_ORTHO    ! Squared vector distance between particles i and j (orthogonal)
-REAL( KIND= REAL64 )                    :: CC             ! Auxiliar variable
-REAL( KIND= REAL64 ), DIMENSION( 2 )    :: DSQ_DISKRIM    ! Diameter of the disk for the configuration disk-rim
+REAL( KIND= REAL64 )                    :: CC             ! Auxiliary variable
+REAL( KIND= REAL64 ), DIMENSION( 2 )    :: DSQ_DISKRIM    ! Diameter of the disk for the disk-rim configuration
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFLENGTH     ! Half length of cylinders i and j
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFDIAMETER   ! Half diameter of cylinders i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DLAMBDAEI      ! Auxiliar vector (cylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DMUEJ          ! Auxiliar vector (cylinder overlap algorithm)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DLAMBDAEI      ! Auxiliary vector (from spherocylinder overlap algorithm)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DMUEJ          ! Auxiliary vector (from spherocylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EI, EJ         ! Orientation of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RI, RJ         ! Position of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ            ! Vector distance between particles i and j
@@ -589,7 +589,7 @@ REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RRIM           ! Position of cylinder
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ERIM           ! Orientation of cylinder rim
 REAL( KIND= REAL64 ), DIMENSION( 0: 3 ) :: QI, QJ         ! Quaternion of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 0: 3 ) :: QDISK          ! Quaternion of cylinder disks
-REAL( KIND= REAL64 ), DIMENSION( 2, 3 ) :: DI, DJ         ! Position of both cylinder disks (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 2, 3 ) :: DI, DJ         ! Position of cylinder disks of particles i and j
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -696,7 +696,7 @@ DO I = 1, 2
 END DO
 
 ! *********************************************************************************************** !
-! CASE 4: Disk-rim configuration                                                                  !
+! CASE 4: Disk-rim configuration (modified)                                                       !
 ! *********************************************************************************************** !
 ! Rim of cylinder i
 RRIM(1)  = RI(1)
@@ -760,8 +760,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                 :: PROJI, PROJJ ! Cylindrical projections
 REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFL        ! Half length of cylinders i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DLAMBDAEI    ! Auxiliar vector (cylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DMUEJ        ! Auxiliar vector (cylinder overlap algorithm)
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DLAMBDAEI    ! Auxiliary vector (from spherocylinder overlap algorithm)
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DMUEJ        ! Auxiliary vector (from spherocylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: VECI, VECJ   ! Vector distance between the point of closest approach in one cylinder and the center of the other cylinder
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EI, EJ       ! Orientation of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: RIJ          ! Vector distance between particles i and j
@@ -778,14 +778,16 @@ OVERLAPRIM = .FALSE.
 VECI(1) = -RIJ(1) + DLAMBDAEI(1)
 VECI(2) = -RIJ(2) + DLAMBDAEI(2)
 VECI(3) = -RIJ(3) + DLAMBDAEI(3)
+
 ! Vector distance between the point of closest approach on cylinder j and the center of cylinder i
 VECJ(1) = RIJ(1) + DMUEJ(1)
 VECJ(2) = RIJ(2) + DMUEJ(2)
 VECJ(3) = RIJ(3) + DMUEJ(3)
 
-! Projection of the vector distance j along orientation ei
+! Projection of the vector distance j along orientation of cylinder i
 PROJI = ( VECJ(1) * EI(1) ) + ( VECJ(2) * EI(2) ) + ( VECJ(3) * EI(3) )
-! Projection of the vector distance i along orientation ej
+
+! Projection of the vector distance i along orientation of cylinder j
 PROJJ = ( VECI(1) * EJ(1) ) + ( VECI(2) * EJ(2) ) + ( VECI(3)* EJ(3) )
 
 ! Overlap criterion
@@ -793,6 +795,15 @@ IF( ( DABS( PROJI ) <= HALFL(1) ) .AND. ( DABS( PROJJ ) <= HALFL(2) ) ) THEN
   OVERLAPRIM = .TRUE.
   RETURN
 END IF
+
+! *********************************************************************************************** !
+! -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*   OBSERVATION   -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* !
+! *********************************************************************************************** !
+! The overlap criterion must also assess whether the distance between the points of closest       !
+! approach falls within the boundaries defined by the combined diameter of both cylinders.        !
+! However, given that we perform an initial test involving the circumscribing spherocylinders,    !
+! this condition, while essential, is irrelevant in this context.                                 !
+! *********************************************************************************************** !
 
 RETURN
 
