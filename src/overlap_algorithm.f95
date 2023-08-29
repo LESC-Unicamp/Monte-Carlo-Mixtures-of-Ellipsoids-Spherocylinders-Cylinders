@@ -1313,9 +1313,9 @@ IF( ALPHA > 0.D0 ) THEN
   INTERVAL_LOOP: DO INTERVAL = 1, N_POINTS
 
     ! Initial parameters of the Newton-Raphson method
-    DAMPING       = 1.D0    ! Damping factor
-    COUNTER       = 0       ! Iteration counter
-    TOLERANCE_NR  = 1D-8    ! Numerical tolerance
+    DAMPING       = 1.D0  ! Damping factor
+    COUNTER       = 0     ! Iteration counter
+    TOLERANCE_NR  = 1D-10 ! Numerical tolerance
 
     ! Initial guess, λ0 (Newton-Raphson)
     IF( N_POINTS == 4 ) THEN
@@ -1380,7 +1380,7 @@ IF( ALPHA > 0.D0 ) THEN
     IF( BISECT_METHOD ) THEN
       ! Initial parameters of the bissection method
       COUNTERB    = 0      ! Iteration counter
-      TOLERANCE_B = 1.D-8  ! Numerical tolerance
+      TOLERANCE_B = 1.D-10 ! Numerical tolerance
       ! Initial guess, λ0 (Newton-Raphson)
       IF( N_POINTS == 4 ) THEN
         IF( INTERVAL == 1 ) THEN
@@ -1517,11 +1517,11 @@ IF( ALPHA > 0.D0 ) THEN
         PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
         PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
         ! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-        T(1)  = PD(1) - RRIM(1)
-        T(2)  = PD(2) - RRIM(2)
-        T(3)  = PD(3) - RRIM(3)
+        T(1) = PD(1) - RRIM(1)
+        T(2) = PD(2) - RRIM(2)
+        T(3) = PD(3) - RRIM(3)
         ! Magnitude of the vector T (squared)
-        TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
+        TSQ = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
         ! Magnitude of vector T parallel to the cylinder rim (squared)
         TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
         TPARALSQ = TPARALSQ * TPARALSQ
@@ -1595,9 +1595,9 @@ IF( ALPHA > 0.D0 ) THEN
           ! Iteration
           COUNTERB = COUNTERB + 1
           ! Stop condition
-          IF( COUNTERB > 70 ) THEN
-            ! Bissection method will not converge (test other interval)
-            CYCLE INTERVAL_LOOP
+          IF( COUNTERB > 50 ) THEN
+            ! Bissection method will not converge (test current approximated root)
+            EXIT
           END IF
         END DO
         ! Root that minimizes objective function
