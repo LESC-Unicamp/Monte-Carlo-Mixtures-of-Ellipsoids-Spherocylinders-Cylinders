@@ -696,7 +696,7 @@ DO I = 1, 2
 END DO
 
 ! *********************************************************************************************** !
-! CASE 4: Disk-rim configuration (modified)                                                       !
+! CASE 4: Disk-rim configuration (modified version)                                               !
 ! *********************************************************************************************** !
 ! Rim of cylinder i
 RRIM(1)  = RI(1)
@@ -1188,13 +1188,13 @@ GAMMA = (DKRRIM_EXDISK * DKRRIM_EXDISK) + (DKRRIM_EYDISK * DKRRIM_EYDISK)
 IF( ALPHA > 0.D0 ) THEN
 
   ! Coefficients of the quartic function (objective function)
-  COEFF_QUARTIC(1) = 1.D0
-  COEFF_QUARTIC(2) = - (2.D0 / ALPHA) * (BETA + ALPHA * DKRRIM_ERIM)
-  COEFF_QUARTIC(3) = (1.D0 / ALPHA) * ( (4.D0 * BETA * DKRRIM_ERIM) + (ALPHA * DKRRIM_ERIM * DKRRIM_ERIM) - &
-  &                  (ALPHA * ALPHA * HALFDDISK * HALFDDISK) + GAMMA )
-  COEFF_QUARTIC(4) = (2.D0 / ALPHA) * ( (ALPHA * BETA * HALFDDISK * HALFDDISK) - (GAMMA * DKRRIM_ERIM) - &
+  COEFF_QUARTIC(1) = ALPHA
+  COEFF_QUARTIC(2) = - 2.D0 * (BETA + ALPHA * DKRRIM_ERIM)
+  COEFF_QUARTIC(3) = (4.D0 * BETA * DKRRIM_ERIM) + (ALPHA * DKRRIM_ERIM * DKRRIM_ERIM) - (ALPHA * ALPHA * HALFDDISK * HALFDDISK) &
+  &                  + GAMMA 
+  COEFF_QUARTIC(4) = 2.D0 * ( (ALPHA * BETA * HALFDDISK * HALFDDISK) - (GAMMA * DKRRIM_ERIM) - &
   &                  (BETA * DKRRIM_ERIM * DKRRIM_ERIM) )
-  COEFF_QUARTIC(5) = (1.D0 / ALPHA) * ( (DKRRIM_ERIM * DKRRIM_ERIM * GAMMA) - (BETA * BETA * HALFDDISK * HALFDDISK) )
+  COEFF_QUARTIC(5) = (DKRRIM_ERIM * DKRRIM_ERIM * GAMMA) - (BETA * BETA * HALFDDISK * HALFDDISK)
 
   ! Reduction of the quartic function
   MAXCOEFF = 0.D0
@@ -1268,7 +1268,7 @@ IF( ALPHA > 0.D0 ) THEN
     ! Sort roots in ascending order
     CPOINTS(1) = MINVAL( ROOTS )
     CPOINTS(2) = MAXVAL( ROOTS )
-    CPOINTS(3) = MAXVAL( ROOTS )
+    CPOINTS(3) = CPOINTS(2)
 
   ! If Δ > 0, one roots is real and two are complex conjugates
   ELSE IF( DISCRIMINANT > 0.D0 ) THEN
@@ -1284,8 +1284,8 @@ IF( ALPHA > 0.D0 ) THEN
 
     ! Sort roots in ascending order
     CPOINTS(1) = ROOTS(1)
-    CPOINTS(2) = ROOTS(2)
-    CPOINTS(3) = ROOTS(3)
+    CPOINTS(2) = CPOINTS(1)
+    CPOINTS(3) = CPOINTS(1)
 
   END IF
 
@@ -1311,6 +1311,125 @@ IF( ALPHA > 0.D0 ) THEN
   !  Fourth loop : CUBIC_ROOT(3) <= λ0 <=     L/2                                                   !
   ! *********************************************************************************************** !
   INTERVAL_LOOP: DO INTERVAL = 1, N_POINTS
+
+    ! Ignore intervals where the function has the same sign at the extremum points (no real roots)
+    IF( N_POINTS == 4 ) THEN
+      IF( INTERVAL == 1 ) THEN
+        LAMBDA(1) = - HALFLRIM
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(1)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 2 ) THEN
+        LAMBDA(1) = CPOINTS(1)
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(2)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 3 ) THEN
+        LAMBDA(1) = CPOINTS(2)
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(3)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 4 ) THEN
+        LAMBDA(1) = CPOINTS(3)
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = HALFLRIM
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      END IF
+    ELSE IF( N_POINTS == 3 ) THEN
+      IF( INTERVAL == 1 ) THEN
+        LAMBDA(1) = - HALFLRIM
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(1)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 2 ) THEN
+        LAMBDA(1) = CPOINTS(1)
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(2)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 3 ) THEN
+        LAMBDA(1) = CPOINTS(2)
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = HALFLRIM
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      END IF
+    ELSE IF( N_POINTS == 2 ) THEN
+      IF( INTERVAL == 1 ) THEN
+        LAMBDA(1) = - HALFLRIM
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(1)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 2 ) THEN
+        LAMBDA(1) = CPOINTS(1)
+        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = HALFLRIM
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      END IF
+    ELSE IF( N_POINTS == 1 .AND. MINVAL( CPOINTS ) >= HALFLRIM ) THEN
+      LAMBDA(1) = - HALFLRIM
+      F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+      &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+      LAMBDA(2) = MINVAL( CPOINTS )
+      F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+      &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+      IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        CYCLE INTERVAL_LOOP
+      END IF
+    ELSE IF( N_POINTS == 1 .AND. MAXVAL( CPOINTS ) <= - HALFLRIM ) THEN
+      LAMBDA(1) = HALFLRIM
+      F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
+      &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+      LAMBDA(2) = MAXVAL( CPOINTS )
+      F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+      &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+      IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        CYCLE INTERVAL_LOOP
+      END IF
+    END IF
 
     ! Initial parameters of the Newton-Raphson method
     DAMPING       = 1.D0  ! Damping factor
