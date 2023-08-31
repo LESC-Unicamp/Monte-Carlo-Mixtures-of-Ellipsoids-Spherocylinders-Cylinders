@@ -844,7 +844,9 @@ END SUBROUTINE RIM_RIM
 ! *********************************************************************************************** !
 !                                  Disk-Disk Overlap Algorithm                                    !
 ! *********************************************************************************************** !
-SUBROUTINE DISK_DISK( EI, EJ, DI, DJ, CC, HALFD, OVERLAPDISK )
+!        See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007) for more information         !
+! *********************************************************************************************** !
+SUBROUTINE DISK_DISK( EI, EJ, DI, DJ, HALFD, OVERLAPDISK )
 
 ! Uses one module: global variables
 USE GLOBALVAR
@@ -854,23 +856,24 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                 :: DIJSQ  ! Vector distance between disks i and j (squared)
-REAL( KIND= REAL64 )                 :: IDIJSQ ! Magnitude of the shortest distance between disk i and intersection line between planes of the disks
-REAL( KIND= REAL64 )                 :: JDIJSQ ! Magnitude of the shortest distance between disk j and intersection line between planes of the disks
-REAL( KIND= REAL64 )                 :: SPH_SQ ! Magnitude of the vector distance between the circumscribing spheres (squared)
-REAL( KIND= REAL64 )                 :: SEG    ! Segment (sum)
-REAL( KIND= REAL64 )                 :: SEGI   ! Segment of cylinder i
-REAL( KIND= REAL64 )                 :: SEGJ   ! Segment of cylinder j
-REAL( KIND= REAL64 )                 :: CC     ! Auxiliary variable
-REAL( KIND= REAL64 )                 :: MODEIJ ! Magnitude of vector eij
-REAL( KIND= REAL64 )                 :: PIPJ   ! Projection of dij on eij
-REAL( KIND= REAL64 ), DIMENSION( 2 ) :: RSQ    ! Radius of cylinders i and j (squared)
-REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFD  ! Half diameter of cylinders i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DIJ    ! Vector distance between disks i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EI, EJ ! Orientation of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EIJ    ! Cross product of orientations of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: UEIJ   ! Versor of vector eij
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DI, DJ ! Position of both disks of cylinders (particles) i and j
+REAL( KIND= REAL64 )                 :: DIJSQ       ! Vector distance between disks i and j (squared)
+REAL( KIND= REAL64 )                 :: SPH_SQ      ! Magnitude of the vector distance between the circumscribing spheres (squared)
+REAL( KIND= REAL64 )                 :: SEG         ! Sum of the segments of disks of cylinders i and j
+REAL( KIND= REAL64 )                 :: SEGI        ! Magnitude of the segment between a point on the circumference of disk of cylinder i and the point over the intersection line
+REAL( KIND= REAL64 )                 :: SEGJ        ! Magnitude of the segment between a point on the circumference of disk of cylinder j and the point over the intersection line
+REAL( KIND= REAL64 )                 :: PIPJ        ! Magnitude of the vector distance between the points over the intersection line defined by the plane of the disks
+REAL( KIND= REAL64 )                 :: PIDISQ      ! Magnitude of the vector distance between a point over the intersection line and the center of mass of disk of cylinder i (squared)
+REAL( KIND= REAL64 )                 :: PJDJSQ      ! Magnitude of the vector distance between a point over the intersection line and the center of mass of disk of cylinder j (squared)
+REAL( KIND= REAL64 ), DIMENSION( 2 ) :: RSQ         ! Radius of cylinders i and j (squared)
+REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFD       ! Half diameter of cylinders i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DIJ         ! Vector distance between the centers of mass of disks of cylinders i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EI, EJ      ! Orientation of cylinders i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: CROSSEIEJ   ! Orientation of the intersection line
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EICROSSEIEJ ! Cross product between the orientation of a disk of cylinder j and orientation of the intersection line
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EJCROSSEIEJ ! Cross product between the orientation of a disk of cylinder i and orientation of the intersection line
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: PPI, PPJ    ! Position of the points over the intersection line that are nearest of the centers of mass of disks of cylinders i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: PIDI, PJDJ  ! Vector distance between the points over the intersection line and the centers of mass of disks of cylinders i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DI, DJ      ! Position of both disks of cylinders i and j
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -880,10 +883,25 @@ LOGICAL :: OVERLAPDISK ! Detects overlap between two particles (disk-disk config
 ! Initialize logical variable
 OVERLAPDISK = .FALSE.
 
+! Orientation of the intersection line
+CROSSEIEJ(1) = EI(2) * EJ(3) - EI(3) * EJ(2)
+CROSSEIEJ(2) = EI(3) * EJ(1) - EI(1) * EJ(3)
+CROSSEIEJ(3) = EI(1) * EJ(2) - EI(2) * EJ(1)
+
+! Cross product between the orientation of a disk of cylinder j and orientation of the intersection line
+EICROSSEIEJ(1) = EI(2) * CROSSEIEJ(3) - EI(3) * CROSSEIEJ(2)
+EICROSSEIEJ(2) = EI(3) * CROSSEIEJ(1) - EI(1) * CROSSEIEJ(3)
+EICROSSEIEJ(3) = EI(1) * CROSSEIEJ(2) - EI(2) * CROSSEIEJ(1)
+
+! Cross product between the orientation of a disk of cylinder i and orientation of the intersection line
+EJCROSSEIEJ(1) = EJ(2) * CROSSEIEJ(3) - EJ(3) * CROSSEIEJ(2)
+EJCROSSEIEJ(2) = EJ(3) * CROSSEIEJ(1) - EJ(1) * CROSSEIEJ(3)
+EJCROSSEIEJ(3) = EJ(1) * CROSSEIEJ(2) - EJ(2) * CROSSEIEJ(1)
+
 ! Magnitude of the vector distance between the circumscribing spheres (squared)
 SPH_SQ = ( HALFD(1) + HALFD(2) ) * ( HALFD(1) + HALFD(2) )
 
-! Vector distance between both disks
+! Vector distance between both disks of cylinders i and j
 DIJ(1) = DJ(1) - DI(1)
 DIJ(2) = DJ(2) - DI(2)
 DIJ(3) = DJ(3) - DI(3)
@@ -891,47 +909,48 @@ DIJ(3) = DJ(3) - DI(3)
 ! Magnitude of the vector distance between both disks
 DIJSQ  = ( DIJ(1) * DIJ(1) ) + ( DIJ(2) * DIJ(2) ) + ( DIJ(3) * DIJ(3) )
 
+! Condition of parallel disks
+IF( DABS( DOT_PRODUCT( DIJ, EI ) ) <= 1.D-10 .AND. DIJSQ <= SPH_SQ ) THEN
+  OVERLAPDISK = .TRUE.
+  RETURN
 ! Non-overlapping condition (spheres circumscribing the disks)
-IF( DIJSQ > SPH_SQ ) THEN
+ELSE IF( DIJSQ > SPH_SQ ) THEN
   RETURN
 END IF
 
-! Magnitude of the shortest distance between disk i and intersection line between planes of the disks
-IDIJSQ = ( DIJ(1) * EJ(1) ) + ( DIJ(2) * EJ(2) ) + ( DIJ(3) * EJ(3) )
-IDIJSQ = ( IDIJSQ * IDIJSQ )
-IDIJSQ = ( IDIJSQ / CC )
+! Position of a point over the intersection line that is nearest of the center of mass of disk of cylinder i
+PPI = ( DOT_PRODUCT( DI, CROSSEIEJ ) * CROSSEIEJ + DOT_PRODUCT( DI, EI ) * EJCROSSEIEJ - DOT_PRODUCT( DJ, EJ ) * EICROSSEIEJ ) / &
+&     DOT_PRODUCT( CROSSEIEJ, CROSSEIEJ )
 
-! Magnitude of the shortest distance between disk j and intersection line between planes of the disks
-JDIJSQ = ( DIJ(1) * EI(1) ) + ( DIJ(2) * EI(2) ) + ( DIJ(3) * EI(3) )
-JDIJSQ = ( JDIJSQ * JDIJSQ )
-JDIJSQ = ( JDIJSQ / CC )
+! Position of a point over the intersection line that is nearest of the center of mass of disk of cylinder j
+PPJ = ( DOT_PRODUCT( DJ, CROSSEIEJ ) * CROSSEIEJ + DOT_PRODUCT( DI, EI ) * EJCROSSEIEJ - DOT_PRODUCT( DJ, EJ ) * EICROSSEIEJ ) / &
+&     DOT_PRODUCT( CROSSEIEJ, CROSSEIEJ )
 
-! Radius (squared)
+! Vector distance between a point over the intersection line and the center of mass of disk of cylinder i
+PIDI = PPI - DI
+! Magnitude of the vector distance between a point over the intersection line and the center of mass of disk of cylinder i (squared)
+PIDISQ = DOT_PRODUCT( PIDI, PIDI )
+
+! Vector distance between a point over the intersection line and the center of mass of disk of cylinder i
+PJDJ = PPJ - DJ
+! Magnitude of the vector distance between a point over the intersection line and the center of mass of disk of cylinder j (squared)
+PJDJSQ = DOT_PRODUCT( PJDJ, PJDJ )
+
+! Radiuses (squared)
 RSQ(1) = ( HALFD(1) * HALFD(1) )
 RSQ(2) = ( HALFD(2) * HALFD(2) )
 
 ! Initial overlap condition
-IF( ( IDIJSQ < RSQ(1) ) .AND. ( JDIJSQ < RSQ(2) ) ) THEN
-  ! Lengths of segments symmetrical to the intersection line between planes of the disks
-  SEGI = DSQRT( RSQ(1) - IDIJSQ )
-  SEGJ = DSQRT( RSQ(2) - JDIJSQ )
-  ! Sum of segments
-  SEG = SEGI + SEGJ
-  ! Cross product of orientations of disks of cylinders i and j (orientation of intersection line)
-  EIJ(1) = ( EI(2) * EJ(3) ) - ( EI(3) * EJ(2) )
-  EIJ(2) = ( EI(3) * EJ(1) ) - ( EI(1) * EJ(3) )
-  EIJ(3) = ( EI(1) * EJ(2) ) - ( EI(2) * EJ(1) )
-  ! Magnitude of the orientation of intersection line
-  MODEIJ = ( EIJ(1) * EIJ(1) ) + ( EIJ(2) * EIJ(2) ) + ( EIJ(3) * EIJ(3) )
-  MODEIJ = DSQRT( MODEIJ )
-  ! Versor of the orientation of intersection line
-  UEIJ(1) = ( EIJ(1) / MODEIJ )
-  UEIJ(2) = ( EIJ(2) / MODEIJ )
-  UEIJ(3) = ( EIJ(3) / MODEIJ )
-  ! Projection of the vector distance of both disks along the intersection line between planes of the disks
-  PIPJ = ( DIJ(1) * UEIJ(1) ) + ( DIJ(2) * UEIJ(2) ) + ( DIJ(3) * UEIJ(3) )
+IF( ( PIDISQ < RSQ(1) ) .AND. ( PJDJSQ < RSQ(2) ) ) THEN
+  ! Length of the segments between the points on the circumference of disks of cylinders i and j and the points over the intersection line
+  SEGI = DSQRT( RSQ(1) - PIDISQ )
+  SEGJ = DSQRT( RSQ(2) - PJDJSQ )
+  ! Sum of the segments
+  SEG  = SEGI + SEGJ
+  ! Magnitude of the vector distance between the points over the intersection line
+  PIPJ = DSQRT( DOT_PRODUCT( (PPI - PPJ), (PPI - PPJ) ) )
   ! Overlap criterion
-  IF( DABS( PIPJ ) <= SEG ) THEN
+  IF( PIPJ <= SEG ) THEN
     OVERLAPDISK = .TRUE.
     RETURN
   END IF
