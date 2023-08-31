@@ -48,7 +48,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: CI, CJ ! Counters
+INTEGER( KIND= INT64 ) :: CI, CJ   ! Counters
+INTEGER( KIND= INT64 ) :: COUNTERB ! Counter (numerical method)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (PARAMETER)                                                                      !
@@ -98,6 +99,7 @@ REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: IDMATRIX    ! Identity matrix
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
 LOGICAL :: OVERLAP_HER ! Detects overlap between two ellipsoids of revolution: TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: BISSECTION  ! Checks whether the root from the bisection method will be used or not
 
 ! Ellipsoid centers of mass coincide (FA = FB = 0 | Bissection method cannot be used)
 IF( DABS( RIJSQ - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
@@ -109,6 +111,8 @@ END IF
 
 ! Initialization
 OVERLAP_HER = .FALSE.
+BISSECTION  = .FALSE.
+COUNTERB    = 0
 
 ! Identity matrix
 IDMATRIX(:,:) = 0.D0
@@ -304,73 +308,78 @@ IF( (FA * FB) < 0.D0 ) THEN
     &   ( .NOT. BISSECTION .AND. ( DABS( LAMBDAS - LAMBDAB ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
     &   ( BISSECTION .AND. ( DABS( LAMBDAS - LAMBDAC ) < TOLERANCE ) ) .OR. &
     &   ( .NOT. BISSECTION .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE ) ) ) THEN
+      ! Root from bisection method
       LAMBDAS = 0.5D0 * (LAMBDAA + LAMBDAB)
       BISSECTION = .TRUE.
     ELSE
+      ! Root from interplation method or false position formula
       BISSECTION = .FALSE.
     END IF
-
     ! Matrix G
-      G(:,:) = LAMBDAS * BJINV(:,:) + (1.D0 - LAMBDAS) * AIINV(:,:)
+    G(:,:) = LAMBDAS * BJINV(:,:) + (1.D0 - LAMBDAS) * AIINV(:,:)
+    ! Inverse Matrix G
+    CALL INVERSE( G, GINV )
+    ! Auxiliary scalar (transpose of vector distance times inverse of matrix G times vector distance)
+    AUX = 0.D0
+    AUX = AUX + ( RIJ(1) * GINV(1,1) + RIJ(2) * GINV(2,1) + RIJ(3) * GINV(3,1) ) * RIJ(1)
+    AUX = AUX + ( RIJ(1) * GINV(1,2) + RIJ(2) * GINV(2,2) + RIJ(3) * GINV(3,2) ) * RIJ(2)
+    AUX = AUX + ( RIJ(1) * GINV(1,3) + RIJ(2) * GINV(2,3) + RIJ(3) * GINV(3,3) ) * RIJ(3)
+    ! First derivative of matrix G with respect to λ
+    DG_DLAMB(:,:) = ( (1.D0 - LAMBDAS) * (1.D0 - LAMBDAS) * AIINV(:,:) ) - ( LAMBDAS * LAMBDAS * BJINV(:,:) )
+    ! Auxiliary vector (derivative)
+    DAUX1_DLAMB(1) = ( GINV(1,1) * RIJ(1) + GINV(1,2) * RIJ(2) + GINV(1,3) * RIJ(3) )
+    DAUX1_DLAMB(2) = ( GINV(2,1) * RIJ(1) + GINV(2,2) * RIJ(2) + GINV(2,3) * RIJ(3) )
+    DAUX1_DLAMB(3) = ( GINV(3,1) * RIJ(1) + GINV(3,2) * RIJ(2) + GINV(3,3) * RIJ(3) )
+    ! Auxiliary vector (derivative)
+    DAUX2_DLAMB(1) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,1) + DAUX1_DLAMB(2) * DG_DLAMB(2,1) + DAUX1_DLAMB(3) * DG_DLAMB(3,1) )
+    DAUX2_DLAMB(2) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,2) + DAUX1_DLAMB(2) * DG_DLAMB(2,2) + DAUX1_DLAMB(3) * DG_DLAMB(3,2) )
+    DAUX2_DLAMB(3) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,3) + DAUX1_DLAMB(2) * DG_DLAMB(2,3) + DAUX1_DLAMB(3) * DG_DLAMB(3,3) )
+    ! First derivative of the interpolating function with respect to λ (λ = λroot)
+    DFUNC_DLAMB = 0.D0
+    DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,1) + DAUX2_DLAMB(2) * GINV(2,1) + DAUX2_DLAMB(3) * GINV(3,1) ) * RIJ(1)
+    DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,2) + DAUX2_DLAMB(2) * GINV(2,2) + DAUX2_DLAMB(3) * GINV(3,2) ) * RIJ(2)
+    DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,3) + DAUX2_DLAMB(2) * GINV(2,3) + DAUX2_DLAMB(3) * GINV(3,3) ) * RIJ(3)
+    FS          = DFUNC_DLAMB
+    ! Set third-to-last root guess
+    LAMBDAD = LAMBDAC
+    ! Set second-to-last root guess
+    LAMBDAC = LAMBDAB
+    FC      = FB
+    ! Check signs of FA and FS
+    IF( FA * FS < 0.D0 ) THEN
+      LAMBDAB = LAMBDAS
+      FB      = FS
+    ELSE
+      LAMBDAA = LAMBDAS
+      FA      = FS
+    END IF
+    ! Swap condition
+    IF( DABS( FA ) < DABS( FB ) ) THEN
+      ! Swap bounds
+      TEMPT   = LAMBDAA
+      LAMBDAA = LAMBDAB
+      LAMBDAB = TEMPT
+      ! Swap function values
+      TEMPT = FA
+      FA    = FB
+      FB    = TEMPT
+    END IF
+    COUNTERB = COUNTERB + 1
+    IF( COUNTERB > 50 ) THEN
+      WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
+      CALL EXIT(  )
+    END IF
+  END DO
 
-      ! Inverse Matrix G
-      CALL INVERSE( G, GINV )
-
-      ! Auxiliary scalar (transpose of vector distance times inverse of matrix G times vector distance)
-      AUX = 0.D0
-      AUX = AUX + ( RIJ(1) * GINV(1,1) + RIJ(2) * GINV(2,1) + RIJ(3) * GINV(3,1) ) * RIJ(1)
-      AUX = AUX + ( RIJ(1) * GINV(1,2) + RIJ(2) * GINV(2,2) + RIJ(3) * GINV(3,2) ) * RIJ(2)
-      AUX = AUX + ( RIJ(1) * GINV(1,3) + RIJ(2) * GINV(2,3) + RIJ(3) * GINV(3,3) ) * RIJ(3)
-
-      ! First derivative of matrix G with respect to λ
-      DG_DLAMB(:,:) = ( (1.D0 - LAMBDAS) * (1.D0 - LAMBDAS) * AIINV(:,:) ) - ( LAMBDAS * LAMBDAS * BJINV(:,:) )
-
-      ! Auxiliary vector (derivative)
-      DAUX1_DLAMB(1) = ( GINV(1,1) * RIJ(1) + GINV(1,2) * RIJ(2) + GINV(1,3) * RIJ(3) )
-      DAUX1_DLAMB(2) = ( GINV(2,1) * RIJ(1) + GINV(2,2) * RIJ(2) + GINV(2,3) * RIJ(3) )
-      DAUX1_DLAMB(3) = ( GINV(3,1) * RIJ(1) + GINV(3,2) * RIJ(2) + GINV(3,3) * RIJ(3) )
-
-      ! Auxiliary vector (derivative)
-      DAUX2_DLAMB(1) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,1) + DAUX1_DLAMB(2) * DG_DLAMB(2,1) + DAUX1_DLAMB(3) * DG_DLAMB(3,1) )
-      DAUX2_DLAMB(2) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,2) + DAUX1_DLAMB(2) * DG_DLAMB(2,2) + DAUX1_DLAMB(3) * DG_DLAMB(3,2) )
-      DAUX2_DLAMB(3) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,3) + DAUX1_DLAMB(2) * DG_DLAMB(2,3) + DAUX1_DLAMB(3) * DG_DLAMB(3,3) )
-
-      ! First derivative of the interpolating function with respect to λ (λ = 1)
-      DFUNC_DLAMB = 0.D0
-  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,1) + DAUX2_DLAMB(2) * GINV(2,1) + DAUX2_DLAMB(3) * GINV(3,1) ) * RIJ(1)
-  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,2) + DAUX2_DLAMB(2) * GINV(2,2) + DAUX2_DLAMB(3) * GINV(3,2) ) * RIJ(2)
-  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,3) + DAUX2_DLAMB(2) * GINV(2,3) + DAUX2_DLAMB(3) * GINV(3,3) ) * RIJ(3)
-  fs          = DFUNC_DLAMB
-    lambdad = lambdac
-    lambdac = lambdab
-    fc = fb
-    if( fa*fs<0.d0 ) then
-      lambdab=lambdas
-      fb = fs
-    else
-      lambdaa=lambdas
-      fa=fs
-    end if
-    if( dabs(fa) < dabs(fb) ) then
-      !call swap(a,b)
-      tempt = lambdaa
-      lambdaa = lambdab
-      lambdab = tempt
-      !call swap(fa,fb)
-      tempt = fa
-      fa = fb
-      fb = tempt
-    end if
-    COUNTERB = COUNTERB+1
-    if(COUNTERB>500) call exit()
-  end do
-  if(dabs(fs)<tolerance) then
-    lambdac = lambdas
-  else if(dabs(fb)<tolerance .or. dabs(lambdaa-lambdab)<tolerance) then
-    lambdac=lambdab
-  end if
+  ! Root (iterative process or initial guess)
+  IF( DABS( FS ) < TOLERANCE ) THEN
+    LAMBDAS = LAMBDAS
+  ELSE IF( DABS( FB ) < TOLERANCE .OR. DABS( LAMBDAA - LAMBDAB ) < TOLERANCE ) THEN
+    LAMBDAS = LAMBDAB
+  END IF
+  
   ! Interpolating function, S(λ)
-  INTFUNC = LAMBDAC * (1.D0 - LAMBDAC) * AUX
+  INTFUNC = LAMBDAS * (1.D0 - LAMBDAS) * AUX
 
   ! Contact distance (Perram-Wertheim Method)
   CONTACT_D = INTFUNC * RIJSQ
@@ -381,112 +390,7 @@ IF( (FA * FB) < 0.D0 ) THEN
   ELSE
     OVERLAP_HER = .TRUE.
   END IF
-else
-  print *,"finish"
-  call exit()
-
-end if
-
-! Bissection condition
-IF( (FA * FB) < 0.D0 ) THEN
-
-  ! Midpoint λ
-  LAMBDAC = 0.5D0 * ( LAMBDAA + LAMBDAB )
-
-  ! Auxiliary matrix G
-  G(:,:) = LAMBDAC * BJINV(:,:) + (1.D0 - LAMBDAC) * AIINV(:,:)
-
-  ! Inverse matrix G
-  CALL INVERSE( G, GINV )
-
-  ! Auxiliary scalar (transpose of vector distance times inverse matrix G times vector distance)
-  AUX = 0.D0
-  AUX = AUX + ( RIJ(1) * GINV(1,1) + RIJ(2) * GINV(2,1) + RIJ(3) * GINV(3,1) ) * RIJ(1)
-  AUX = AUX + ( RIJ(1) * GINV(1,2) + RIJ(2) * GINV(2,2) + RIJ(3) * GINV(3,2) ) * RIJ(2)
-  AUX = AUX + ( RIJ(1) * GINV(1,3) + RIJ(2) * GINV(2,3) + RIJ(3) * GINV(3,3) ) * RIJ(3)
-
-  ! First derivative of matrix G with respect to λ
-  DG_DLAMB(:,:) = ( (1.D0 - LAMBDAC) * (1.D0 - LAMBDAC) * AIINV(:,:) ) - ( LAMBDAC * LAMBDAC * BJINV(:,:) )
-
-  ! Auxiliary vector (derivative)
-  DAUX1_DLAMB(1) = ( GINV(1,1) * RIJ(1) + GINV(1,2) * RIJ(2) + GINV(1,3) * RIJ(3) )
-  DAUX1_DLAMB(2) = ( GINV(2,1) * RIJ(1) + GINV(2,2) * RIJ(2) + GINV(2,3) * RIJ(3) )
-  DAUX1_DLAMB(3) = ( GINV(3,1) * RIJ(1) + GINV(3,2) * RIJ(2) + GINV(3,3) * RIJ(3) )
-
-  ! Auxiliary vector (derivative)
-  DAUX2_DLAMB(1) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,1) + DAUX1_DLAMB(2) * DG_DLAMB(2,1) + DAUX1_DLAMB(3) * DG_DLAMB(3,1) )
-  DAUX2_DLAMB(2) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,2) + DAUX1_DLAMB(2) * DG_DLAMB(2,2) + DAUX1_DLAMB(3) * DG_DLAMB(3,2) )
-  DAUX2_DLAMB(3) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,3) + DAUX1_DLAMB(2) * DG_DLAMB(2,3) + DAUX1_DLAMB(3) * DG_DLAMB(3,3) )
-
-  ! First derivative of the interpolating function with respect to λ (λ = λmid)
-  DFUNC_DLAMB = 0.D0
-  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,1) + DAUX2_DLAMB(2) * GINV(2,1) + DAUX2_DLAMB(3) * GINV(3,1) ) * RIJ(1)
-  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,2) + DAUX2_DLAMB(2) * GINV(2,2) + DAUX2_DLAMB(3) * GINV(3,2) ) * RIJ(2)
-  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,3) + DAUX2_DLAMB(2) * GINV(2,3) + DAUX2_DLAMB(3) * GINV(3,3) ) * RIJ(3)
-  FC          = DFUNC_DLAMB
-
-  ! Stop criterion
-  DO WHILE( DABS(FC) >= TOLERANCE )
-
-    ! Bissection criterion
-    IF( ( FA * FC ) > 0.D0 )THEN
-      LAMBDAA = LAMBDAC
-      FA      = FC
-    ELSE
-      LAMBDAB = LAMBDAC
-      FB      = FC
-    ENDIF
-
-    ! New midpoint λ
-    LAMBDAC = 0.5D0 * ( LAMBDAA + LAMBDAB )
-
-    ! Matrix G
-    G(:,:) = LAMBDAC * BJINV(:,:) + (1.D0 - LAMBDAC) * AIINV(:,:)
-
-    ! Inverse matrix G
-    CALL INVERSE( G, GINV )
-
-    ! Auxiliary scalar (transpose of vector distance times inverse matrix G times vector distance)
-    AUX = 0.D0
-    AUX = AUX + ( RIJ(1) * GINV(1,1) + RIJ(2) * GINV(2,1) + RIJ(3) * GINV(3,1) ) * RIJ(1)
-    AUX = AUX + ( RIJ(1) * GINV(1,2) + RIJ(2) * GINV(2,2) + RIJ(3) * GINV(3,2) ) * RIJ(2)
-    AUX = AUX + ( RIJ(1) * GINV(1,3) + RIJ(2) * GINV(2,3) + RIJ(3) * GINV(3,3) ) * RIJ(3)
-
-    ! First derivative of matrix G with respect to λ
-    DG_DLAMB(:,:) = ( (1.D0 - LAMBDAC) * (1.D0 - LAMBDAC) * AIINV(:,:) ) - ( LAMBDAC * LAMBDAC * BJINV(:,:) )
-
-    ! Auxiliary vector (derivative)
-    DAUX1_DLAMB(1) = ( GINV(1,1) * RIJ(1) + GINV(1,2) * RIJ(2) + GINV(1,3) * RIJ(3) )
-    DAUX1_DLAMB(2) = ( GINV(2,1) * RIJ(1) + GINV(2,2) * RIJ(2) + GINV(2,3) * RIJ(3) )
-    DAUX1_DLAMB(3) = ( GINV(3,1) * RIJ(1) + GINV(3,2) * RIJ(2) + GINV(3,3) * RIJ(3) )
-
-    ! Auxiliary vector (derivative)
-    DAUX2_DLAMB(1) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,1) + DAUX1_DLAMB(2) * DG_DLAMB(2,1) + DAUX1_DLAMB(3) * DG_DLAMB(3,1) )
-    DAUX2_DLAMB(2) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,2) + DAUX1_DLAMB(2) * DG_DLAMB(2,2) + DAUX1_DLAMB(3) * DG_DLAMB(3,2) )
-    DAUX2_DLAMB(3) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,3) + DAUX1_DLAMB(2) * DG_DLAMB(2,3) + DAUX1_DLAMB(3) * DG_DLAMB(3,3) )
-
-    ! First derivative of the interpolating function with respect to λ (λ = λmid)
-    DFUNC_DLAMB = 0.D0
-    DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,1) + DAUX2_DLAMB(2) * GINV(2,1) + DAUX2_DLAMB(3) * GINV(3,1) ) * RIJ(1)
-    DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,2) + DAUX2_DLAMB(2) * GINV(2,2) + DAUX2_DLAMB(3) * GINV(3,2) ) * RIJ(2)
-    DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,3) + DAUX2_DLAMB(2) * GINV(2,3) + DAUX2_DLAMB(3) * GINV(3,3) ) * RIJ(3)
-    FC          = DFUNC_DLAMB
-
-  END DO
-
-  ! Interpolating function, S(λ)
-  INTFUNC = LAMBDAC * (1.D0 - LAMBDAC) * AUX
-
-  ! Contact distance (Perram-Wertheim method)
-  CONTACT_D = INTFUNC * RIJSQ
-
-  ! Non-overlapping criterion
-  IF( INTFUNC > 1.D0 ) THEN
-    OVERLAP_HER = .FALSE.
-  ELSE
-    OVERLAP_HER = .TRUE.
-  END IF
-
+  
 ELSE
 
   ! Error
