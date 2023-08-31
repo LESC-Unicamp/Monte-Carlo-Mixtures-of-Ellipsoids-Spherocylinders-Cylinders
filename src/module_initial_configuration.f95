@@ -8,7 +8,7 @@
 !                       See Macpherson et al. (2007) for some information.                        !
 !     This module also writes out a file containing all particles' positions and quaternions.     !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -551,8 +551,6 @@ REAL( KIND= REAL64 ), DIMENSION( 3 )          :: RI, RJ           ! Position of 
 REAL( KIND= REAL64 ), DIMENSION( 3 )          :: EI, EJ           ! Orientation of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )        :: QI, QJ           ! Quaternions of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( COMPONENTS ) :: CUTOFF           ! Cutoff diameter
-REAL( KIND= REAL64 ), DIMENSION( 2, 3 )       :: BOXVECY          ! New y-vector of the box after a clockwise/counterclockwise rotation about the normal vector of the ZY-plane
-REAL( KIND= REAL64 ), DIMENSION( 2, 0:3 )     :: QROTPROJ         ! Rotation quaternion of projection of the y-vector of the box about the normal vector of the ZY-plane
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (Allocatable)                                                                    !
@@ -1739,34 +1737,19 @@ NPT_SIMULATION: DO
               PROJY_XY = PROJY_XY / DSQRT( DOT_PRODUCT( PROJY_XY, PROJY_XY ) )
               ! Angle between the projection of the y-vector of the box and the y-axis of the coordination system
               THETA = DACOS( DOT_PRODUCT( PROJY_XY, [0.D0,1.D0,0.D0] ) / DSQRT( DOT_PRODUCT( PROJY_XY, PROJY_XY ) ) )
-              ! Rotation quaternion (clockwise rotation)
-              QROTPROJ(1,0) = DCOS( THETA * 0.5D0 )              ! Real part
-              QROTPROJ(1,1) = DSIN( THETA * 0.5D0 ) * RAXIS(1)   ! Imaginary part (Vector)
-              QROTPROJ(1,2) = DSIN( THETA * 0.5D0 ) * RAXIS(2)   ! Imaginary part (Vector)
-              QROTPROJ(1,3) = DSIN( THETA * 0.5D0 ) * RAXIS(3)   ! Imaginary part (Vector)
-              ! Rotation quaternion (counterclockwise rotation)
-              QROTPROJ(2,0) = DCOS( - THETA * 0.5D0 )            ! Real part
-              QROTPROJ(2,1) = DSIN( - THETA * 0.5D0 ) * RAXIS(1) ! Imaginary part (Vector)
-              QROTPROJ(2,2) = DSIN( - THETA * 0.5D0 ) * RAXIS(2) ! Imaginary part (Vector)
-              QROTPROJ(2,3) = DSIN( - THETA * 0.5D0 ) * RAXIS(3) ! Imaginary part (Vector)
-              ! Check the z-coordinate of the y-vector of the box after a clockwise/counterclockwise rotation
-              IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
-                ! Auxiliary vector (clockwise rotation)
-                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROTPROJ(1,:), AUXV )
-                ! New y-vector of the simulation box (clockwise rotation)
-                BOXVECY(1,:) = DSQRT( DOT_PRODUCT( BOXLROT(4:6), BOXLROT(4:6) ) ) * AUXV
-                ! Auxiliary vector (counterclockwise rotation)
-                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROTPROJ(2,:), AUXV )
-                ! New y-vector of the simulation box (counterclockwise rotation)
-                BOXVECY(2,:) = DSQRT( DOT_PRODUCT( BOXLROT(4:6), BOXLROT(4:6) ) ) * AUXV
-                ! Check which z-component of the y-vector is close to 0 (there must be at least one)
-                IF( DABS( BOXVECY(1,3) ) <= DABS( BOXVECY(2,3) ) ) THEN
-                  ! Perform a clockwise rotation
-                  QROT(:) = QROTPROJ(1,:)
-                ELSE
-                  ! Perform a counterclockwise rotation
-                  QROT(:) = QROTPROJ(2,:)
-                END IF
+              ! Direction of rotation
+              IF( PROJY_XY(3) < 0.D0 ) THEN
+                ! Rotation quaternion (clockwise rotation)
+                QROT(0) = DCOS( THETA * 0.5D0 )              ! Real part
+                QROT(1) = DSIN( THETA * 0.5D0 ) * RAXIS(1)   ! Imaginary part (Vector)
+                QROT(2) = DSIN( THETA * 0.5D0 ) * RAXIS(2)   ! Imaginary part (Vector)
+                QROT(3) = DSIN( THETA * 0.5D0 ) * RAXIS(3)   ! Imaginary part (Vector)
+              ELSE
+                ! Rotation quaternion (counterclockwise rotation)
+                QROT(0) = DCOS( - THETA * 0.5D0 )            ! Real part
+                QROT(1) = DSIN( - THETA * 0.5D0 ) * RAXIS(1) ! Imaginary part (Vector)
+                QROT(2) = DSIN( - THETA * 0.5D0 ) * RAXIS(2) ! Imaginary part (Vector)
+                QROT(3) = DSIN( - THETA * 0.5D0 ) * RAXIS(3) ! Imaginary part (Vector)
               END IF
               ! Make box y-vector coplanar with the XY-plane of the coordination system
               IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
