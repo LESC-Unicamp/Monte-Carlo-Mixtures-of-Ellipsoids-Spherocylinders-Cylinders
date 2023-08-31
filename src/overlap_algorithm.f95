@@ -590,8 +590,8 @@ END SUBROUTINE SPHEROCYLINDER_OVERLAP
 !      as well as the position of their centers of mass and the unit vector joining them and      !
 !                        calculates whether the cylinders overlap or not.                         !
 !             See Lopes et al., Chem. Phys. 154, 104902 (2021), for more information.             !
-!             See Lopes et al., Chem. Phys. 154, 104902 (2021), for more information.             !
-!        See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007), for more information        !
+!            See Orellana et al., Eur. Phys. J. E 41, 51 (2018), for more information.            !
+!       See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007), for more information.        !
 ! *********************************************************************************************** !
 SUBROUTINE CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP_CYL )
 
