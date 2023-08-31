@@ -28,6 +28,14 @@
 !                    J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti                     !
 !                                 Chem. Phys. 154, 104902 (2021)                                  !
 !                                     DOI: 10.1063/5.0040942                                      !
+!                             --------------------------------------                              !
+!                            A. G. Orellana, E. Romani, C. de Michele                             !
+!                                  Eur. Phys. J. E 41, 51 (2018)                                  !
+!                                 DOI: 10.1140/epje/i2018-11657-0                                 !
+!                             --------------------------------------                              !
+!                         N. Ibarra-Avalos, A. Gil-Villegas, A. M. Richa                          !
+!                                Mol. Simul. 33, 6, 505–515 (2007)                                !
+!                                 DOI: 10.1080/08927020701191349                                  !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
@@ -582,6 +590,8 @@ END SUBROUTINE SPHEROCYLINDER_OVERLAP
 !      as well as the position of their centers of mass and the unit vector joining them and      !
 !                        calculates whether the cylinders overlap or not.                         !
 !             See Lopes et al., Chem. Phys. 154, 104902 (2021), for more information.             !
+!             See Lopes et al., Chem. Phys. 154, 104902 (2021), for more information.             !
+!        See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007), for more information        !
 ! *********************************************************************************************** !
 SUBROUTINE CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP_CYL )
 
@@ -844,7 +854,7 @@ END SUBROUTINE RIM_RIM
 ! *********************************************************************************************** !
 !                                  Disk-Disk Overlap Algorithm                                    !
 ! *********************************************************************************************** !
-!        See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007) for more information         !
+!        See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007), for more information        !
 ! *********************************************************************************************** !
 SUBROUTINE DISK_DISK( EI, EJ, DI, DJ, HALFD, OVERLAPDISK )
 
