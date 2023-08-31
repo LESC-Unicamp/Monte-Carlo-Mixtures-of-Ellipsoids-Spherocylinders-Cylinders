@@ -735,7 +735,7 @@ DJ(2,3) = RJ(3) - ( EJ(3) * HALFLENGTH(2) )
 ! Search for overlaps between all pairs of disks from both cylinders
 DO I = 1, 2
   DO J = 1, 2
-    CALL DISK_DISK( EI, EJ, DI(I,:), DJ(J,:), CC, HALFDIAMETER, OVERLAPDISK )
+    CALL DISK_DISK( EI, EJ, DI(I,:), DJ(J,:), HALFDIAMETER, OVERLAPDISK )
     IF( OVERLAPDISK ) THEN
       OVERLAP_CYL = .TRUE.
       RETURN
