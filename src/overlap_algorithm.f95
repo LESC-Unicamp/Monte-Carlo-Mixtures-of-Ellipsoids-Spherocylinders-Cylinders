@@ -61,21 +61,25 @@ REAL( KIND= REAL64 ), PARAMETER :: TOLERANCE = 1.D-10  ! Numerical tolerance
 REAL( KIND= REAL64 )                    :: LAMBDAA     ! Interpolation parameter (extremum) [a]
 REAL( KIND= REAL64 )                    :: LAMBDAB     ! Interpolation parameter (extremum) [b]
 REAL( KIND= REAL64 )                    :: LAMBDAC     ! Interpolation parameter (midpoint) [c]
+REAL( KIND= REAL64 )                    :: LAMBDAD     ! Interpolation parameter (midpoint) [d]
+REAL( KIND= REAL64 )                    :: LAMBDAS     ! Interpolation parameter (root)     [s]
 REAL( KIND= REAL64 )                    :: FA, FB      ! Derivatives of the interpolating function at the extrema of the interval: λ ∈ [0,1]
 REAL( KIND= REAL64 )                    :: FC          ! Derivative of the interpolating function at the midpoint of the considered interval
-REAL( KIND= REAL64 )                    :: AUX         ! Auxiliary variable
-REAL( KIND= REAL64 )                    :: INTFUNC     ! Interpolating function (Perram-Wertheim method)
-REAL( KIND= REAL64 )                    :: DFUNC_DLAMB ! First derivative of the interpolating function with respect to λ (Perram-Wertheim method)
+REAL( KIND= REAL64 )                    :: FS          ! Derivative of the interpolating function at the root of the considered interval
+REAL( KIND= REAL64 )                    :: AUX         ! Auxiliar
+REAL( KIND= REAL64 )                    :: INTFUNC     ! Interpolating function (Perram-Wertheim Method)
+REAL( KIND= REAL64 )                    :: DFUNC_DLAMB ! First derivative of the interpolating function with respect to λ (Perram-Wertheim Method)
 REAL( KIND= REAL64 )                    :: RIJSQ       ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                    :: CONTACT_D   ! Contact distance (Perram-Wertheim method)
+REAL( KIND= REAL64 )                    :: CONTACT_D   ! Contact distance (Perram-Wertheim Method)
+REAL( KIND= REAL64 )                    :: TEMPT       ! Temporary variable
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ         ! Vector distance between particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EXI, EXJ    ! Orientation of particles i and j along x-direction
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EYI, EYJ    ! Orientation of particles i and j along y-direction
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EZI, EZJ    ! Orientation of particles i and j along z-direction
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: SEMIAI      ! Semiaxes of particle i
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: SEMIBJ      ! Semiaxes of particle j
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX1_DLAMB ! Auxiliary variable (derivative)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX2_DLAMB ! Auxiliary variable (derivative)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX1_DLAMB ! Auxiliar (derivative)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DAUX2_DLAMB ! Auxiliar (derivative)
 REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QI, QJ      ! Rotation quaternions of particle i and j
 REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: EXIEXI      ! Outer product of the orientation of particle i along x-direction
 REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: EYIEYI      ! Outer product of the orientation of particle i along y-direction
@@ -215,7 +219,7 @@ FA          = DFUNC_DLAMB
 ! *********************************************************************************************** !
 
 ! Extremum (λ = 1)
-LAMBDAB = 1.0D0
+LAMBDAB = 1.D0
 
 ! Matrix G
 G(:,:) = LAMBDAB * BJINV(:,:) + (1.D0 - LAMBDAB) * AIINV(:,:)
@@ -250,14 +254,138 @@ DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,3) + DAUX2_DLAMB(2) * GINV
 FB          = DFUNC_DLAMB
 
 ! *********************************************************************************************** !
-! BISSECTION METHOD                                                                               !
+! BRENT'S METHOD                                                                                  !
 ! *********************************************************************************************** !
-!  The bissection condition will hardly fail since the interpolating function, S(λ), is concave   !
-!  down and has a single maximum in the interval λ ∈ [0,1], which means the derivative of S(λ)    !
-!  has opposite signs at the extrema of the interval.                                             !
+!  The Brent's condition (which is also the bissection condition) will hardly fail since the      !
+!  interpolating function, S(λ), is concave down and has a single maximum in the interval         !
+!  λ ∈ [0,1], which means the derivative of S(λ) has opposite signs at the extrema of the         !
+!  interval.                                                                                      !
 ! *********************************************************************************************** !
 !  See Perram and Wertheim, J. Comput. Phys 15, 409-416 (1985), for more information.             !
 ! *********************************************************************************************** !
+
+! Initialization
+LAMBDAD = 0.D0
+
+! Brent's condition
+IF( (FA * FB) < 0.D0 ) THEN
+  ! Swap condition
+  IF( DABS( FA ) < DABS( FB ) ) THEN
+    ! Swap bounds
+    TEMPT   = LAMBDAA
+    LAMBDAA = LAMBDAB
+    LAMBDAB = TEMPT
+    ! Swap function values
+    TEMPT = FA
+    FA    = FB
+    FB    = TEMPT
+  END IF
+  ! Initialization of previous bound
+  LAMBDAC = LAMBDAA
+  FC = FA
+  ! Initialize value of objective function
+  FS = - 1.D0
+  ! Initialize 'BISSECTION' flag as TRUE since the last iteration used was the bisection method
+  BISSECTION = .TRUE.
+  ! Stop criterion
+  DO WHILE( DABS( FB ) >= TOLERANCE .AND. DABS( FS ) >= TOLERANCE .AND. DABS( LAMBDAA - LAMBDAB ) >= TOLERANCE )
+    ! Initialize root of the function
+    IF( FA /= FC .AND. FB /= FC ) THEN
+      ! Inverse quadratic interpolation root finding method
+      LAMBDAS = (LAMBDAA * FB * FC) / ( (FA - FB) * (FA - FC) ) + (LAMBDAB * FA * FC) / ( (FB - FA) * (FB - FC) ) + &
+      &         (LAMBDAC * FA * FB) / ( (FC - FA) * (FC - FB) )
+    ELSE
+      ! False position formula
+      LAMBDAS = LAMBDAB - FB * (LAMBDAB - LAMBDAA) / (FB - FA)
+    END IF
+    ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
+    IF( ( (LAMBDAS - (3.D0 * LAMBDAA + LAMBDAB) / 4.D0) * (LAMBDAS - LAMBDAB) >= 0.D0) .OR. ( BISSECTION .AND. &
+    &   ( DABS( LAMBDAS - LAMBDAB ) >= DABS( (LAMBDAB - LAMBDAC) / 2.D0 ) ) ) .OR. &
+    &   ( .NOT. BISSECTION .AND. ( DABS( LAMBDAS - LAMBDAB ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
+    &   ( BISSECTION .AND. ( DABS( LAMBDAS - LAMBDAC ) < TOLERANCE ) ) .OR. &
+    &   ( .NOT. BISSECTION .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE ) ) ) THEN
+      LAMBDAS = 0.5D0 * (LAMBDAA + LAMBDAB)
+      BISSECTION = .TRUE.
+    ELSE
+      BISSECTION = .FALSE.
+    END IF
+
+    ! Matrix G
+      G(:,:) = LAMBDAS * BJINV(:,:) + (1.D0 - LAMBDAS) * AIINV(:,:)
+
+      ! Inverse Matrix G
+      CALL INVERSE( G, GINV )
+
+      ! Auxiliary scalar (transpose of vector distance times inverse of matrix G times vector distance)
+      AUX = 0.D0
+      AUX = AUX + ( RIJ(1) * GINV(1,1) + RIJ(2) * GINV(2,1) + RIJ(3) * GINV(3,1) ) * RIJ(1)
+      AUX = AUX + ( RIJ(1) * GINV(1,2) + RIJ(2) * GINV(2,2) + RIJ(3) * GINV(3,2) ) * RIJ(2)
+      AUX = AUX + ( RIJ(1) * GINV(1,3) + RIJ(2) * GINV(2,3) + RIJ(3) * GINV(3,3) ) * RIJ(3)
+
+      ! First derivative of matrix G with respect to λ
+      DG_DLAMB(:,:) = ( (1.D0 - LAMBDAS) * (1.D0 - LAMBDAS) * AIINV(:,:) ) - ( LAMBDAS * LAMBDAS * BJINV(:,:) )
+
+      ! Auxiliary vector (derivative)
+      DAUX1_DLAMB(1) = ( GINV(1,1) * RIJ(1) + GINV(1,2) * RIJ(2) + GINV(1,3) * RIJ(3) )
+      DAUX1_DLAMB(2) = ( GINV(2,1) * RIJ(1) + GINV(2,2) * RIJ(2) + GINV(2,3) * RIJ(3) )
+      DAUX1_DLAMB(3) = ( GINV(3,1) * RIJ(1) + GINV(3,2) * RIJ(2) + GINV(3,3) * RIJ(3) )
+
+      ! Auxiliary vector (derivative)
+      DAUX2_DLAMB(1) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,1) + DAUX1_DLAMB(2) * DG_DLAMB(2,1) + DAUX1_DLAMB(3) * DG_DLAMB(3,1) )
+      DAUX2_DLAMB(2) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,2) + DAUX1_DLAMB(2) * DG_DLAMB(2,2) + DAUX1_DLAMB(3) * DG_DLAMB(3,2) )
+      DAUX2_DLAMB(3) = ( DAUX1_DLAMB(1) * DG_DLAMB(1,3) + DAUX1_DLAMB(2) * DG_DLAMB(2,3) + DAUX1_DLAMB(3) * DG_DLAMB(3,3) )
+
+      ! First derivative of the interpolating function with respect to λ (λ = 1)
+      DFUNC_DLAMB = 0.D0
+  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,1) + DAUX2_DLAMB(2) * GINV(2,1) + DAUX2_DLAMB(3) * GINV(3,1) ) * RIJ(1)
+  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,2) + DAUX2_DLAMB(2) * GINV(2,2) + DAUX2_DLAMB(3) * GINV(3,2) ) * RIJ(2)
+  DFUNC_DLAMB = DFUNC_DLAMB + ( DAUX2_DLAMB(1) * GINV(1,3) + DAUX2_DLAMB(2) * GINV(2,3) + DAUX2_DLAMB(3) * GINV(3,3) ) * RIJ(3)
+  fs          = DFUNC_DLAMB
+    lambdad = lambdac
+    lambdac = lambdab
+    fc = fb
+    if( fa*fs<0.d0 ) then
+      lambdab=lambdas
+      fb = fs
+    else
+      lambdaa=lambdas
+      fa=fs
+    end if
+    if( dabs(fa) < dabs(fb) ) then
+      !call swap(a,b)
+      tempt = lambdaa
+      lambdaa = lambdab
+      lambdab = tempt
+      !call swap(fa,fb)
+      tempt = fa
+      fa = fb
+      fb = tempt
+    end if
+    COUNTERB = COUNTERB+1
+    if(COUNTERB>500) call exit()
+  end do
+  if(dabs(fs)<tolerance) then
+    lambdac = lambdas
+  else if(dabs(fb)<tolerance .or. dabs(lambdaa-lambdab)<tolerance) then
+    lambdac=lambdab
+  end if
+  ! Interpolating function, S(λ)
+  INTFUNC = LAMBDAC * (1.D0 - LAMBDAC) * AUX
+
+  ! Contact distance (Perram-Wertheim Method)
+  CONTACT_D = INTFUNC * RIJSQ
+
+  ! Non-overlapping criterion
+  IF( INTFUNC > 1.D0 ) THEN
+    OVERLAP_HER = .FALSE.
+  ELSE
+    OVERLAP_HER = .TRUE.
+  END IF
+else
+  print *,"finish"
+  call exit()
+
+end if
 
 ! Bissection condition
 IF( (FA * FB) < 0.D0 ) THEN
