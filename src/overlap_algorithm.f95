@@ -703,7 +703,9 @@ END IF
 ! *********************************************************************************************** !
 ! CASE 2: Rim-rim configuration                                                                   !
 ! *********************************************************************************************** !
-CALL RIM_RIM( EI, EJ, RIJ, DLAMBDAEI, DMUEJ, HALFLENGTH, OVERLAPRIM )
+! See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information.                      !
+! *********************************************************************************************** !
+CALL RIM_RIM( EI, EJ, RI, RJ, RIJ, DLAMBDAEI, DMUEJ, HALFLENGTH, DSQ, OVERLAPRIM )
 IF( OVERLAPRIM ) THEN
   OVERLAP_CYL = .TRUE.
   RETURN
@@ -797,7 +799,9 @@ END SUBROUTINE CYLINDER_OVERLAP
 ! *********************************************************************************************** !
 !                                   Rim-Rim Overlap Algorithm                                     !
 ! *********************************************************************************************** !
-SUBROUTINE RIM_RIM( EI, EJ, RIJ, DLAMBDAEI, DMUEJ, HALFL, OVERLAPRIM )
+!            See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information            !
+! *********************************************************************************************** !
+SUBROUTINE RIM_RIM( EI, EJ, RI, RJ, RIJ, DLAMBDAEI, DMUEJ, HALFL, DSQ, OVERLAPRIM )
 
 ! Uses one module: global variables
 USE GLOBALVAR
@@ -807,12 +811,14 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                 :: PROJI, PROJJ ! Cylindrical projections
+REAL( KIND= REAL64 )                 :: DSQ          ! Cylinder geometrical diameter (squared)
+REAL( KIND= REAL64 )                 :: DLAMBDA, DMU ! Values that minimize r² (∂r²/∂μ = 0 and ∂r²/∂λ = 0)
 REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFL        ! Half length of cylinders i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DLAMBDAEI    ! Auxiliary vector (from spherocylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DMUEJ        ! Auxiliary vector (from spherocylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: VECI, VECJ   ! Vector distance between the point of closest approach in one cylinder and the center of the other cylinder
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: VECI, VECJ   ! Position of points of closest approach on the axes of the particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EI, EJ       ! Orientation of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: RI, RJ       ! Position of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: RIJ          ! Vector distance between particles i and j
 
 ! *********************************************************************************************** !
@@ -824,35 +830,27 @@ LOGICAL :: OVERLAPRIM ! Detects overlap between two particles (rim-rim configura
 OVERLAPRIM = .FALSE.
 
 ! Vector distance between the point of closest approach on cylinder i and the center of cylinder j
-VECI(1) = -RIJ(1) + DLAMBDAEI(1)
-VECI(2) = -RIJ(2) + DLAMBDAEI(2)
-VECI(3) = -RIJ(3) + DLAMBDAEI(3)
+VECI(1) = RI(1) + DLAMBDAEI(1)
+VECI(2) = RI(2) + DLAMBDAEI(2)
+VECI(3) = RI(3) + DLAMBDAEI(3)
 
 ! Vector distance between the point of closest approach on cylinder j and the center of cylinder i
-VECJ(1) = RIJ(1) + DMUEJ(1)
-VECJ(2) = RIJ(2) + DMUEJ(2)
-VECJ(3) = RIJ(3) + DMUEJ(3)
+VECJ(1) = RJ(1) + DMUEJ(1)
+VECJ(2) = RJ(2) + DMUEJ(2)
+VECJ(3) = RJ(3) + DMUEJ(3)
 
-! Projection of the vector distance j along orientation of cylinder i
-PROJI = ( VECJ(1) * EI(1) ) + ( VECJ(2) * EI(2) ) + ( VECJ(3) * EI(3) )
-
-! Projection of the vector distance i along orientation of cylinder j
-PROJJ = ( VECI(1) * EJ(1) ) + ( VECI(2) * EJ(2) ) + ( VECI(3)* EJ(3) )
+! Values that minimize r² (from Vega-Lago algorithm)
+DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+&         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
+DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+&         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
 
 ! Overlap criterion
-IF( ( DABS( PROJI ) <= HALFL(1) ) .AND. ( DABS( PROJJ ) <= HALFL(2) ) ) THEN
+IF( ( DSQRT( DOT_PRODUCT( VECI - VECJ, VECI - VECJ ) ) <= DSQ ) .AND. ( DABS( DLAMBDA ) <= HALFL(1) ) .AND. &
+&   ( DABS( DMU ) <= HALFL(2) ) ) THEN
   OVERLAPRIM = .TRUE.
   RETURN
 END IF
-
-! *********************************************************************************************** !
-! -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*   OBSERVATION   -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* !
-! *********************************************************************************************** !
-! The overlap criterion must also assess whether the distance between the points of closest       !
-! approach falls within the boundaries defined by the combined diameter of both cylinders.        !
-! However, given that we perform an initial test involving the circumscribing spherocylinders,    !
-! this condition, while essential, is irrelevant in this context.                                 !
-! *********************************************************************************************** !
 
 RETURN
 
