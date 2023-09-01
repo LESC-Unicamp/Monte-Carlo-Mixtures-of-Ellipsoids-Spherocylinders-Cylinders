@@ -862,7 +862,7 @@ VECJ(2) = RJ(2) + DMUEJ(2)
 VECJ(3) = RJ(3) + DMUEJ(3)
 
 ! Overlap criterion
-IF( ( DSQRT( DOT_PRODUCT( VECI - VECJ, VECI - VECJ ) ) <= DSQ ) .AND. ( DABS( DLAMBDA ) <= HALFL(1) ) .AND. &
+IF( ( DOT_PRODUCT( VECI - VECJ, VECI - VECJ ) <= DSQ ) .AND. ( DABS( DLAMBDA ) <= HALFL(1) ) .AND. &
 &   ( DABS( DMU ) <= HALFL(2) ) ) THEN
   OVERLAPRIM = .TRUE.
   RETURN
