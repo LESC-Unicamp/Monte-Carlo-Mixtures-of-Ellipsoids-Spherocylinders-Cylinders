@@ -473,7 +473,7 @@ CC    = 1.D0 - ( EIEJ * EIEJ )
 ! Checking whether the spherocylinders are parallel
 IF( DABS( CC ) < 1.D-10 ) THEN
   PARALLEL = .TRUE.
-  ! Checking whether the parallel spherocylinders are perpendicular to the intermolecular axis (avoid the indeterminate form 0/0)
+  ! Checking whether the parallel spherocylinders are not perpendicular to the intermolecular axis (avoid the indeterminate form 0/0)
   IF( DABS( RIJEI ) >= 1.D-10 .AND. DABS( RIJEJ ) >= 1.D-10 ) THEN
     ! Take the extreme side of particle i
     DLAMBDA = DSIGN( HALFLENGTH(1), RIJEI )
@@ -795,6 +795,10 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                 :: DSQ          ! Cylinder geometrical diameter (squared)
 REAL( KIND= REAL64 )                 :: DLAMBDA, DMU ! Values that minimize r² (∂r²/∂μ = 0 and ∂r²/∂λ = 0)
+REAL( KIND= REAL64 )                 :: RIJEI        ! Dot product of vector distance and orientation of particle i
+REAL( KIND= REAL64 )                 :: RIJEJ        ! Dot product of vector distance and orientation of particle j
+REAL( KIND= REAL64 )                 :: EIEJ         ! Dot product of both orientations (particles i and j)
+REAL( KIND= REAL64 )                 :: CC           ! Auxiliary variable
 REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFL        ! Half length of cylinders i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DLAMBDAEI    ! Auxiliary vector (from spherocylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DMUEJ        ! Auxiliary vector (from spherocylinder overlap algorithm)
@@ -811,11 +815,37 @@ LOGICAL :: OVERLAPRIM ! Detects overlap between two particles (rim-rim configura
 ! Initialize logical variable
 OVERLAPRIM = .FALSE.
 
-! Values that minimize r² (from Vega-Lago algorithm)
-DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
-&         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
-DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
-&         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
+! Initial calculation
+RIJEI = ( RIJ(1) * EI(1) ) + ( RIJ(2) * EI(2) ) + ( RIJ(3) * EI(3) )
+RIJEJ = ( RIJ(1) * EJ(1) ) + ( RIJ(2) * EJ(2) ) + ( RIJ(3) * EJ(3) )
+EIEJ  = ( EI(1) * EJ(1) ) + ( EI(2) * EJ(2) ) + ( EI(3) * EJ(3) )
+CC    = 1.D0 - ( EIEJ * EIEJ )
+
+! Checking whether the cylinders are parallel
+IF( DABS( CC ) < 1.D-10 ) THEN
+  ! Checking whether the parallel cylinders are not perpendicular to the intermolecular axis (avoid the indeterminate form 0/0)
+  IF( DABS( RIJEI ) >= 1.D-10 .AND. DABS( RIJEJ ) >= 1.D-10 ) THEN
+    ! Take the extreme side of particle i
+    DLAMBDA = DSIGN( HALFL(1), RIJEI )
+    ! Closest point between particle i and particle j
+    DMU = ( DLAMBDA * EIEJ ) - RIJEJ
+    ! Take the extreme side of particle j if λ > L/2
+    IF( DABS( DMU ) > HALFL(2) ) THEN
+      DMU = DSIGN( HALFL(2), DMU )
+    END IF
+  ! Parallel cylinders almost orthogonal to the intermolecular axis (avoid the indeterminate form 0/0)
+  ELSE
+    DLAMBDA = 0.D0
+    DMU     = 0.D0
+  END IF
+! Cylinders are not parallel to each other
+ELSE
+  ! Values that minimize r² (from Vega-Lago algorithm)
+  DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+  &         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
+  DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+  &         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
+END IF
 
 ! Position of λ and μ on the orientational axes of cylinders i and j
 DLAMBDAEI = DLAMBDA * EI
