@@ -868,6 +868,15 @@ IF( ( DOT_PRODUCT( VECI - VECJ, VECI - VECJ ) <= DSQ ) .AND. ( DABS( DLAMBDA ) <
   RETURN
 END IF
 
+! *********************************************************************************************** !
+! OBSERVATION                                                                                     !
+! *********************************************************************************************** !
+! The first condition is precisely the Vega-Lago criterion. Since the overlap between cylinders   !
+! is only taken into account when the circumscribing spherocylinders overlap each other, this     !
+! condition must always be true. The second and third conditions are additional and necessary     !
+! conditions for cylinders after removing the hemispherical caps.                                 !
+! *********************************************************************************************** !
+
 RETURN
 
 END SUBROUTINE RIM_RIM
