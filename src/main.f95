@@ -105,8 +105,6 @@ REAL( KIND= REAL64 )                      :: THETA            ! Angle between bo
 REAL( KIND= REAL64 )                      :: RAXISMAG         ! Magnitude of rotation axis
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: PROJY_XY         ! Projection of the y-vector of the box onto the ZY-plane and the unit vector of the y-axis
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: S12              ! Position (unit box)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: DLAMBDAEI        ! Auxiliar vector (cylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: DMUEJ            ! Auxiliar vector (cylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: RIJ              ! Vector distance between particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: EM, EN           ! Orientation (before/after a trial move)
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: EI, EJ           ! Orientation of particles i and j
@@ -1032,7 +1030,7 @@ DO CI = 1, COMPONENTS - 1
             END IF
           ! Overlap test for spherocylinders (Vega-Lago Method)
           ELSE IF( GEOM_SELEC(2) ) THEN
-            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP )
+            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
             ! Overlap criterion
             IF( OVERLAP ) THEN
               ! Overlap detected
@@ -1049,13 +1047,13 @@ DO CI = 1, COMPONENTS - 1
           ELSE IF( GEOM_SELEC(3) ) THEN
             ! Preliminary test (circumscribing spherocylinders)
             OVERLAP_PRELIMINAR = .FALSE.
-            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
             ! Overlap criterion
             IF( OVERLAP_PRELIMINAR ) THEN
               RJ(1) = RI(1) + RIJ(1)
               RJ(2) = RI(2) + RIJ(2)
               RJ(3) = RI(3) + RIJ(3)
-              CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP )
+              CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
               ! Overlap criterion
               IF( OVERLAP ) THEN
                 ! Overlap detected
@@ -1140,7 +1138,7 @@ DO CI = 1, COMPONENTS
           END IF
         ! Overlap test for spherocylinders (Vega-Lago Method)
         ELSE IF( GEOM_SELEC(2) ) THEN
-          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP )
+          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
           ! Overlap criterion
           IF( OVERLAP ) THEN
             ! Overlap detected
@@ -1157,13 +1155,13 @@ DO CI = 1, COMPONENTS
         ELSE IF( GEOM_SELEC(3) ) THEN
           ! Preliminary test (circumscribing spherocylinders)
           OVERLAP_PRELIMINAR = .FALSE.
-          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
           ! Overlap criterion
           IF( OVERLAP_PRELIMINAR ) THEN
             RJ(1) = RI(1) + RIJ(1)
             RJ(2) = RI(2) + RIJ(2)
             RJ(3) = RI(3) + RIJ(3)
-            CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP )
+            CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
             ! Overlap criterion
             IF( OVERLAP ) THEN
               ! Overlap detected
@@ -1778,7 +1776,7 @@ DO CYCLES = 1, MAX_CYCLES
                       END IF
                     ! Overlap test for spherocylinders (Vega-Lago Method)
                     ELSE IF( GEOM_SELEC(2) ) THEN
-                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP )
+                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                       ! Overlap criterion
                       IF( OVERLAP ) THEN
                         ! Overlap detected
@@ -1788,13 +1786,13 @@ DO CYCLES = 1, MAX_CYCLES
                     ELSE IF( GEOM_SELEC(3) ) THEN
                       ! Preliminary test (circumscribing spherocylinders)
                       OVERLAP_PRELIMINAR = .FALSE.
-                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
                       ! Overlap criterion
                       IF( OVERLAP_PRELIMINAR ) THEN
                         RJ(1) = RI(1) + RIJ(1)
                         RJ(2) = RI(2) + RIJ(2)
                         RJ(3) = RI(3) + RIJ(3)
-                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP )
+                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
                         ! Overlap criterion
                         IF( OVERLAP ) THEN
                           ! Overlap detected
@@ -1866,7 +1864,7 @@ DO CYCLES = 1, MAX_CYCLES
                     END IF
                   ! Overlap test for spherocylinders (Vega-Lago Method)
                   ELSE IF( GEOM_SELEC(2) ) THEN
-                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP )
+                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                     ! Overlap criterion
                     IF( OVERLAP ) THEN
                       ! Overlap detected
@@ -1876,13 +1874,13 @@ DO CYCLES = 1, MAX_CYCLES
                   ELSE IF( GEOM_SELEC(3) ) THEN
                     ! Preliminary test (circumscribing spherocylinders)
                     OVERLAP_PRELIMINAR = .FALSE.
-                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
                     ! Overlap criterion
                     IF( OVERLAP_PRELIMINAR ) THEN
                       RJ(1) = RI(1) + RIJ(1)
                       RJ(2) = RI(2) + RIJ(2)
                       RJ(3) = RI(3) + RIJ(3)
-                      CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP )
+                      CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
                       ! Overlap criterion
                       IF( OVERLAP ) THEN
                         ! Overlap detected
