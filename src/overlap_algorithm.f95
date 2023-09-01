@@ -416,7 +416,7 @@ END SUBROUTINE ELLIPSOID_OVERLAP
 !    and the unit vector joining their centers of mass and calculates their contact distance.     !
 !           See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information.            !
 ! *********************************************************************************************** !
-SUBROUTINE SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, DLAMBDAEI, DMUEJ, RVL, PARALLEL, OVERLAP_SPC )
+SUBROUTINE SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, RVL, PARALLEL, OVERLAP_SPC )
 
 ! Uses one module: global variables
 USE GLOBALVAR
@@ -444,8 +444,6 @@ REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFLENGTH     ! Half-length of spherocy
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EI             ! Orientation of particle i
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: EJ             ! Orientation of particle j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: RIJ            ! Vector distance between the centers of mass of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DLAMBDAEI      ! Auxiliar vector (cylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DMUEJ          ! Auxiliar vector (cylinder overlap algorithm)
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -492,9 +490,6 @@ IF( DABS( CC ) < 1.D-10 ) THEN
     IF( RVL <= SHORTEST_DSQ ) THEN
       OVERLAP_SPC = .TRUE.
     END IF
-    ! Vectors to be used in the overlap algorithm of cylinders
-    DLAMBDAEI(:) = DLAMBDA * EI(:)
-    DMUEJ(:)     = DMU * EJ(:)
     ! Return immediately
     RETURN
   ! Parallel spherocylinders almost orthogonal to the intermolecular axis (avoid the indeterminate form 0/0)
@@ -507,9 +502,6 @@ IF( DABS( CC ) < 1.D-10 ) THEN
     IF( RVL <= SHORTEST_DSQ ) THEN
       OVERLAP_SPC = .TRUE.
     END IF
-    ! Vectors to be used in the overlap algorithm of cylinders
-    DLAMBDAEI(:) = 0.D0
-    DMUEJ(:)     = 0.D0
     ! Return immediately
     RETURN
   END IF
@@ -534,9 +526,6 @@ IF( ( DABS( DLAMBDA ) <= HALFLENGTH(1) ) .AND. ( DABS( DMU ) <= HALFLENGTH(2) ) 
   IF( RVL <= SHORTEST_DSQ ) THEN
     OVERLAP_SPC = .TRUE.
   END IF
-  ! Vectors to be used in the overlap algorithm of cylinders
-  DLAMBDAEI(:) = DLAMBDA * EI(:)
-  DMUEJ(:)     = DMU * EJ(:)
   ! Return immediately
   RETURN
 ! Point (λ’, μ’) not in the rectangle (λ, μ)
@@ -576,10 +565,6 @@ IF( RVL <= SHORTEST_DSQ ) THEN
   OVERLAP_SPC = .TRUE.
 END IF
 
-! Vectors to be used in the overlap algorithm of cylinders
-DLAMBDAEI(:) = DLAMBDA * EI(:)
-DMUEJ(:)     = DMU * EJ(:)
-
 ! Return immediately
 RETURN
 
@@ -593,7 +578,7 @@ END SUBROUTINE SPHEROCYLINDER_OVERLAP
 !            See Orellana et al., Eur. Phys. J. E 41, 51 (2018), for more information.            !
 !       See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007), for more information.        !
 ! *********************************************************************************************** !
-SUBROUTINE CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, DLAMBDAEI, DMUEJ, PARALLEL, OVERLAP_CYL )
+SUBROUTINE CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
 
 ! Uses one module: global variables
 USE GLOBALVAR
@@ -620,8 +605,6 @@ REAL( KIND= REAL64 )                    :: CC             ! Auxiliary variable
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: DSQ_DISKRIM    ! Diameter of the disk for the disk-rim configuration
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFLENGTH     ! Half length of cylinders i and j
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFDIAMETER   ! Half diameter of cylinders i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DLAMBDAEI      ! Auxiliary vector (from spherocylinder overlap algorithm)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DMUEJ          ! Auxiliary vector (from spherocylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EI, EJ         ! Orientation of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RI, RJ         ! Position of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ            ! Vector distance between particles i and j
@@ -705,7 +688,7 @@ END IF
 ! *********************************************************************************************** !
 ! See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information.                      !
 ! *********************************************************************************************** !
-CALL RIM_RIM( EI, EJ, RI, RJ, RIJ, DLAMBDAEI, DMUEJ, HALFLENGTH, DSQ, OVERLAPRIM )
+CALL RIM_RIM( EI, EJ, RI, RJ, RIJ, HALFLENGTH, DSQ, OVERLAPRIM )
 IF( OVERLAPRIM ) THEN
   OVERLAP_CYL = .TRUE.
   RETURN
@@ -746,8 +729,7 @@ END DO
 ! *********************************************************************************************** !
 ! CASE 4: Disk-rim configuration                                                                  !
 ! *********************************************************************************************** !
-! MODIFIED VERSION:                                                                               !
-! See Lopes et al., Chem. Phys. 154, 104902 (2021), for more information.                         !
+! *MODIFIED VERSION* of the algorithm developed by Lopes et al., Chem. Phys. 154, 104902 (2021)   !
 ! *********************************************************************************************** !
 ! Rim of cylinder i
 RRIM(1)  = RI(1)
@@ -801,7 +783,7 @@ END SUBROUTINE CYLINDER_OVERLAP
 ! *********************************************************************************************** !
 !            See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information            !
 ! *********************************************************************************************** !
-SUBROUTINE RIM_RIM( EI, EJ, RI, RJ, RIJ, DLAMBDAEI, DMUEJ, HALFL, DSQ, OVERLAPRIM )
+SUBROUTINE RIM_RIM( EI, EJ, RI, RJ, RIJ, HALFL, DSQ, OVERLAPRIM )
 
 ! Uses one module: global variables
 USE GLOBALVAR
@@ -829,6 +811,16 @@ LOGICAL :: OVERLAPRIM ! Detects overlap between two particles (rim-rim configura
 ! Initialize logical variable
 OVERLAPRIM = .FALSE.
 
+! Values that minimize r² (from Vega-Lago algorithm)
+DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+&         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
+DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+&         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
+
+! Position of λ and μ on the orientational axes of cylinders i and j
+DLAMBDAEI = DLAMBDA * EI
+DMUEJ = DMU * EJ
+
 ! Vector distance between the point of closest approach on cylinder i and the center of cylinder j
 VECI(1) = RI(1) + DLAMBDAEI(1)
 VECI(2) = RI(2) + DLAMBDAEI(2)
@@ -838,12 +830,6 @@ VECI(3) = RI(3) + DLAMBDAEI(3)
 VECJ(1) = RJ(1) + DMUEJ(1)
 VECJ(2) = RJ(2) + DMUEJ(2)
 VECJ(3) = RJ(3) + DMUEJ(3)
-
-! Values that minimize r² (from Vega-Lago algorithm)
-DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
-&         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
-DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
-&         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
 
 ! Overlap criterion
 IF( ( DSQRT( DOT_PRODUCT( VECI - VECJ, VECI - VECJ ) ) <= DSQ ) .AND. ( DABS( DLAMBDA ) <= HALFL(1) ) .AND. &
