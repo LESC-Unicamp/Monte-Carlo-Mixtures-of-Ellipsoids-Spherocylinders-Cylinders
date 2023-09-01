@@ -6,7 +6,7 @@
 !  This module also initialize some inquiry (character) variables, allowing the user to control   !
 ! which results will be written out in external files and to enable post-processing subroutines.  !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -14,7 +14,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 11th, 2023                                        !
+!                                        August 25th, 2023                                        !
 ! ############################################################################################### !
 ! Main Reference:                   M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
