@@ -52,60 +52,49 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 OPEN( UNIT= 10, FILE= "ini_montecarlo.ini", ACTION= "READ" )
 
-! *********************************************************************************************** !
-! Total number of cycles                                                                          !
-! *********************************************************************************************** !
+! Total number of cycles
 READ( 10, * ) GET, MAX_CYCLES
 ! Condition
 IF( MAX_CYCLES < 1 ) THEN
-  WRITE( *, "(G0)" ) "The maximum number of cycles is less than 1. Exiting... "
+  WRITE( *, "(3G0)" ) "The maximum number of cycles [", MAX_CYCLES, "] is less than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Number of equilibration cycles                                                                  !
-! *********************************************************************************************** !
+! Number of equilibration cycles
 READ( 10, * ) GET, N_EQUIL
 ! Condition 1
 IF( N_EQUIL >= MAX_CYCLES ) THEN
-  WRITE( *, "(G0)" ) "Number of equilibration cycles greater than or equal to the maximum number of cycles. Exiting... "
+  WRITE( *, "(6G0)" ) "The number of equilibration cycles [", N_EQUIL, "] is greater than or equal to the maximum number of ", &
+  &                   "cycles [", MAX_CYCLES, "]. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( N_EQUIL < 0 ) THEN
-  WRITE( *, "(G0)" ) "The number of equilibration cycles cannot be a negative integer. Exiting... "
+  WRITE( *, "(3G0)" ) "The number of equilibration cycles [", N_EQUIL, "] cannot be a negative integer. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Saving frequency                                                                                !
-! *********************************************************************************************** !
-!  [1    = highest frequency, results will be written out for each cycle ]                        !
-!  [1000 = lower frequency, results will be written out every 1000 cycles]                        !
-! *********************************************************************************************** !
+! Saving frequency
 READ( 10, * ) GET, N_SAVE
 ! Condition
 IF( N_SAVE < 1 ) THEN
-  WRITE( *, "(G0)" ) "The saving frequency cannot be a negative integer nor zero. Exiting... "
+  WRITE( *, "(3G0)" ) "The saving frequency [", N_SAVE, "] cannot be a negative integer nor zero. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Maximum displacement adjustment frequency                                                       !
-! *********************************************************************************************** !
-!  [1    = highest frequency, maximum displacement will be adjusted for each cycle   ]            !
-!  [200  = moderate frequency, maximum displacement will be adjusted every 200 cycles]            !
-! *********************************************************************************************** !
+! Adjustment frequency
 READ( 10, * ) GET, N_ADJUST
 ! Condition
 IF( N_ADJUST < 1 ) THEN
-  WRITE( *, "(G0)" ) "The adjustment frequency (simulation) cannot be a negative integer nor zero. Exiting... "
+  WRITE( *, "(4G0)" ) "The adjustment frequency of the simulation [", N_ADJUST, "] cannot be a negative integer nor zero. ", &
+  &                   "Exiting... "
   CALL EXIT(  )
 END IF
 READ( 10, * ) GET, N_ADJUST_INIT
 ! Condition
 IF( N_ADJUST_INIT < 1 ) THEN
-  WRITE( *, "(G0)" ) "The adjustment frequency (initial configuration) cannot be a negative integer nor zero. Exiting... "
+  WRITE( *, "(4G0)" ) "The adjustment frequency of the random configuration [", N_ADJUST_INIT, "] cannot be a negative integer ", &
+  &                   "nor zero. Exiting... "
   CALL EXIT(  )
 END IF
 
