@@ -232,13 +232,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 OPEN( UNIT= 10, FILE= "ini_control.ini", ACTION= "READ" )
 
-! *********************************************************************************************** !
-! Trajectory inquiry                                                                              !
-! *********************************************************************************************** !
-!  Inquires whether a trajectory of particles shall be written out.                               !
-!  Answer Y (Yes) to write out trajectories or                                                    !
-!         ANYTHING ELSE to ignore it                                                              !
-! *********************************************************************************************** !
+! Trajectory inquiry
 READ( 10, * ) GET, TRAJ_INQ
 CALL TO_UPPER( TRAJ_INQ, LEN_TRIM( TRAJ_INQ ), TRAJ_INQ )
 ! Transforms characters into logical variables
@@ -248,14 +242,7 @@ ELSE
   TRAJ_CHECK = .FALSE.
 END IF
 
-! *********************************************************************************************** !
-! Random/fixed seed inquiry                                                                       !
-! *********************************************************************************************** !
-!  Inquires whether the seed used in the pseudorandom number generator subroutine will be         !
-!  randomly defined (required for repeatability assays) or fixed (no repeatability).              !
-!  Answer Y (Yes) to fix the seed of the pseudorandom number generator subroutine or              !
-!         ANYTHING ELSE to randomly generate a seed every time the program is run                 !
-! *********************************************************************************************** !
+! Fixed/Random seed inquiry
 READ( 10, * ) GET, SEED_INQ
 CALL TO_UPPER( SEED_INQ, LEN_TRIM( SEED_INQ ), SEED_INQ )
 ! Transforms characters into logical variables
@@ -265,16 +252,9 @@ ELSE
   FSEED = .FALSE.
 END IF
 
-! *********************************************************************************************** !
-! Potential type                                                                                  !
-! *********************************************************************************************** !
-!  Inquires which kind of intermolecular force field will be applied for the perturbed system.    !
-!    'HARDCORE'   = Purely-repulsive hard-core potential (default; disables FF)                   !
-!    'SQUAREWELL' = Spherical square-well potential (independent of the molecular orientation)    !
-! *********************************************************************************************** !
+! Potential type
 READ( 10, * ) GET, POTENTIAL_TYPE
 CALL TO_UPPER( POTENTIAL_TYPE, LEN_TRIM( POTENTIAL_TYPE ), POTENTIAL_TYPE )
-
 ! Transforms characters into logical variables
 POTENTIAL_SELEC(:) = .FALSE.
 IF( POTENTIAL_TYPE == "HARDCORE" ) THEN
@@ -282,17 +262,11 @@ IF( POTENTIAL_TYPE == "HARDCORE" ) THEN
 ELSE IF( POTENTIAL_TYPE == "SQUAREWELL" ) THEN
   POTENTIAL_SELEC(2) = .TRUE.
 ELSE ! Stop condition
-  WRITE( *, "(3G0)" ) "The force field named [", TRIM( POTENTIAL_TYPE ), "] is not available. Exiting..."
+  WRITE( *, "(3G0)" ) "The user-defined [", TRIM( POTENTIAL_TYPE ), "] is not an available force field. Exiting..."
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Potential inquiry                                                                               !
-! *********************************************************************************************** !
-!  Inquires whether all potential results will be written out or only production-related ones.    !
-!  Answer Y (Yes) to write out only production-related potential results or                       !
-!         ANYTHING ELSE to write out both equilibration- and production-related potential results !
-! *********************************************************************************************** !
+! Potential inquiry
 IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   READ( 10, * ) GET, POT_INQ
   CALL TO_UPPER( POT_INQ, LEN_TRIM( POT_INQ ), POT_INQ )
@@ -304,14 +278,7 @@ IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   END IF
 END IF
 
-! *********************************************************************************************** !
-! TPT coefficients inquiry                                                                        !
-! *********************************************************************************************** !
-!  Inquires whether the post-processing block averaging subroutine will be called.                !
-!  This subroutine calculates the first- and second-order TPT coefficients on the fly.            !
-!  Answer Y (Yes) to calculate the TPT coefficients or                                            !
-!         ANYTHING ELSE to ignore it                                                              !
-! *********************************************************************************************** !
+! TPT coefficients inquiry
 IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   READ( 10, * ) GET, COEF_INQ
   CALL TO_UPPER( COEF_INQ, LEN_TRIM( COEF_INQ ), COEF_INQ )
@@ -350,12 +317,12 @@ OPEN( UNIT= 100, FILE= "ini_system.ini", ACTION= "READ" )
 READ( 100, * ) GET, PACKING_F
 ! Condition 1
 IF( PACKING_F <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The packing fraction cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The packing fraction [", PACKING_F, "] cannot be less than or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PACKING_F > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The packing fraction cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The packing fraction [", PACKING_F, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -363,7 +330,7 @@ END IF
 READ( 100, * ) GET, COMPONENTS
 ! Condition
 IF( COMPONENTS < 1 ) THEN
-  WRITE( *, "(G0)" ) "The number of components cannot be less than 1. Exiting... "
+  WRITE( *, "(3G0)" ) "The number of components [", COMPONENTS, "] cannot be less than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -378,7 +345,8 @@ READ( 100, * ) GET, DIAMETER
 ! Condition
 DO C = 1, COMPONENTS
   IF( DIAMETER(C) <= 0.D0 ) THEN
-    WRITE( *, "(3G0)" ) "The diameter of component #", C, " cannot be less than or equal to 0. Exiting... "
+    WRITE( *, "(3G0,G0.5,2G0)" ) "The diameter of component #", C, " [", DIAMETER(C), "] cannot be less than or equal to 0. ", &
+    &                            "Exiting... "
     CALL EXIT(  )
   END IF
 END DO
@@ -389,12 +357,13 @@ READ( 100, * ) GET, LENGTH
 DO C = 1, COMPONENTS
   IF( GEOM_SELEC(1) .OR. GEOM_SELEC(3) ) THEN
     IF( LENGTH(C) <= 0.D0 ) THEN
-      WRITE( *, "(3G0)" ) "The length of component #", C, " cannot be less than or equal to 0. Exiting... "
+      WRITE( *, "(3G0,G0.5,2G0)" ) "The length of component #", C, " [", LENGTH(C), "] cannot be less than or equal to 0. ", &
+      &                            "Exiting... "
       CALL EXIT(  )
     END IF
   ELSE IF( GEOM_SELEC(2) ) THEN
     IF( LENGTH(C) < 0.D0 ) THEN
-      WRITE( *, "(3G0)" ) "The length of component #", C, " cannot be less than 0. Exiting... "
+      WRITE( *, "(3G0,G0.5,G0)" ) "The length of component #", C, " [", LENGTH(C), "] cannot be less than 0. Exiting... "
       CALL EXIT(  )
     END IF
   END IF
@@ -405,7 +374,7 @@ READ( 100, * ) GET, MOLAR_F
 ! Condition
 DO C = 1, COMPONENTS
   IF( MOLAR_F(C) < 0.D0 ) THEN
-    WRITE( *, "(3G0)" ) "The molar fraction of component #", C, " cannot be less than 0. Exiting... "
+    WRITE( *, "(3G0,G0.5,G0)" ) "The molar fraction of component #", C, " [", MOLAR_F(C), "] cannot be less than 0. Exiting... "
     CALL EXIT(  )
   END IF
 END DO
@@ -459,7 +428,7 @@ END IF
 READ( 100, * ) GET, N_PARTICLES
 ! Condition
 IF( N_PARTICLES < 2 ) THEN
-  WRITE( *, "(G0)" ) "The number of particles cannot be less than 2. Exiting... "
+  WRITE( *, "(3G0)" ) "The number of particles [", N_PARTICLES, "] cannot be less than 2. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -528,12 +497,7 @@ WRITE( *, "(G0,G0.5,G0)" ) "Total Number Density: ", TOTAL_RHO, "Å⁻³"
 WRITE( *, * ) " "
 WRITE( *, "(G0,G0.5,G0)" ) "Total Molecular Volume: ", TOTAL_VP, "Å³"
 
-! *********************************************************************************************** !
-! Cube root check                                                                                 !
-! *********************************************************************************************** !
-!  Checks whether the number of particles entered by the user is valid based on each molecular    !
-!  cubic structure.                                                                               !
-! *********************************************************************************************** !
+! Cube root check
 PARTICLE_LOOP: DO
   IF ( CONFIG_SELEC(1) ) THEN
     CHECK_ROOT = DBLE( N_PARTICLES ) ** ( 1.D0 / 3.D0 )
@@ -579,7 +543,7 @@ WRITE( *, * ) " "
 READ( 100, * ) GET, TEMP
 ! Condition
 IF( TEMP <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The absolute temperature cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The absolute temperature [", TEMP, "] cannot be less than or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -587,7 +551,7 @@ END IF
 READ( 100, * ) GET, PRESS
 ! Condition
 IF( PRESS <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The reduced pressure cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The reduced pressure [", PRESS, "] cannot be less than or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -595,7 +559,8 @@ END IF
 READ( 100, * ) GET, MAX_LENGTH_RATIO
 ! Condition
 IF( MAX_LENGTH_RATIO <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The maximum linear distortion of the box cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum linear distortion of the box [", MAX_LENGTH_RATIO, "] cannot be less than ", &
+  &                           "or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -603,7 +568,8 @@ END IF
 READ( 100, * ) GET, MAX_ANGLE
 ! Condition
 IF( MAX_ANGLE <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The maximum angular distortion of the box cannot be less than or equal to 0°. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum angular distortion of the box [", MAX_ANGLE, "] cannot be less than or equal to 0°. ", &
+  &                           "Exiting... "
   CALL EXIT(  )
 END IF
 MAX_ANGLE = MAX_ANGLE * PI / 180.D0
@@ -646,6 +612,15 @@ READ( 100, * ) GET, DUMMY
 ! Unrotated reference axis (initial configuration)
 READ( 100, * ) GET, UNROT_AXIS
 CALL TO_UPPER( UNROT_AXIS, LEN_TRIM( UNROT_AXIS ), UNROT_AXIS )
+! Transforms characters into logical variables
+AXIS_SELEC(:) = .FALSE.
+IF( UNROT_AXIS == "X" ) THEN
+  AXIS_SELEC(1) = .TRUE.
+ELSE IF( UNROT_AXIS == "Y" ) THEN
+  AXIS_SELEC(2) = .TRUE.
+ELSE IF( UNROT_AXIS == "Z" ) THEN
+  AXIS_SELEC(3) = .TRUE.
+END IF
 ! Condition
 IF( UNROT_AXIS /= "X" .AND. UNROT_AXIS /= "Y" .AND. UNROT_AXIS /= "Z" ) THEN
   WRITE( *, "(G0)" ) "The unrotated reference axis can only be X, Y, or Z. Exiting... "
@@ -661,27 +636,30 @@ IF( CONFIG_SELEC(4) ) THEN
   READ( 100, * ) GET, MAX_ATTEMPTS
   ! Condition
   IF( MAX_ATTEMPTS < 1 ) THEN
-    WRITE( *, "(2G0)" ) "The maximum number of attempts to randomly distribute particles inside the simulation box cannot be ", &
-    &                   "less than 1. Exiting... "
+    WRITE( *, "(4G0)" ) "The maximum number of attempts to randomly distribute particles [", MAX_ATTEMPTS, "] inside the ", &
+    &                   "simulation box cannot be less than 1. Exiting... "
     CALL EXIT(  )
   END IF
   ! Initial packing fraction for the random configuration
   READ( 100, * ) GET, ETA_INI
   ! Condition 1
   IF( ETA_INI <= 0.D0 ) THEN
-    WRITE( *, "(G0)" ) "The packing fraction of the random configuration cannot be less than or equal to 0. Exiting... "
+    WRITE( *, "(G0,G0.5,2G0)" ) "The packing fraction of the random configuration [", ETA_INI, "] cannot be less than or equal ", &
+    &                           "to 0. Exiting... "
     CALL EXIT(  )
   END IF
   ! Condition 2
   IF( ETA_INI > 1.D0 ) THEN
-    WRITE( *, "(G0)" ) "The packing fraction of the random configuration cannot be greater than 1. Exiting... "
+    WRITE( *, "(G0,G0.5,2G0)" ) "The packing fraction of the random configuration [", ETA_INI, "] cannot be greater than 1. ", &
+    &                           "Exiting... "
     CALL EXIT(  )
   END IF
   ! Initial pressure for the random configuration
   READ( 100, * ) GET, PRESS_RND
   ! Condition
   IF( PRESS_RND <= 0.D0 ) THEN
-    WRITE( *, "(G0)" ) "The reduced pressure of the random configuration cannot be less than or equal to 0. Exiting... "
+    WRITE( *, "(G0,G0.5,2G0)" ) "The reduced pressure of the random configuration [", PRESS_RND, "] cannot be less than or ", &
+    &                           "equal to 0. Exiting... "
     CALL EXIT(  )
   END IF
 ELSE IF( .NOT. CONFIG_SELEC(4) ) THEN
@@ -695,33 +673,21 @@ READ( 100, * ) GET, INIT_CONF
 
 CLOSE( 100 )
 
-! Transforms characters into logical variables
-AXIS_SELEC(:) = .FALSE.
-IF( UNROT_AXIS == "X" ) THEN
-  AXIS_SELEC(1) = .TRUE.
-ELSE IF( UNROT_AXIS == "Y" ) THEN
-  AXIS_SELEC(2) = .TRUE.
-ELSE IF( UNROT_AXIS == "Z" ) THEN
-  AXIS_SELEC(3) = .TRUE.
-END IF
-
 ! *********************************************************************************************** !
-! Initial configuration variables (NVT/NPT-Monte Carlo)                                           !
+! Simulation variables                                                                            !
 ! *********************************************************************************************** !
-
-! Acceptance ratios
 OPEN( UNIT= 100, FILE= "ini_ratios.ini", ACTION= "READ" )
 
 ! Acceptance ratio (translation)
 READ( 100, * ) GET, R_ACC_T
 ! Condition 1
 IF( R_ACC_T <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The translational acceptance ratio cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The translational acceptance ratio [", R_ACC_T, "] cannot be less than or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( R_ACC_T > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The translational acceptance ratio cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The translational acceptance ratio [", R_ACC_T, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -729,12 +695,12 @@ END IF
 READ( 100, * ) GET, R_ACC_R
 ! Condition 1
 IF( R_ACC_R <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The rotational acceptance ratio cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The rotational acceptance ratio [", R_ACC_R, "] cannot be less than or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( R_ACC_R > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The rotational acceptance ratio cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The rotational acceptance ratio [", R_ACC_R, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -742,12 +708,13 @@ END IF
 READ( 100, * ) GET, R_ACC_VI
 ! Condition 1
 IF( R_ACC_VI <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (isotropic) cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The volumetric acceptance ratio (isotropic) [", R_ACC_VI, "] cannot be less than or equal to 0. ", &
+  &                           "Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( R_ACC_VI > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (isotropic) cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The volumetric acceptance ratio (isotropic) [", R_ACC_VI, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -755,30 +722,33 @@ END IF
 READ( 100, * ) GET, R_ACC_VA
 ! Condition 1
 IF( R_ACC_VA <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (anisotropic) cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The volumetric acceptance ratio (anisotropic) [", R_ACC_VA, "] cannot be less than or equal to ", &
+  &                           "0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( R_ACC_VA > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (anisotropic) cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The volumetric acceptance ratio (anisotropic) [", R_ACC_VA, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
 CLOSE( 100 )
 
-! Probabilities
+! *********************************************************************************************** !
+! Simulation variables                                                                            !
+! *********************************************************************************************** !
 OPEN( UNIT= 100, FILE= "ini_probabilities.ini", ACTION= "READ" )
 
 ! Movement/Volume change probability
 READ( 100, * ) GET, PROB_MOV
 ! Condition 1
 IF( PROB_MOV < 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of movement cannot be less than 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement [", PROB_MOV, "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_MOV > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of movement cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement [", PROB_MOV, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 PROB_VOL = 1.D0 - PROB_MOV
@@ -787,12 +757,14 @@ PROB_VOL = 1.D0 - PROB_MOV
 READ( 100, * ) GET, PROB_MOV_INIT
 ! Condition 1
 IF( PROB_MOV_INIT < 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of movement (random configuration) cannot be less than 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement (random configuration) [", PROB_MOV_INIT, &
+  &                          "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_MOV_INIT > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of movement (random configuration) cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement (random configuration) [", PROB_MOV_INIT, &
+  &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 PROB_VOL_INIT = 1.D0 - PROB_MOV_INIT
@@ -801,12 +773,12 @@ PROB_VOL_INIT = 1.D0 - PROB_MOV_INIT
 READ( 100, * ) GET, PROB_TRANS
 ! Condition 1
 IF( PROB_TRANS < 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of translational movements cannot be less than 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements [", PROB_TRANS, "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_TRANS > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of translational movements cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements [", PROB_TRANS, "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 PROB_ROT = 1.D0 - PROB_TRANS
@@ -815,12 +787,14 @@ PROB_ROT = 1.D0 - PROB_TRANS
 READ( 100, * ) GET, PROB_TRANS_INIT
 ! Condition 1
 IF( PROB_TRANS_INIT < 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of translational movements (random configuration) cannot be less than 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements (random configuration) [", PROB_TRANS_INIT, &
+  &                          "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_TRANS_INIT > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of translational movements (random configuration) cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements (random configuration) [", PROB_TRANS_INIT, &
+  &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 PROB_ROT_INIT = 1.D0 - PROB_TRANS_INIT
@@ -829,12 +803,13 @@ PROB_ROT_INIT = 1.D0 - PROB_TRANS_INIT
 READ( 100, * ) GET, PROB_VOL_ISO
 ! Condition 1
 IF( PROB_VOL_ISO < 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of isotropic volume changes cannot be less than 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes [", PROB_VOL_ISO, "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_VOL_ISO > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of isotropic volume changes cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes [", PROB_VOL_ISO, &
+  &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 PROB_VOL_ANISO = 1.D0 - PROB_VOL_ISO
@@ -843,12 +818,14 @@ PROB_VOL_ANISO = 1.D0 - PROB_VOL_ISO
 READ( 100, * ) GET, PROB_ISO_INIT
 ! Condition 1
 IF( PROB_ISO_INIT < 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of isotropic volume changes (random configuration) cannot be less than 0. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes (random configuration) [", PROB_ISO_INIT, &
+  &                          "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_ISO_INIT > 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of isotropic volume changes (random configuration) cannot be greater than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes (random configuration) [", PROB_ISO_INIT, &
+  &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
 PROB_ANISO_INIT = 1.D0 - PROB_ISO_INIT
@@ -968,7 +945,7 @@ IF( POTENTIAL_SELEC(2) ) THEN
   READ( 10, * ) GET, N_LAMBDA
   ! Condition
   IF( N_LAMBDA < 1 ) THEN
-    WRITE( *, "(G0)" ) "The number of potential ranges cannot be less than 1. Exiting... "
+    WRITE( *, "(3G0)" ) "The number of potential ranges [", N_LAMBDA, "] cannot be less than 1. Exiting... "
     CALL EXIT(  )
   END IF
   ! Allocation
@@ -978,15 +955,16 @@ IF( POTENTIAL_SELEC(2) ) THEN
   ! Condition
   DO C_LAMB = 1, N_LAMBDA
     IF( L_RANGE(C_LAMB) <= 1.D0 ) THEN
-      WRITE( *, "(3G0)" ) "The attractive range #", C_LAMB, " cannot be less than or equal to 1. Exiting... "
+      WRITE( *, "(3G0,G0.5,G0)" ) "The attractive range #", C_LAMB, " [", L_RANGE(C_LAMB), &
+      &                           "] cannot be less than or equal to 1. Exiting... "
       CALL EXIT(  )
     END IF
-  END DO 
+  END DO
   ! Reduced Temperature
   READ( 10, * ) GET, RED_TEMP
   ! Condition
   IF( RED_TEMP <= 0.D0 ) THEN
-    WRITE( *, "(G0)" ) "The reduced temperature cannot be less than or equal to 0. Exiting... "
+    WRITE( *, "(G0,G0.5,G0)" ) "The reduced temperature [", RED_TEMP, "] cannot be less than or equal to 0. Exiting... "
     CALL EXIT(  )
   END IF
   ! Minimum number of blocks (see Allen and Tildesley, 2nd Edition, page 282)
@@ -995,18 +973,18 @@ IF( POTENTIAL_SELEC(2) ) THEN
   READ( 10, * ) GET, MAX_BLOCKS
   ! Condition 1
   IF( MIN_BLOCKS < 1 ) THEN
-    WRITE( *, "(G0)" ) "The minimum number of blocks (block average) cannot be less than 1. Exiting... "
+    WRITE( *, "(3G0)" ) "The minimum number of blocks [", MIN_BLOCKS, "] cannot be less than 1. Exiting... "
     CALL EXIT(  )
   END IF
   ! Condition 2
   IF( MAX_BLOCKS < 1 ) THEN
-    WRITE( *, "(G0)" ) "The maximum number of blocks (block average) cannot be less than 1. Exiting... "
+    WRITE( *, "(3G0)" ) "The maximum number of blocks [", MAX_BLOCKS, "] cannot be less than 1. Exiting... "
     CALL EXIT(  )
   END IF
   ! Condition 3
   IF( MIN_BLOCKS >= MAX_BLOCKS ) THEN
-    WRITE( *, "(2G0)" ) "The minimum number of blocks (block average) cannot be greater than or equal to the maximum number of ", &
-    &                   "blocks (block average). Exiting... "
+    WRITE( *, "(6G0)" ) "The minimum number of blocks [", MIN_BLOCKS, "] cannot be greater than or equal to the maximum ", &
+    &                   "number of blocks [", MAX_BLOCKS, "]. Exiting... "
     CALL EXIT(  )
   END IF
 END IF
