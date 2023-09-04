@@ -412,6 +412,90 @@ RETURN
 END SUBROUTINE ELLIPSOID_OVERLAP
 
 ! *********************************************************************************************** !
+!                                    Outer Product of Vectors                                     !
+! *********************************************************************************************** !
+SUBROUTINE OUTER_PRODUCT( EI, EJ, EIJ )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EI, EJ ! Vectors
+REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: EIJ    ! Cross product of vectors
+
+! First row
+EIJ(1,1)  = EI(1) * EJ(1)
+EIJ(1,2)  = EI(1) * EJ(2)
+EIJ(1,3)  = EI(1) * EJ(3)
+
+! Second row
+EIJ(2,1)  = EI(2) * EJ(1)
+EIJ(2,2)  = EI(2) * EJ(2)
+EIJ(2,3)  = EI(2) * EJ(3)
+
+! Third row
+EIJ(3,1)  = EI(3) * EJ(1)
+EIJ(3,2)  = EI(3) * EJ(2)
+EIJ(3,3)  = EI(3) * EJ(3)
+
+RETURN
+
+END SUBROUTINE OUTER_PRODUCT
+
+! *********************************************************************************************** !
+!                                 Inverse Matrix using Cofactors                                  !
+! *********************************************************************************************** !
+SUBROUTINE INVERSE( A, B )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                    :: DET, RDET ! Determinant
+REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: A         ! Matrix
+REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: B         ! Matrix (inverse)
+
+! *********************************************************************************************** !
+! Tranpose matrix of the matrix of cofactors of matrix A                                          !
+! *********************************************************************************************** !
+B(1,1) = A(2,2) * A(3,3) - A(2,3) * A(3,2)
+B(1,2) = A(1,3) * A(3,2) - A(1,2) * A(3,3)
+B(1,3) = A(1,2) * A(2,3) - A(1,3) * A(2,2)
+B(2,1) = A(2,3) * A(3,1) - A(2,1) * A(3,3)
+B(2,2) = A(1,1) * A(3,3) - A(1,3) * A(3,1)
+B(2,3) = A(1,3) * A(2,1) - A(1,1) * A(2,3)
+B(3,1) = A(2,1) * A(3,2) - A(2,2) * A(3,1)
+B(3,2) = A(1,2) * A(3,1) - A(1,1) * A(3,2)
+B(3,3) = A(1,1) * A(2,2) - A(1,2) * A(2,1)
+
+! *********************************************************************************************** !
+! Determinant of matrix A                                                                         !
+! *********************************************************************************************** !
+DET  = A(1,1) * B(1,1) + A(2,1) * B(1,2) + A(3,1) * B(1,3)
+RDET = 0.D0
+
+IF( DABS( DET ) > 0.D0 ) THEN
+  RDET = 1.D0 / DET
+END IF
+
+! *********************************************************************************************** !
+! Inverse of matrix A                                                                             !
+! *********************************************************************************************** !
+B(:,:) = RDET * B(:,:)
+
+RETURN
+
+END SUBROUTINE INVERSE
+
+! *********************************************************************************************** !
 !    This subroutine takes the relative orientations of two molecular spherocylinders i and j     !
 !    and the unit vector joining their centers of mass and calculates their contact distance.     !
 !           See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information.            !
@@ -1592,14 +1676,24 @@ END IF ! The end-to-end configuration have already been tested by other methods
 ! IF THE ALGORITHM REACHES THIS POINT,                                                            !
 !                                                                                                 !
 ! (1) it is because the root obtained from the numerical methods returns a point in the           !
-! circumference of the cylinder disk (j or i) that is outside the cylinder rim (i or j) but       !
+! circumference of the cylindrical disk (j or i) that is outside the cylindrical rim (i or j) but !
 ! within the extension of its length. RESULT = NO OVERLAP                                         !
 !                                                                                                 !
-! (2) it is because no root was found in the considered intervals (-L/2 <= λ0 <= L/2), which      !
+! (2) it is because the root obtained from the numerical methods returns a point in the           !
+! circumference of the cylindrical disk (j or i) that is inside the cylindrical rim (i or j) but  !
+! beyond the extension of its length. RESULT = NO OVERLAP                                         !
+!                                                                                                 !
+! (3) it is because there are no real roots root within the current analyzed interval.            !
+! RESULT = NO OVERLAP                                                                             !
+!                                                                                                 !
+! (4) it is because no root was found in the considered intervals (-L/2 <= λ0 <= L/2), which      !
 ! means the root that minimizes the objective function is beyond the limits of the length of      !
-! the cylinder rim (i or j). This situation will never lead to molecular overlaps except when     !
-! the disks of both cylinder intersect each other. However, this situation has already been       !
+! the cylindrical rim (i or j). This situation will never lead to molecular overlaps except when  !
+! the disks of both cylindrical intersect each other. However, this situation has already been    !
 ! tested in the disk-disk configuration. RESULT = NO OVERLAP                                      !
+!                                                                                                 !
+! (5) it is because α = 0, but this situation has already been tested by other methods.           !
+! RESULT = NO OVERLAP                                                                             !
 !                                                                                                 !
 ! *********************************************************************************************** !
 
@@ -1609,87 +1703,3 @@ OVERLAPDRIM = .FALSE.
 RETURN
 
 END SUBROUTINE DISK_RIM
-
-! *********************************************************************************************** !
-!                                    Outer Product of Vectors                                     !
-! *********************************************************************************************** !
-SUBROUTINE OUTER_PRODUCT( EI, EJ, EIJ )
-
-! Uses one module: global variables
-USE GLOBALVAR
-
-IMPLICIT NONE
-
-! *********************************************************************************************** !
-! REAL VARIABLES                                                                                  !
-! *********************************************************************************************** !
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EI, EJ ! Vectors
-REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: EIJ    ! Cross product of vectors
-
-! First row
-EIJ(1,1)  = EI(1) * EJ(1)
-EIJ(1,2)  = EI(1) * EJ(2)
-EIJ(1,3)  = EI(1) * EJ(3)
-
-! Second row
-EIJ(2,1)  = EI(2) * EJ(1)
-EIJ(2,2)  = EI(2) * EJ(2)
-EIJ(2,3)  = EI(2) * EJ(3)
-
-! Third row
-EIJ(3,1)  = EI(3) * EJ(1)
-EIJ(3,2)  = EI(3) * EJ(2)
-EIJ(3,3)  = EI(3) * EJ(3)
-
-RETURN
-
-END SUBROUTINE OUTER_PRODUCT
-
-! *********************************************************************************************** !
-!                                 Inverse Matrix using Cofactors                                  !
-! *********************************************************************************************** !
-SUBROUTINE INVERSE( A, B )
-
-! Uses one module: global variables
-USE GLOBALVAR
-
-IMPLICIT NONE
-
-! *********************************************************************************************** !
-! REAL VARIABLES                                                                                  !
-! *********************************************************************************************** !
-REAL( KIND= REAL64 )                    :: DET, RDET ! Determinant
-REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: A         ! Matrix
-REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: B         ! Matrix (inverse)
-
-! *********************************************************************************************** !
-! Tranpose matrix of the matrix of cofactors of matrix A                                          !
-! *********************************************************************************************** !
-B(1,1) = A(2,2) * A(3,3) - A(2,3) * A(3,2)
-B(1,2) = A(1,3) * A(3,2) - A(1,2) * A(3,3)
-B(1,3) = A(1,2) * A(2,3) - A(1,3) * A(2,2)
-B(2,1) = A(2,3) * A(3,1) - A(2,1) * A(3,3)
-B(2,2) = A(1,1) * A(3,3) - A(1,3) * A(3,1)
-B(2,3) = A(1,3) * A(2,1) - A(1,1) * A(2,3)
-B(3,1) = A(2,1) * A(3,2) - A(2,2) * A(3,1)
-B(3,2) = A(1,2) * A(3,1) - A(1,1) * A(3,2)
-B(3,3) = A(1,1) * A(2,2) - A(1,2) * A(2,1)
-
-! *********************************************************************************************** !
-! Determinant of matrix A                                                                         !
-! *********************************************************************************************** !
-DET  = A(1,1) * B(1,1) + A(2,1) * B(1,2) + A(3,1) * B(1,3)
-RDET = 0.D0
-
-IF( DABS( DET ) > 0.D0 ) THEN
-  RDET = 1.D0 / DET
-END IF
-
-! *********************************************************************************************** !
-! Inverse of matrix A                                                                             !
-! *********************************************************************************************** !
-B(:,:) = RDET * B(:,:)
-
-RETURN
-
-END SUBROUTINE INVERSE
