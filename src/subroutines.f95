@@ -1254,7 +1254,7 @@ MAXARG = 0.D0
 ! Largest Exponential Argument and Potential Energy
 OPEN( UNIT= 150, FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/"//TRIM( DESCRIPTOR_HOUR )// &
 &                      "_thermo_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_"//TRIM( DESCRIPTOR_FILE3 )// &
-&                      ".dat" )
+&                      ".dat", ACTION= "READ" )
 ! Skip header
 READ ( 150, * )
 ! Skip equilibration data points (if necessary)
