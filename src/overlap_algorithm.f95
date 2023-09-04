@@ -821,7 +821,7 @@ RIJEJ = ( RIJ(1) * EJ(1) ) + ( RIJ(2) * EJ(2) ) + ( RIJ(3) * EJ(3) )
 EIEJ  = ( EI(1) * EJ(1) ) + ( EI(2) * EJ(2) ) + ( EI(3) * EJ(3) )
 CC    = 1.D0 - ( EIEJ * EIEJ )
 
-! Checking whether the cylinders are parallel
+! Checking whether the cylinders are parallel or not (should not happen since 'CASE 1' is decisive)
 IF( DABS( CC ) < 1.D-10 ) THEN
   ! Checking whether the parallel cylinders are not perpendicular to the intermolecular axis (avoid the indeterminate form 0/0)
   IF( DABS( RIJEI ) >= 1.D-10 .AND. DABS( RIJEJ ) >= 1.D-10 ) THEN
@@ -1003,6 +1003,8 @@ END SUBROUTINE DISK_DISK
 ! *********************************************************************************************** !
 !                                   Disk-Rim Overlap Algorithm                                    !
 ! *********************************************************************************************** !
+!  *MODIFIED VERSION* of the algorithm developed by Lopes et al., Chem. Phys. 154, 104902 (2021)  !
+! *********************************************************************************************** !
 SUBROUTINE DISK_RIM( DK, QDISK, HALFDDISK, RRIM, ERIM, HALFDRIM, HALFLRIM, OVERLAPDRIM )
 
 ! Uses one module: global variables
@@ -1015,7 +1017,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 INTEGER( KIND= INT64 ) :: I        ! Counter
 INTEGER( KIND= INT64 ) :: COUNTER  ! Iteration counter (numerical methods)
-INTEGER( KIND= INT64 ) :: COUNTERB ! Cycles of the bissection method
+INTEGER( KIND= INT64 ) :: COUNTERB ! Cycles of the Brent's method
 INTEGER( KIND= INT64 ) :: INTERVAL ! Loop over λ intervals
 INTEGER( KIND= INT64 ) :: N_POINTS ! Maximum number of intervals
 
@@ -1029,7 +1031,7 @@ REAL( KIND= REAL64 )                    :: EXDISK_ERIM               ! Dot produ
 REAL( KIND= REAL64 )                    :: EYDISK_ERIM               ! Dot product of the orientation of the cylinder disk (j or i) along y-direction and the orientation of the cylinder rim (i or j)
 REAL( KIND= REAL64 )                    :: DKURIMSQ                  ! Magnitude of the vector distance between the closest point on the cylinder rim (i or j) and the center of the cylinder disk (j or i)
 REAL( KIND= REAL64 )                    :: DAMPING                   ! Damping factor of the Newton-Raphson method
-REAL( KIND= REAL64 )                    :: TOLERANCE_NR, TOLERANCE_B ! Numerical tolerance of the Newton-Raphson and bissection methods
+REAL( KIND= REAL64 )                    :: TOLERANCE_NR, TOLERANCE_B ! Numerical tolerance of the Newton-Raphson and Brent's methods
 REAL( KIND= REAL64 )                    :: FACTOR                    ! Newton-Raphson's factor (function over its derivative)
 REAL( KIND= REAL64 )                    :: COSPHI, SINPHI            ! Cossine and sine of the angle φ that defines a point in the circumference of the cylinder disk (j or i)
 REAL( KIND= REAL64 )                    :: OPPOSITE_CAT              ! Opposite cathetus
@@ -1038,8 +1040,11 @@ REAL( KIND= REAL64 )                    :: HYP                       ! Hypothenu
 REAL( KIND= REAL64 )                    :: TPARALSQ                  ! Magnitude of vector T parallel to the cylinder rim (i or j) (squared)
 REAL( KIND= REAL64 )                    :: TORTHOSQ                  ! Magnitude of vector T orthogonal to the cylinder rim (i or j) (squared)
 REAL( KIND= REAL64 )                    :: TSQ                       ! Magnitude of the vector T (squared)
-REAL( KIND= REAL64 )                    :: FI                        ! Objective function (midpoint)
-REAL( KIND= REAL64 )                    :: LAMBDAI                   ! Minimization variable related to a point on the cylinder rim (i or j) (midpoint)
+REAL( KIND= REAL64 )                    :: FI                        ! Objective function (root)
+REAL( KIND= REAL64 )                    :: LAMBDAI                   ! Minimization variable related to a point on the cylinder rim (i or j) (root)
+REAL( KIND= REAL64 )                    :: LAMBDAC                   ! Minimization variable related to a point on the cylinder rim (i or j) (midpoint) [c]
+REAL( KIND= REAL64 )                    :: LAMBDAD                   ! Minimization variable related to a point on the cylinder rim (i or j) (midpoint) [d]
+REAL( KIND= REAL64 )                    :: FC                        ! Objective function (midpoint)
 REAL( KIND= REAL64 )                    :: RSQ                       ! Radius of the cylinder (squared)
 REAL( KIND= REAL64 )                    :: DSQ                       ! Diameter of the combined cylinder disks (squared)
 REAL( KIND= REAL64 )                    :: HALFDDISK                 ! Half diameter of the cylinder disk
@@ -1053,6 +1058,7 @@ REAL( KIND= REAL64 )                    :: CARDANO_S, CARDANO_T      ! Cardano's
 REAL( KIND= REAL64 )                    :: THETA, ARGUMENT           ! Cardano's coefficients
 REAL( KIND= REAL64 )                    :: DISCRIMINANT              ! Cardano's discriminant
 REAL( KIND= REAL64 )                    :: MAXCOEFF                  ! Largest coefficient (absolute value) of the quartic function
+REAL( KIND= REAL64 )                    :: TEMPT                     ! Temporary variable
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ROOTS                     ! Roots of the cubic equation
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: F                         ! Objective function
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DF                        ! Derivative of the objective function with respect to λ
@@ -1064,8 +1070,8 @@ REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DK                        ! Position 
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DKRRIM                    ! Vector distance between a cylinder disk (j or i) and a cylinder rim (i or j)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DKURIM                    ! Vector distance between a cylinder disk (j or i) and the closest point on the cylinder rim (i or j)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: URIM                      ! Closest point on the cylinder rim (i or j) with respect to the center of the cylinder disk (j or i)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PC                        ! Closest point on the axial axis of the cylinder rim (i or j) with respect to the circumference of the cylinder disk (j or i)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PD                        ! Closest point on the circumference of the cylinder disk (j or i) with respect to the axial axis of the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PC                        ! Closest point on the axis of the cylinder rim (i or j) with respect to the circumference of the cylinder disk (j or i)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PD                        ! Closest point on the circumference of the cylinder disk (j or i) with respect to the axis of the cylinder rim (i or j)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: T                         ! Vector distance between the closest point on the circumference of the cylinder disk (j or i) and the center of the cylinder rim (i or j)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PK                        ! Point in a plane defined by the cylinder disk
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: LA, LB                    ! Points in a line defined by the cylinder rim
@@ -1073,21 +1079,19 @@ REAL( KIND= REAL64 ), DIMENSION( 3 )    :: INTERSECTION              ! Intersect
 REAL( KIND= REAL64 ), DIMENSION( 5 )    :: COEFF_QUARTIC             ! Coefficients of the quartic function
 REAL( KIND= REAL64 ), DIMENSION( 4 )    :: COEFF_CARDANO             ! Coefficients of the cubic function
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: CPOINTS                   ! Points where the derivative of the objective function with respect to λ are 0
-REAL( KIND= REAL64 ), DIMENSION( 0: 3 ) :: QDISK                     ! Quaternion of the cylinder disks (j or i)
+REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QDISK                     ! Quaternion of the cylinder disks (j or i)
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
 LOGICAL :: OVERLAPDRIM   ! Detects overlap between two particles (disk-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: BISECT_METHOD ! Detects whether the bissection method will be used after n iterations of the Newton-Raphson method
+LOGICAL :: BRENT         ! Detects whether the Brent's method will be used after N iterations of the Newton-Raphson method
+LOGICAL :: BISECT_METHOD ! Checks whether the root from the bisection method will be used or not (Brent's method)
 
 ! Initialize logical variable
 OVERLAPDRIM   = .FALSE.
 BISECT_METHOD = .FALSE.
-
-! Initialize counters
-COUNTER  = 0
-COUNTERB = 0
+BRENT         = .FALSE.
 
 ! Radius of the cylinder rim (squared)
 RSQ = ( HALFDRIM * HALFDRIM )
@@ -1097,24 +1101,28 @@ DSQ = ( HALFDDISK + HALFDRIM )
 DSQ = ( DSQ * DSQ )
 
 ! Vector distance between a cylinder disk and a cylinder rim
-DKRRIM(1)   = DK(1) - RRIM(1)
-DKRRIM(2)   = DK(2) - RRIM(2)
-DKRRIM(3)   = DK(3) - RRIM(3)
+DKRRIM(1) = DK(1) - RRIM(1)
+DKRRIM(2) = DK(2) - RRIM(2)
+DKRRIM(3) = DK(3) - RRIM(3)
+
 ! Projection of the vector distance between a cylinder disk and a cylinder rim along the orientation of the cylinder rim
 DKRRIM_ERIM = ( DKRRIM(1) * ERIM(1) ) + ( DKRRIM(2) * ERIM(2) ) + ( DKRRIM(3) * ERIM(3) )
+
 ! Closest point on a cylinder rim with respect to the center of a cylinder disk
-URIM(1)     = RRIM(1) + ( DKRRIM_ERIM * ERIM(1) )
-URIM(2)     = RRIM(2) + ( DKRRIM_ERIM * ERIM(2) )
-URIM(3)     = RRIM(3) + ( DKRRIM_ERIM * ERIM(3) )
+URIM(1) = RRIM(1) + ( DKRRIM_ERIM * ERIM(1) )
+URIM(2) = RRIM(2) + ( DKRRIM_ERIM * ERIM(2) )
+URIM(3) = RRIM(3) + ( DKRRIM_ERIM * ERIM(3) )
+
 ! Vector distance between a cylinder disk and the closest point on a cylinder rim
-DKURIM(1)   = DK(1) - URIM(1)
-DKURIM(2)   = DK(2) - URIM(2)
-DKURIM(3)   = DK(3) - URIM(3)
+DKURIM(1) = DK(1) - URIM(1)
+DKURIM(2) = DK(2) - URIM(2)
+DKURIM(3) = DK(3) - URIM(3)
+
 ! Magnitude of the vector distance between the closest point on the cylinder rim and the center of the cylinder disk
-DKURIMSQ    = ( DKURIM(1) * DKURIM(1) ) + ( DKURIM(2) * DKURIM(2) ) + ( DKURIM(3) * DKURIM(3) )
+DKURIMSQ = ( DKURIM(1) * DKURIM(1) ) + ( DKURIM(2) * DKURIM(2) ) + ( DKURIM(3) * DKURIM(3) )
 
 ! *********************************************************************************************** !
-! Initial conditions                                                                              !
+! Preliminary conditions                                                                          !
 ! *********************************************************************************************** !
 ! Sphere circumscribing the cylinder disks
 IF( DKURIMSQ > DSQ ) THEN
@@ -1131,13 +1139,14 @@ ELSE IF( ( DKURIMSQ <= RSQ ) .AND. ( DABS( DKRRIM_ERIM ) <= HALFLRIM ) ) THEN
 END IF
 
 ! *********************************************************************************************** !
-! Other configurations                                                                            !
+! Other configurations (initialization)                                                           !
 ! *********************************************************************************************** !
-
 ! Orientation of the cylinder disk along the x-direction
 CALL ACTIVE_TRANSFORMATION( AXISX, QDISK, EXDISK )
 ! Orientation of the cylinder disk along the y-direction
 CALL ACTIVE_TRANSFORMATION( AXISY, QDISK, EYDISK )
+! Orientation of the cylinder disk along the z-direction
+CALL ACTIVE_TRANSFORMATION( AXISZ, QDISK, EZDISK )
 ! Dot product of the orientation of the cylinder disk along x-direction and the orientation of the cylinder rim
 EXDISK_ERIM = ( EXDISK(1) * ERIM(1) ) + ( EXDISK(2) * ERIM(2) ) + ( EXDISK(3) * ERIM(3) )
 ! Dot product of the orientation of the cylinder disk along y-direction and the orientation of the cylinder rim
@@ -1148,119 +1157,31 @@ DKRRIM_EXDISK = ( DKRRIM(1) * EXDISK(1) ) + ( DKRRIM(2) * EXDISK(2) ) + ( DKRRIM
 DKRRIM_EYDISK = ( DKRRIM(1) * EYDISK(1) ) + ( DKRRIM(2) * EYDISK(2) ) + ( DKRRIM(3) * EYDISK(3) )
 
 ! *********************************************************************************************** !
-! Preliminary configuration                                                                       !
-! *********************************************************************************************** !
-!  Calculate a point on the circumference of the cylinder disk that minimizes the objective       !
-!  function for λ = L/2 and λ = -L/2 (extremum points on the cylinder rim).                       !
+! NEW SPECIAL CASE (mainly for anisomorphic cylinders)                                            !
 ! *********************************************************************************************** !
 
-! *********************************************************************************************** !
-! Case 1 (λ = L/2)                                                                                !
-! *********************************************************************************************** !
-LAMBDA(1)    = HALFLRIM
-OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
-ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
-HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
-! Trigonometric relations in the rectangle triangle
-COSPHI = ADJACENT_CAT / HYP
-SINPHI = OPPOSITE_CAT / HYP
-! Closest point on the circumference of the cylinder disk
-PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
-PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
-PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-! Closest point on the axial axis of the cylinder rim
-PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
-PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
-PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-T(1)  = PD(1) - RRIM(1)
-T(2)  = PD(2) - RRIM(2)
-T(3)  = PD(3) - RRIM(3)
-! Magnitude of the vector T (squared)
-TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-! Magnitude of vector T parallel to the cylinder rim (squared)
-TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
-TPARALSQ = TPARALSQ * TPARALSQ
-! Magnitude of vector T orthogonal to the cylinder rim (squared)
-TORTHOSQ = TSQ - TPARALSQ
-! Overlap condition
-IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
-  OVERLAPDRIM = .TRUE.
-  RETURN
-END IF
-
-! *********************************************************************************************** !
-! Case 2 (λ = -L/2)                                                                               !
-! *********************************************************************************************** !
-LAMBDA(1)    = -HALFLRIM
-OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
-ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
-HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
-! Trigonometric relations in the rectangle triangle
-COSPHI = ADJACENT_CAT / HYP
-SINPHI = OPPOSITE_CAT / HYP
-! Closest point on the circumference of the cylinder disk
-PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
-PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
-PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-! Closest point on the axial axis of the cylinder rim
-PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
-PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
-PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-T(1)  = PD(1) - RRIM(1)
-T(2)  = PD(2) - RRIM(2)
-T(3)  = PD(3) - RRIM(3)
-! Magnitude of the vector T (squared)
-TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-! Magnitude of vector T parallel to the cylinder rim (squared)
-TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
-TPARALSQ = TPARALSQ * TPARALSQ
-! Magnitude of vector T orthogonal to the cylinder rim (squared)
-TORTHOSQ = TSQ - TPARALSQ
-! Overlap condition
-IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
-  OVERLAPDRIM = .TRUE.
-  RETURN
-END IF
-
-! *********************************************************************************************** !
-! SPECIAL CASE (Mainly for anisomorphic cylinders)                                                !
-! *********************************************************************************************** !
-! Check if the cylinder axis of particle i intersect any of the cylinder disks of particle j.     !
-! *********************************************************************************************** !
-
-! Point in the plane defined by the cylindrical disk
+! Any point in the plane defined by the cylindrical disk
 PK = DK + HALFDDISK * EXDISK
 
-! Normal vector of the plane defined by the cylindrical disk
-CALL ACTIVE_TRANSFORMATION( AXISZ, QDISK, EZDISK )
-
-! Points in the line defined by the cylindrical axis
+! Any points in the line defined by the cylindrical axis
 LA = RRIM + HALFLRIM * ERIM
 LB = RRIM - HALFLRIM * ERIM
 
 ! Checking whether the cylindrical axis is orthogonal to the normal vector of the plane (avoid the indeterminate form 0/0)
-IF( DABS( DOT_PRODUCT( EZDISK, ERIM ) ) >= 1.D-10 ) THEN
-
+IF( DABS( 1.D0 - DOT_PRODUCT( EZDISK, ERIM ) * DOT_PRODUCT( EZDISK, ERIM ) ) >= 1.D-10 ) THEN
   ! Scale parameter of the line equation that demarks the intersection point between the line and the disk
   LAMBDA(1) = ( DOT_PRODUCT( EZDISK, PK ) - DOT_PRODUCT( EZDISK, LA ) ) / DOT_PRODUCT( EZDISK, (LB - LA) )
-
   ! Coordinates of the intersection point
   INTERSECTION = LA + LAMBDA(1) * (LB - LA)
-
   ! Distance between the intersection point and the center of the cylindrical disk (squared)
   PMINDISKSQ = DOT_PRODUCT( (DK - INTERSECTION), (DK - INTERSECTION) )
-
   ! Distance between the intersection point and the center of the cylindrical axis (squared)
   PMINCYLSQ = DOT_PRODUCT( (RRIM - INTERSECTION), (RRIM - INTERSECTION) )
-
   ! Checks whether the intersection point is within the limits of both the cylindrical disk and cylindrical axis
   IF( PMINDISKSQ <= (HALFDDISK * HALFDDISK) .AND. PMINCYLSQ <= (HALFLRIM * HALFLRIM) ) THEN
     OVERLAPDRIM = .TRUE.
     RETURN
   END IF
-
 END IF
 
 ! *********************************************************************************************** !
@@ -1567,7 +1488,7 @@ IF( ALPHA > 0.D0 ) THEN
     &       + ( 2.D0 * COEFF_QUARTIC(3) * LAMBDA(1) ) + COEFF_QUARTIC(4)
 
     ! Newton-Raphson method
-    DO WHILE ( DABS( F(1) ) >= TOLERANCE_NR .AND. .NOT. BISECT_METHOD)
+    DO WHILE ( DABS( F(1) ) >= TOLERANCE_NR .AND. .NOT. BRENT)
       ! Increment factor
       FACTOR = F(1) / DF(1)
       ! New λ point
@@ -1582,13 +1503,14 @@ IF( ALPHA > 0.D0 ) THEN
       COUNTER = COUNTER + 1
       ! Stop criterion (bissection method)
       IF( COUNTER > 25 ) THEN
-        BISECT_METHOD = .TRUE.
+        BRENT = .TRUE.
       END IF
     END DO
 
     ! Initialize bissection method if the Newton-Raphson method doesn't converge
-    IF( BISECT_METHOD ) THEN
+    IF( BRENT ) THEN
       ! Initial parameters of the bissection method
+      BRENT = .FALSE.
       COUNTERB    = 0      ! Iteration counter
       TOLERANCE_B = 1.D-10 ! Numerical tolerance
       ! Initial guess, λ0 (Newton-Raphson)
@@ -1638,185 +1560,103 @@ IF( ALPHA > 0.D0 ) THEN
       ! Calculate function at λ0
       F(3)  = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
       &       LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
-      ! Avoid bissection method if initial guess gives already the minimum value
-      IF( DABS( F(2) ) < TOLERANCE_B .AND. DABS( F(3) ) >= TOLERANCE_B ) THEN
-        LAMBDA(1)    = LAMBDA(2)
-        OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
-        ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
-        HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
-        ! Trigonometric relations in the rectangle triangle
-        COSPHI = ADJACENT_CAT / HYP
-        SINPHI = OPPOSITE_CAT / HYP
-        ! Closest point on the circumference of the cylinder disk
-        PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
-        PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
-        PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-        ! Closest point on the axial axis of the cylinder rim
-        PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
-        PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
-        PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-        ! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-        T(1)  = PD(1) - RRIM(1)
-        T(2)  = PD(2) - RRIM(2)
-        T(3)  = PD(3) - RRIM(3)
-        ! Magnitude of the vector T (squared)
-        TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-        ! Magnitude of vector T parallel to the cylinder rim (squared)
-        TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
-        TPARALSQ = TPARALSQ * TPARALSQ
-        ! Magnitude of vector T orthogonal to the cylinder rim (squared)
-        TORTHOSQ = TSQ - TPARALSQ
-        ! Overlap condition
-        IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
-          OVERLAPDRIM = .TRUE.
-          RETURN
-        ELSE
-          OVERLAPDRIM = .FALSE.
-        END IF
-        CYCLE INTERVAL_LOOP
-      ELSE IF( DABS( F(2) ) >= TOLERANCE_B .AND. DABS( F(3) ) < TOLERANCE_B ) THEN
-        LAMBDA(1)    = LAMBDA(3)
-        OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
-        ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
-        HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
-        ! Trigonometric relations in the rectangle triangle
-        COSPHI = ADJACENT_CAT / HYP
-        SINPHI = OPPOSITE_CAT / HYP
-        ! Closest point on the circumference of the cylinder disk
-        PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
-        PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
-        PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-        ! Closest point on the axial axis of the cylinder rim
-        PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
-        PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
-        PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-        ! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-        T(1)  = PD(1) - RRIM(1)
-        T(2)  = PD(2) - RRIM(2)
-        T(3)  = PD(3) - RRIM(3)
-        ! Magnitude of the vector T (squared)
-        TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-        ! Magnitude of vector T parallel to the cylinder rim (squared)
-        TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
-        TPARALSQ = TPARALSQ * TPARALSQ
-        ! Magnitude of vector T orthogonal to the cylinder rim (squared)
-        TORTHOSQ = TSQ - TPARALSQ
-        ! Overlap condition
-        IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
-          OVERLAPDRIM = .TRUE.
-          RETURN
-        ELSE
-          OVERLAPDRIM = .FALSE.
-        END IF
-        CYCLE INTERVAL_LOOP
-      ELSE IF( DABS( F(2) ) < TOLERANCE_B .AND. DABS( F(3) ) < TOLERANCE_B ) THEN
-        ! First guess
-        LAMBDA(1)    = LAMBDA(2)
-        OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
-        ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
-        HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
-        ! Trigonometric relations in the rectangle triangle
-        COSPHI = ADJACENT_CAT / HYP
-        SINPHI = OPPOSITE_CAT / HYP
-        ! Closest point on the circumference of the cylinder disk
-        PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
-        PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
-        PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-        ! Closest point on the axial axis of the cylinder rim
-        PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
-        PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
-        PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-        ! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-        T(1) = PD(1) - RRIM(1)
-        T(2) = PD(2) - RRIM(2)
-        T(3) = PD(3) - RRIM(3)
-        ! Magnitude of the vector T (squared)
-        TSQ = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-        ! Magnitude of vector T parallel to the cylinder rim (squared)
-        TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
-        TPARALSQ = TPARALSQ * TPARALSQ
-        ! Magnitude of vector T orthogonal to the cylinder rim (squared)
-        TORTHOSQ = TSQ - TPARALSQ
-        ! Overlap condition
-        IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
-          OVERLAPDRIM = .TRUE.
-          RETURN
-        ELSE
-          OVERLAPDRIM = .FALSE.
-        END IF
-        ! Second guess
-        LAMBDA(1)    = LAMBDA(3)
-        OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
-        ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
-        HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
-        ! Trigonometric relations in the rectangle triangle
-        COSPHI = ADJACENT_CAT / HYP
-        SINPHI = OPPOSITE_CAT / HYP
-        ! Closest point on the circumference of the cylinder disk
-        PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
-        PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
-        PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-        ! Closest point on the axial axis of the cylinder rim
-        PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
-        PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
-        PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-        ! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
-        T(1)  = PD(1) - RRIM(1)
-        T(2)  = PD(2) - RRIM(2)
-        T(3)  = PD(3) - RRIM(3)
-        ! Magnitude of the vector T (squared)
-        TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-        ! Magnitude of vector T parallel to the cylinder rim (squared)
-        TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
-        TPARALSQ = TPARALSQ * TPARALSQ
-        ! Magnitude of vector T orthogonal to the cylinder rim (squared)
-        TORTHOSQ = TSQ - TPARALSQ
-        ! Overlap condition
-        IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
-          OVERLAPDRIM = .TRUE.
-          RETURN
-        ELSE
-          OVERLAPDRIM = .FALSE.
-        END IF
-        CYCLE INTERVAL_LOOP
-      END IF
-      ! Bissection condition
+
+      ! Initialization
+      LAMBDAD = 0.D0
+      ! Brent's condition
       IF( ( F(2) * F(3) ) < 0.D0 ) THEN
-        ! Midpoint λ
-        LAMBDAI = 0.5D0 * ( LAMBDA(2) + LAMBDA(3) )
-        ! Calculate function at the midpoint
-        FI  = ( COEFF_QUARTIC(1) * LAMBDAI * LAMBDAI * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(2) * LAMBDAI * LAMBDAI * LAMBDAI ) + &
-        &     ( COEFF_QUARTIC(3) * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(4) * LAMBDAI ) + COEFF_QUARTIC(5)
-        ! Bissection method
-        DO WHILE( DABS(FI) >= TOLERANCE_B )
-          ! Bissection criterion
-          IF( ( F(2) * FI ) > 0.D0 )THEN
-            LAMBDA(2) = LAMBDAI
-            F(2)      = FI
+        ! Swap condition
+        IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
+          ! Swap bounds
+          TEMPT   = LAMBDA(2)
+          LAMBDA(2) = LAMBDA(3)
+          LAMBDA(3) = TEMPT
+          ! Swap function values
+          TEMPT = F(2)
+          F(2)    = F(3)
+          F(3)    = TEMPT
+        END IF
+        ! Initialization of previous bound
+        LAMBDAC = LAMBDA(2)
+        FC = F(2)
+        ! Initialize value of objective function
+        FI = - 1.D0
+        ! Initialize 'BISSECTION' flag as TRUE since the last iteration used was the bisection method
+        BISECT_METHOD = .TRUE.
+        ! Stop criterion
+        DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( LAMBDA(2) - LAMBDA(3) ) >= TOLERANCE_B )
+          ! Initialize root of the function
+          IF( F(2) /= FC .AND. F(3) /= FC ) THEN
+            ! Inverse quadratic interpolation root finding method
+            LAMBDAI = (LAMBDA(2) * F(3) * FC) / ( (F(2) - F(3)) * (F(2) - FC) ) + (LAMBDA(3) * F(2) * FC) / ( (F(3) - F(2)) * &
+            & (F(3) - FC) ) + &
+            &         (LAMBDAC * F(2) * F(3)) / ( (FC - F(2)) * (FC - F(3)) )
           ELSE
-            LAMBDA(3) = LAMBDAI
-            F(3)      = FI
-          ENDIF
-          ! New midpoint λ
-          LAMBDAI = 0.5D0 * ( LAMBDA(2) + LAMBDA(3) )
-          ! Calculate function at the new midpoint
+            ! False position formula
+            LAMBDAI = LAMBDA(3) - F(3) * (LAMBDA(3) - LAMBDA(2)) / (F(3) - F(2))
+          END IF
+          ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
+          IF( ( (LAMBDAI - (3.D0 * LAMBDA(2) + LAMBDA(3)) / 4.D0) * (LAMBDAI - LAMBDA(3)) >= 0.D0) .OR. ( BISECT_METHOD .AND. &
+          &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. &
+          &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
+          &   ( BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. &
+          &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE_B ) ) ) THEN
+            ! Root from bisection method
+            LAMBDAI = 0.5D0 * (LAMBDA(2) + LAMBDA(3))
+            BISECT_METHOD = .TRUE.
+          ELSE
+            ! Root from interplation method or false position formula
+            BISECT_METHOD = .FALSE.
+          END IF
+          ! Calculate function at the midpoint
           FI  = ( COEFF_QUARTIC(1) * LAMBDAI * LAMBDAI * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(2) * LAMBDAI * LAMBDAI * LAMBDAI ) &
           &     + ( COEFF_QUARTIC(3) * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(4) * LAMBDAI ) + COEFF_QUARTIC(5)
-          ! Iteration
+          ! Set third-to-last root guess
+          LAMBDAD = LAMBDAC
+          ! Set second-to-last root guess
+          LAMBDAC = LAMBDA(3)
+          FC      = F(3)
+          ! Check signs of FA and FS
+          IF( F(2) * FI < 0.D0 ) THEN
+            LAMBDA(3) = LAMBDAI
+            F(3)      = FI
+          ELSE
+            LAMBDA(2) = LAMBDAI
+            F(2)      = FI
+          END IF
+          ! Swap condition
+          IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
+            ! Swap bounds
+            TEMPT   = LAMBDA(2)
+            LAMBDA(2) = LAMBDA(3)
+            LAMBDA(3) = TEMPT
+            ! Swap function values
+            TEMPT = F(2)
+            F(2)    = F(3)
+            F(3)    = TEMPT
+          END IF
           COUNTERB = COUNTERB + 1
-          ! Stop condition
           IF( COUNTERB > 50 ) THEN
-            ! Bissection method will not converge (test current approximated root)
-            EXIT
+            WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
+            CALL EXIT(  )
           END IF
         END DO
-        ! Root that minimizes objective function
-        LAMBDA(1) = LAMBDAI
-      ! Bissection method cannot be applied
+
+        ! Root (iterative process or initial guess)
+        IF( DABS( FI ) < TOLERANCE_B ) THEN
+          LAMBDA(1) = LAMBDAI
+        ELSE IF( DABS( F(3) ) < TOLERANCE_B .OR. DABS( LAMBDA(2) - LAMBDA(3) ) < TOLERANCE_B ) THEN
+          LAMBDA(1) = LAMBDA(3)
+        END IF
+        
       ELSE
-        ! Bissection method will not converge
-        CYCLE INTERVAL_LOOP
+
+        ! Error
+        WRITE( *, "(G0)" ) "The Brent's method failed! Exiting..."
+        CALL EXIT(  )
+
       END IF
+
     END IF
 
     ! Point that minimizes the objective function is outside the cylinder rim
