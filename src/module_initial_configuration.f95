@@ -84,6 +84,9 @@ ELSE IF( GEOM_INQ == "SPC" ) THEN
 ELSE IF( GEOM_INQ == "CYL" ) THEN
   GEOMETRY    = "Cylinders"
   GEO_ACRONYM = "cyl"
+ELSE ! Stop condition
+  WRITE( *, "(3G0)" ) "The user-defined ", TRIM( GEOM_INQ ), " is not an available molecular geometry. Exiting... "
+  CALL EXIT(  )
 END IF
 
 ! *********************************************************************************************** !
@@ -137,6 +140,9 @@ ELSE IF( CONFIG_INQ == "BCC" ) THEN
   CONFIGURATION = "Body-Centered Cube"
 ELSE IF( CONFIG_INQ == "FCC" ) THEN
   CONFIGURATION = "Face-Centered Cube"
+ELSE ! Stop condition
+  WRITE( *, "(3G0)" ) "The user-defined ", TRIM( CONFIG_INQ ), " is not an available molecular configuration. Exiting... "
+  CALL EXIT(  )
 END IF
 
 ! *********************************************************************************************** !
