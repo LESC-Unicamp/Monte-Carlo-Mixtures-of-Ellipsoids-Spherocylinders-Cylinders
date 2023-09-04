@@ -90,6 +90,8 @@ IF( N_ADJUST < 1 ) THEN
   &                   "Exiting... "
   CALL EXIT(  )
 END IF
+
+! Adjustment frequency (random configuration)
 READ( 10, * ) GET, N_ADJUST_INIT
 ! Condition
 IF( N_ADJUST_INIT < 1 ) THEN
@@ -98,90 +100,95 @@ IF( N_ADJUST_INIT < 1 ) THEN
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Maximum translational displacement                                                              !
-! *********************************************************************************************** !
+! Maximum translational displacement
 READ( 10, * ) GET, MAX_TRANS
 ! Condition
 IF( DABS( MAX_TRANS - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum translational displacement (simulation) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum translational displacement of the simulation [", MAX_TRANS, "] cannot be zero. ", &
+  &                           "Exiting... "
   CALL EXIT(  )
 END IF
+
+! Maximum translational displacement (random configuration)
 READ( 10, * ) GET, DRMAX_INIT
 ! Condition
 IF( DABS( DRMAX_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum translational displacement (initial configuration) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum translational displacement of the random configuration [", DRMAX_INIT, "] cannot be ", &
+  &                           "zero. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Maximum rotational displacement                                                                 !
-! *********************************************************************************************** !
+! Maximum rotational displacement
 READ( 10, * ) GET, MAX_ROT
 ! Condition
 IF( DABS( MAX_ROT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum rotational displacement (simulation) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The maximum rotational displacement of the simulation [", MAX_ROT, "] cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
+
+
+! Maximum rotational displacement (random configuration)
 READ( 10, * ) GET, ANGMAX_INIT
 ! Condition
 IF( DABS( ANGMAX_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum rotational displacement (initial configuration) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum rotational displacement of the random configuration [", ANGMAX_INIT, "] cannot be ", &
+  &                           "zero. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Maximum volumetric displacement                                                                 !
-! *********************************************************************************************** !
+! Maximum isotropic volume change
 READ( 10, * ) GET, MAX_VOLI
 ! Condition
 IF( DABS( MAX_VOLI - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum isotropic volume change (simulation) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The maximum isotropic volume change of the simulation [", MAX_VOLI, "] cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
+
+! Maximum anisotropic volume change
 READ( 10, * ) GET, MAX_VOLA
 ! Condition
 IF( DABS( MAX_VOLA - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum anisotropic volume change (simulation) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The maximum anisotropic volume change of the simulation [", MAX_VOLA, "] cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
+
+! Maximum isotropic volume change (random configuration)
 READ( 10, * ) GET, DVMAXISO_INIT
 ! Condition
 IF( DABS( DVMAXISO_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum isotropic volume change (random configuration) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The maximum isotropic volume change of the random configuration [", DVMAXISO_INIT, &
+  &                          "] cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
+
+! Maximum anisotropic volume change (random configuration)
 READ( 10, * ) GET, DVMAXANISO_INIT
 ! Condition
 IF( DABS( DVMAXANISO_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum anisotropic volume change (random configuration) cannot be zero. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The maximum anisotropic volume change of the random configuration [", DVMAXANISO_INIT, &
+  &                          "] cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Minimum volumetric displacement (random configuration only)                                     !
-! *********************************************************************************************** !
+! Minimum volumetric displacement (random configuration)
 READ( 10, * ) GET, DVMIN_INIT
 ! Condition
 IF( DVMIN_INIT >= DVMAXISO_INIT .OR. DVMIN_INIT >= DVMAXANISO_INIT ) THEN
-  WRITE( *, "(2G0)" ) "The minimum volume change (random configuration) cannot be greater than or equal to the maximum volume ", &
-  &                   "change. Exiting... "
+  WRITE( *, "(3(G0,G0.5),G0)" ) "The minimum volume change of the random configuration [", DVMIN_INIT, &
+  &                             "] cannot be greater than or equal to the maximum isotropic [", DVMAXISO_INIT, &
+  &                             "] or anisotropic [", DVMAXANISO_INIT, "] volume change. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Maximum box distortion                                                                          !
-! *********************************************************************************************** !
+! Maximum box distortion
 READ( 10 , * ) GET, BOX_DIST
 ! Condition
 IF( BOX_DIST < 1.D0 ) THEN
-  WRITE( *, "(G0)" ) "The maximum box distortion cannot be less than 1. Exiting... "
+  WRITE( *, "(G0,G0.5,G0)" ) "The maximum box distortion [", BOX_DIST, "] cannot be less than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Lattice reduction method                                                                        !
-! *********************************************************************************************** !
+! Lattice reduction method
 READ( 10 , * ) GET, LRTYPE
 CALL TO_UPPER( LRTYPE, LEN_TRIM( LRTYPE ), LRTYPE )
 LRED_SELEC(:) = .FALSE.
@@ -192,21 +199,19 @@ IF( LRTYPE == "FBM" ) THEN
 ELSE IF( LRTYPE == "LLL" ) THEN
   LRED_SELEC(2) = .TRUE.
 ELSE ! Stop condition
-  WRITE( *, "(3G0)" ) "The user-defined ", TRIM( LRTYPE ), " is not an available lattice reduction method. Exiting... "
+  WRITE( *, "(3G0)" ) "The user-defined [", TRIM( LRTYPE ), "] is not an available lattice reduction method. Exiting... "
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Simulation ensemble                                                                             !
-! *********************************************************************************************** !
+! Simulation ensemble
 READ( 10, * ) GET, MC_ENSEMBLE
 CALL TO_UPPER( MC_ENSEMBLE, LEN_TRIM( MC_ENSEMBLE ), MC_ENSEMBLE )
 ! Condition
 IF( MC_ENSEMBLE /= "NVT" .AND. MC_ENSEMBLE /= "NPT" ) THEN
-  WRITE( *, "(3G0)" ) "The user-defined ", TRIM( MC_ENSEMBLE ), " is not an available simulation ensemble. Exiting... "
+  WRITE( *, "(3G0)" ) "The user-defined [", TRIM( MC_ENSEMBLE ), "] is not an available simulation ensemble. Exiting... "
   CALL EXIT(  )
 END IF
-WRITE( *, "(G0,G0)" ) "Monte Carlo ensemble: ", MC_ENSEMBLE
+WRITE( *, "(3G0)" ) "Monte Carlo ensemble: [", MC_ENSEMBLE, "]"
 WRITE( *, "(G0)" ) " "
 
 CLOSE( 10 )
