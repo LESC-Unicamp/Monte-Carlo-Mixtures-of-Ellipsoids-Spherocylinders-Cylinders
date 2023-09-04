@@ -161,13 +161,13 @@ END IF
 READ( 10, * ) GET, DVMAXISO_INIT
 ! Condition
 IF( DABS( DVMAXISO_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum isotropic volume change (initial configuration) cannot be zero. Exiting... "
+  WRITE( *, "(G0)" ) "The maximum isotropic volume change (random configuration) cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
 READ( 10, * ) GET, DVMAXANISO_INIT
 ! Condition
 IF( DABS( DVMAXANISO_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-  WRITE( *, "(G0)" ) "The maximum anisotropic volume change (initial configuration) cannot be zero. Exiting... "
+  WRITE( *, "(G0)" ) "The maximum anisotropic volume change (random configuration) cannot be zero. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -177,7 +177,8 @@ END IF
 READ( 10, * ) GET, DVMIN_INIT
 ! Condition
 IF( DVMIN_INIT >= DVMAXISO_INIT .OR. DVMIN_INIT >= DVMAXANISO_INIT ) THEN
-  WRITE( *, "(G0)" ) "The minimum volume change cannot be greater than or equal to the maximum volume change. Exiting... "
+  WRITE( *, "(2G0)" ) "The minimum volume change (random configuration) cannot be greater than or equal to the maximum volume ", &
+  &                   "change. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -385,7 +386,7 @@ READ( 100, * ) GET, DIAMETER
 ! Condition
 DO C = 1, COMPONENTS
   IF( DIAMETER(C) <= 0.D0 ) THEN
-    WRITE( *, "(3G0)" ) "The diameter of component ", C, " cannot be less than or equal to 0. Exiting... "
+    WRITE( *, "(3G0)" ) "The diameter of component #", C, " cannot be less than or equal to 0. Exiting... "
     CALL EXIT(  )
   END IF
 END DO
@@ -396,12 +397,12 @@ READ( 100, * ) GET, LENGTH
 DO C = 1, COMPONENTS
   IF( GEOM_SELEC(1) .OR. GEOM_SELEC(3) ) THEN
     IF( LENGTH(C) <= 0.D0 ) THEN
-      WRITE( *, "(3G0)" ) "The length of component ", C, " cannot be less than or equal to 0. Exiting... "
+      WRITE( *, "(3G0)" ) "The length of component #", C, " cannot be less than or equal to 0. Exiting... "
       CALL EXIT(  )
     END IF
   ELSE IF( GEOM_SELEC(2) ) THEN
     IF( LENGTH(C) < 0.D0 ) THEN
-      WRITE( *, "(3G0)" ) "The length of component ", C, " cannot be less than 0. Exiting... "
+      WRITE( *, "(3G0)" ) "The length of component #", C, " cannot be less than 0. Exiting... "
       CALL EXIT(  )
     END IF
   END IF
@@ -412,7 +413,7 @@ READ( 100, * ) GET, MOLAR_F
 ! Condition
 DO C = 1, COMPONENTS
   IF( MOLAR_F(C) < 0.D0 ) THEN
-    WRITE( *, "(3G0)" ) "The molar fraction of component ", C, " cannot be less than 0. Exiting... "
+    WRITE( *, "(3G0)" ) "The molar fraction of component #", C, " cannot be less than 0. Exiting... "
     CALL EXIT(  )
   END IF
 END DO
@@ -610,7 +611,7 @@ END IF
 READ( 100, * ) GET, MAX_ANGLE
 ! Condition
 IF( MAX_ANGLE <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The maximum angular distortion of the box cannot be less than or equal to 0. Exiting... "
+  WRITE( *, "(G0)" ) "The maximum angular distortion of the box cannot be less than or equal to 0°. Exiting... "
   CALL EXIT(  )
 END IF
 MAX_ANGLE = MAX_ANGLE * PI / 180.D0
@@ -779,8 +780,8 @@ OPEN( UNIT= 100, FILE= "ini_probabilities.ini", ACTION= "READ" )
 ! Movement/Volume change probability
 READ( 100, * ) GET, PROB_MOV
 ! Condition 1
-IF( PROB_MOV <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of movement cannot be less than or equal to 0. Exiting... "
+IF( PROB_MOV < 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of movement cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
@@ -793,8 +794,8 @@ PROB_VOL = 1.D0 - PROB_MOV
 ! Movement/Volume change probability (initial configuration)
 READ( 100, * ) GET, PROB_MOV_INIT
 ! Condition 1
-IF( PROB_MOV_INIT <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of movement (random configuration) cannot be less than or equal to 0. Exiting... "
+IF( PROB_MOV_INIT < 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of movement (random configuration) cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
@@ -807,8 +808,8 @@ PROB_VOL_INIT = 1.D0 - PROB_MOV_INIT
 ! Translational/Rotational movement probability
 READ( 100, * ) GET, PROB_TRANS
 ! Condition 1
-IF( PROB_TRANS <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of translational movements cannot be less than or equal to 0. Exiting... "
+IF( PROB_TRANS < 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of translational movements cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
@@ -821,9 +822,8 @@ PROB_ROT = 1.D0 - PROB_TRANS
 ! Translational/Rotational movement probability (initial configuration)
 READ( 100, * ) GET, PROB_TRANS_INIT
 ! Condition 1
-IF( PROB_TRANS_INIT <= 0.D0 ) THEN
-  WRITE( *, "(2G0)" ) "The probability of translational movements (random configuration) cannot be less than or equal to ", &
-  &                   "0. Exiting... "
+IF( PROB_TRANS_INIT < 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of translational movements (random configuration) cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
@@ -836,8 +836,8 @@ PROB_ROT_INIT = 1.D0 - PROB_TRANS_INIT
 ! Isotropic/Anisotropic volume change
 READ( 100, * ) GET, PROB_VOL_ISO
 ! Condition 1
-IF( PROB_VOL_ISO <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of isotropic volume changes cannot be less than or equal to 0. Exiting... "
+IF( PROB_VOL_ISO < 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of isotropic volume changes cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
@@ -850,9 +850,8 @@ PROB_VOL_ANISO = 1.D0 - PROB_VOL_ISO
 ! Isotropic/Anisotropic volume change (initial configuration)
 READ( 100, * ) GET, PROB_ISO_INIT
 ! Condition 1
-IF( PROB_ISO_INIT <= 0.D0 ) THEN
-  WRITE( *, "(G0)" ) "The probability of isotropic volume changes (random configuration) cannot be less than or equal to 0. ", &
-  &                  "Exiting... "
+IF( PROB_ISO_INIT < 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of isotropic volume changes (random configuration) cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
