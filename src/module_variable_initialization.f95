@@ -56,7 +56,7 @@ OPEN( UNIT= 10, FILE= "ini_montecarlo.ini", ACTION= "READ" )
 READ( 10, * ) GET, MAX_CYCLES
 ! Condition
 IF( MAX_CYCLES < 1 ) THEN
-  WRITE( *, "(3G0)" ) "The maximum number of cycles [", MAX_CYCLES, "] is less than 1. Exiting... "
+  WRITE( *, "(3G0)" ) "The maximum number of cycles [", MAX_CYCLES, "] cannot be less than 1. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -64,8 +64,8 @@ END IF
 READ( 10, * ) GET, N_EQUIL
 ! Condition 1
 IF( N_EQUIL >= MAX_CYCLES ) THEN
-  WRITE( *, "(6G0)" ) "The number of equilibration cycles [", N_EQUIL, "] is greater than or equal to the maximum number of ", &
-  &                   "cycles [", MAX_CYCLES, "]. Exiting... "
+  WRITE( *, "(6G0)" ) "The number of equilibration cycles [", N_EQUIL, "] cannot be greater than or equal to the maximum number ", &
+  &                   "of cycles [", MAX_CYCLES, "]. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
@@ -757,13 +757,13 @@ PROB_VOL = 1.D0 - PROB_MOV
 READ( 100, * ) GET, PROB_MOV_INIT
 ! Condition 1
 IF( PROB_MOV_INIT < 0.D0 ) THEN
-  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement (random configuration) [", PROB_MOV_INIT, &
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement of the random configuration [", PROB_MOV_INIT, &
   &                          "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_MOV_INIT > 1.D0 ) THEN
-  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement (random configuration) [", PROB_MOV_INIT, &
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of movement of the random configuration [", PROB_MOV_INIT, &
   &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
@@ -787,13 +787,13 @@ PROB_ROT = 1.D0 - PROB_TRANS
 READ( 100, * ) GET, PROB_TRANS_INIT
 ! Condition 1
 IF( PROB_TRANS_INIT < 0.D0 ) THEN
-  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements (random configuration) [", PROB_TRANS_INIT, &
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements of the random configuration [", PROB_TRANS_INIT, &
   &                          "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_TRANS_INIT > 1.D0 ) THEN
-  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements (random configuration) [", PROB_TRANS_INIT, &
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of translational movements of the random configuration [", PROB_TRANS_INIT, &
   &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
@@ -818,13 +818,13 @@ PROB_VOL_ANISO = 1.D0 - PROB_VOL_ISO
 READ( 100, * ) GET, PROB_ISO_INIT
 ! Condition 1
 IF( PROB_ISO_INIT < 0.D0 ) THEN
-  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes (random configuration) [", PROB_ISO_INIT, &
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes of the random configuration [", PROB_ISO_INIT, &
   &                          "] cannot be less than 0. Exiting... "
   CALL EXIT(  )
 END IF
 ! Condition 2
 IF( PROB_ISO_INIT > 1.D0 ) THEN
-  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes (random configuration) [", PROB_ISO_INIT, &
+  WRITE( *, "(G0,G0.5,G0)" ) "The probability of isotropic volume changes of the random configuration [", PROB_ISO_INIT, &
   &                          "] cannot be greater than 1. Exiting... "
   CALL EXIT(  )
 END IF
