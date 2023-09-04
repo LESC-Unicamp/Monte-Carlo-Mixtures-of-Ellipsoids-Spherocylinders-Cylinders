@@ -1672,7 +1672,6 @@ END IF ! The end-to-end configuration have already been tested by other methods
 ! *********************************************************************************************** !
 ! -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*  IMPORTANT NOTES  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* !
 ! *********************************************************************************************** !
-!                                                                                                 !
 ! IF THE ALGORITHM REACHES THIS POINT,                                                            !
 !                                                                                                 !
 ! (1) it is because the root obtained from the numerical methods returns a point in the           !
@@ -1694,7 +1693,6 @@ END IF ! The end-to-end configuration have already been tested by other methods
 !                                                                                                 !
 ! (5) it is because α = 0, but this situation has already been tested by other methods.           !
 ! RESULT = NO OVERLAP                                                                             !
-!                                                                                                 !
 ! *********************************************************************************************** !
 
 ! No overlaps
