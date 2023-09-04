@@ -52,7 +52,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! Simulation parameters                                                                           !
 ! *********************************************************************************************** !
-OPEN( UNIT= 10, FILE= "ini_montecarlo.ini" )
+OPEN( UNIT= 10, FILE= "ini_montecarlo.ini", ACTION= "READ" )
 
 ! *********************************************************************************************** !
 ! Total number of cycles                                                                          !
@@ -204,7 +204,7 @@ IF( LRTYPE == "FBM" ) THEN
 ELSE IF( LRTYPE == "LLL" ) THEN
   LRED_SELEC(2) = .TRUE.
 ELSE ! Stop condition
-  WRITE( *, "(G0)" ) "The user-defined ", TRIM( LRTYPE ), " is not an available lattice reduction method. Exiting... "
+  WRITE( *, "(3G0)" ) "The user-defined ", TRIM( LRTYPE ), " is not an available lattice reduction method. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -215,7 +215,7 @@ READ( 10, * ) GET, MC_ENSEMBLE
 CALL TO_UPPER( MC_ENSEMBLE, LEN_TRIM( MC_ENSEMBLE ), MC_ENSEMBLE )
 ! Condition
 IF( MC_ENSEMBLE /= "NVT" .AND. MC_ENSEMBLE /= "NPT" ) THEN
-  WRITE( *, "The user-defined ", TRIM( MC_ENSEMBLE ), " is not an available simulation ensemble. Exiting... "
+  WRITE( *, "(3G0)" ) "The user-defined ", TRIM( MC_ENSEMBLE ), " is not an available simulation ensemble. Exiting... "
   CALL EXIT(  )
 END IF
 WRITE( *, "(G0,G0)" ) "Monte Carlo ensemble: ", MC_ENSEMBLE
@@ -237,7 +237,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! Inquiry variables                                                                               !
 ! *********************************************************************************************** !
-OPEN( UNIT= 10, FILE= "ini_control.ini" )
+OPEN( UNIT= 10, FILE= "ini_control.ini", ACTION= "READ" )
 
 ! *********************************************************************************************** !
 ! Trajectory inquiry                                                                              !
@@ -351,21 +351,71 @@ INTEGER( KIND= INT64 ) :: C ! Counter
 ! *********************************************************************************************** !
 ! System variables                                                                                !
 ! *********************************************************************************************** !
-OPEN( UNIT= 100, FILE= "ini_system.ini" )
+OPEN( UNIT= 100, FILE= "ini_system.ini", ACTION= "READ" )
+
 ! Packing fraction
 READ( 100, * ) GET, PACKING_F
+! Condition 1
+IF( PACKING_F <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The packing fraction cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PACKING_F > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The packing fraction cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
+
 ! Number of components
 READ( 100, * ) GET, COMPONENTS
+! Condition
+IF( COMPONENTS < 1 ) THEN
+  WRITE( *, "(G0)" ) "The number of components cannot be less than 1. Exiting... "
+  CALL EXIT(  )
+END IF
+
+! Allocation
 ALLOCATE( DIAMETER(COMPONENTS), LENGTH(COMPONENTS), MOLAR_F(COMPONENTS) )
 ALLOCATE( N_COMPONENT(0:COMPONENTS), PARTICLE_VOL(COMPONENTS), RHO_PARTICLE(COMPONENTS) )
 ALLOCATE( ASPECT_RATIO(COMPONENTS) )
 ALLOCATE( SIGSPHERE(COMPONENTS) )
+
 ! Diameter of component i
 READ( 100, * ) GET, DIAMETER
+! Condition
+DO C = 1, COMPONENTS
+  IF( DIAMETER(C) <= 0.D0 ) THEN
+    WRITE( *, "(3G0)" ) "The diameter of component ", C, " cannot be less than or equal to 0. Exiting... "
+    CALL EXIT(  )
+  END IF
+END DO
+
 ! Length of component i
 READ( 100, * ) GET, LENGTH
+! Condition
+DO C = 1, COMPONENTS
+  IF( GEOM_SELEC(1) .OR. GEOM_SELEC(3) ) THEN
+    IF( LENGTH(C) <= 0.D0 ) THEN
+      WRITE( *, "(3G0)" ) "The length of component ", C, " cannot be less than or equal to 0. Exiting... "
+      CALL EXIT(  )
+    END IF
+  ELSE IF( GEOM_SELEC(2) ) THEN
+    IF( LENGTH(C) < 0.D0 ) THEN
+      WRITE( *, "(3G0)" ) "The length of component ", C, " cannot be less than 0. Exiting... "
+      CALL EXIT(  )
+    END IF
+  END IF
+END DO
+
 ! Molar fraction of component i
 READ( 100, * ) GET, MOLAR_F
+! Condition
+DO C = 1, COMPONENTS
+  IF( MOLAR_F(C) < 0.D0 ) THEN
+    WRITE( *, "(3G0)" ) "The molar fraction of component ", C, " cannot be less than 0. Exiting... "
+    CALL EXIT(  )
+  END IF
+END DO
 
 ! Aspect ratio
 DO C = 1, COMPONENTS
@@ -412,11 +462,14 @@ IF( DABS( TOTAL_MOLAR_F - 1.D0 ) >= EPSILON(1.D0) ) THEN
   END DO
 END IF
 
-! *********************************************************************************************** !
-! System variables                                                                                !
-! *********************************************************************************************** !
 ! Number of particles
 READ( 100, * ) GET, N_PARTICLES
+! Condition
+IF( N_PARTICLES < 2 ) THEN
+  WRITE( *, "(G0)" ) "The number of particles cannot be less than 2. Exiting... "
+  CALL EXIT(  )
+END IF
+
 ! Number of particles of component i
 N_COMPONENT(:) = 0
 DO C = 1, COMPONENTS
@@ -529,17 +582,37 @@ END DO PARTICLE_LOOP
 
 WRITE( *, * ) " "
 
-! *********************************************************************************************** !
-! System variables                                                                                !
-! *********************************************************************************************** !
 ! Absolute Temperature
 READ( 100, * ) GET, TEMP
+! Condition
+IF( TEMP <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The absolute temperature cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+
 ! Reduced Pressure
 READ( 100, * ) GET, PRESS
+! Condition
+IF( PRESS <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The reduced pressure cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+
 ! Maximum length ratio (box distortion)
 READ( 100, * ) GET, MAX_LENGTH_RATIO
+! Condition
+IF( MAX_LENGTH_RATIO <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The maximum linear distortion of the box cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+
 ! Maximum angle (box distortion)
 READ( 100, * ) GET, MAX_ANGLE
+! Condition
+IF( MAX_ANGLE <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The maximum angular distortion of the box cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
 MAX_ANGLE = MAX_ANGLE * PI / 180.D0
 
 CLOSE( 100 )
@@ -571,29 +644,62 @@ WRITE( *, * ) " "
 ! *********************************************************************************************** !
 ! Initial configuration variables                                                                 !
 ! *********************************************************************************************** !
-OPEN( UNIT= 100, FILE= "ini_config.ini" )
-! Dummy
+OPEN( UNIT= 100, FILE= "ini_config.ini", ACTION= "READ" )
+
+! Skip
 READ( 100, * ) GET, DUMMY
 READ( 100, * ) GET, DUMMY
+
 ! Unrotated reference axis (initial configuration)
 READ( 100, * ) GET, UNROT_AXIS
 CALL TO_UPPER( UNROT_AXIS, LEN_TRIM( UNROT_AXIS ), UNROT_AXIS )
+! Condition
+IF( UNROT_AXIS /= "X" .AND. UNROT_AXIS /= "Y" .AND. UNROT_AXIS /= "Z" ) THEN
+  WRITE( *, "(G0)" ) "The unrotated reference axis can only be X, Y, or Z. Exiting... "
+  CALL EXIT(  )
+END IF
+
 ! Quaternion angle (initial configuration)
 READ( 100, * ) GET, QUATERNION_ANGLE
+
+! Random configuration
 IF( CONFIG_SELEC(4) ) THEN
   ! Maximum number of attempts to distribute particles in a random configuration
   READ( 100, * ) GET, MAX_ATTEMPTS
+  ! Condition
+  IF( MAX_ATTEMPTS < 1 ) THEN
+    WRITE( *, "(2G0)" ) "The maximum number of attempts to randomly distribute particles inside the simulation box cannot be ", &
+    &                   "less than 1. Exiting... "
+    CALL EXIT(  )
+  END IF
   ! Initial packing fraction for the random configuration
   READ( 100, * ) GET, ETA_INI
+  ! Condition 1
+  IF( ETA_INI <= 0.D0 ) THEN
+    WRITE( *, "(G0)" ) "The packing fraction of the random configuration cannot be less than or equal to 0. Exiting... "
+    CALL EXIT(  )
+  END IF
+  ! Condition 2
+  IF( ETA_INI > 1.D0 ) THEN
+    WRITE( *, "(G0)" ) "The packing fraction of the random configuration cannot be greater than 1. Exiting... "
+    CALL EXIT(  )
+  END IF
   ! Initial pressure for the random configuration
   READ( 100, * ) GET, PRESS_RND
+  ! Condition
+  IF( PRESS_RND <= 0.D0 ) THEN
+    WRITE( *, "(G0)" ) "The reduced pressure of the random configuration cannot be less than or equal to 0. Exiting... "
+    CALL EXIT(  )
+  END IF
 ELSE IF( .NOT. CONFIG_SELEC(4) ) THEN
   READ( 100, * ) GET, DUMMY
   READ( 100, * ) GET, DUMMY
   READ( 100, * ) GET, DUMMY
 END IF
+
 ! Last Frame
 READ( 100, * ) GET, INIT_CONF
+
 CLOSE( 100 )
 
 ! Transforms characters into logical variables
@@ -609,25 +715,153 @@ END IF
 ! *********************************************************************************************** !
 ! Initial configuration variables (NVT/NPT-Monte Carlo)                                           !
 ! *********************************************************************************************** !
-OPEN( UNIT= 100, FILE= "ini_ratios.ini" )
+
+! Acceptance ratios
+OPEN( UNIT= 100, FILE= "ini_ratios.ini", ACTION= "READ" )
+
+! Acceptance ratio (translation)
 READ( 100, * ) GET, R_ACC_T
+! Condition 1
+IF( R_ACC_T <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The translational acceptance ratio cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( R_ACC_T > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The translational acceptance ratio cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
+
+! Acceptance ratio (rotation)
 READ( 100, * ) GET, R_ACC_R
+! Condition 1
+IF( R_ACC_R <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The rotational acceptance ratio cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( R_ACC_R > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The rotational acceptance ratio cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
+
+! Acceptance ratio (isotropic volume change)
 READ( 100, * ) GET, R_ACC_VI
+! Condition 1
+IF( R_ACC_VI <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (isotropic) cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( R_ACC_VI > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (isotropic) cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
+
+! Acceptance ratio (anisotropic volume change)
 READ( 100, * ) GET, R_ACC_VA
+! Condition 1
+IF( R_ACC_VA <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (anisotropic) cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( R_ACC_VA > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The volumetric acceptance ratio (anisotropic) cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
+
 CLOSE( 100 )
-OPEN( UNIT= 100, FILE= "ini_probabilities.ini" )
+
+! Probabilities
+OPEN( UNIT= 100, FILE= "ini_probabilities.ini", ACTION= "READ" )
+
+! Movement/Volume change probability
 READ( 100, * ) GET, PROB_MOV
+! Condition 1
+IF( PROB_MOV <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of movement cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PROB_MOV > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of movement cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 PROB_VOL = 1.D0 - PROB_MOV
+
+! Movement/Volume change probability (initial configuration)
 READ( 100, * ) GET, PROB_MOV_INIT
+! Condition 1
+IF( PROB_MOV_INIT <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of movement (random configuration) cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PROB_MOV_INIT > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of movement (random configuration) cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 PROB_VOL_INIT = 1.D0 - PROB_MOV_INIT
+
+! Translational/Rotational movement probability
 READ( 100, * ) GET, PROB_TRANS
+! Condition 1
+IF( PROB_TRANS <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of translational movements cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PROB_TRANS > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of translational movements cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 PROB_ROT = 1.D0 - PROB_TRANS
+
+! Translational/Rotational movement probability (initial configuration)
 READ( 100, * ) GET, PROB_TRANS_INIT
+! Condition 1
+IF( PROB_TRANS_INIT <= 0.D0 ) THEN
+  WRITE( *, "(2G0)" ) "The probability of translational movements (random configuration) cannot be less than or equal to ", &
+  &                   "0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PROB_TRANS_INIT > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of translational movements (random configuration) cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 PROB_ROT_INIT = 1.D0 - PROB_TRANS_INIT
+
+! Isotropic/Anisotropic volume change
 READ( 100, * ) GET, PROB_VOL_ISO
+! Condition 1
+IF( PROB_VOL_ISO <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of isotropic volume changes cannot be less than or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PROB_VOL_ISO > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of isotropic volume changes cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 PROB_VOL_ANISO = 1.D0 - PROB_VOL_ISO
+
+! Isotropic/Anisotropic volume change (initial configuration)
 READ( 100, * ) GET, PROB_ISO_INIT
+! Condition 1
+IF( PROB_ISO_INIT <= 0.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of isotropic volume changes (random configuration) cannot be less than or equal to 0. ", &
+  &                  "Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( PROB_ISO_INIT > 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The probability of isotropic volume changes (random configuration) cannot be greater than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 PROB_ANISO_INIT = 1.D0 - PROB_ISO_INIT
+
 CLOSE( 100 )
 
 ! Summary
@@ -735,21 +969,55 @@ INTEGER( KIND= INT64 ) :: C_LAMB ! Counter
 ! *********************************************************************************************** !
 ! Potential variables                                                                             !
 ! *********************************************************************************************** !
-OPEN( UNIT= 10, FILE= "ini_potential.ini" )
+OPEN( UNIT= 10, FILE= "ini_potential.ini", ACTION= "READ" )
 
 ! Square-well potential
 IF( POTENTIAL_SELEC(2) ) THEN
   ! Number of attractive range points
   READ( 10, * ) GET, N_LAMBDA
+  ! Condition
+  IF( N_LAMBDA < 1 ) THEN
+    WRITE( *, "(G0)" ) "The number of potential ranges cannot be less than 1. Exiting... "
+    CALL EXIT(  )
+  END IF
+  ! Allocation
   ALLOCATE( L_RANGE(N_LAMBDA), LFEXIST(N_LAMBDA) )
   ! Attractive range (λ)
   READ( 10, * ) GET, L_RANGE
+  ! Condition
+  DO C_LAMB = 1, N_LAMBDA
+    IF( L_RANGE(C_LAMB) <= 1.D0 ) THEN
+      WRITE( *, "(3G0)" ) "The attractive range #", C_LAMB, " cannot be less than or equal to 1. Exiting... "
+      CALL EXIT(  )
+    END IF
+  END DO 
   ! Reduced Temperature
   READ( 10, * ) GET, RED_TEMP
+  ! Condition
+  IF( RED_TEMP <= 0.D0 ) THEN
+    WRITE( *, "(G0)" ) "The reduced temperature cannot be less than or equal to 0. Exiting... "
+    CALL EXIT(  )
+  END IF
   ! Minimum number of blocks (see Allen and Tildesley, 2nd Edition, page 282)
   READ( 10, * ) GET, MIN_BLOCKS
   ! Maximum number of blocks (see Allen and Tildesley, 2nd Edition, page 282)
   READ( 10, * ) GET, MAX_BLOCKS
+  ! Condition 1
+  IF( MIN_BLOCKS < 1 ) THEN
+    WRITE( *, "(G0)" ) "The minimum number of blocks (block average) cannot be less than 1. Exiting... "
+    CALL EXIT(  )
+  END IF
+  ! Condition 2
+  IF( MAX_BLOCKS < 1 ) THEN
+    WRITE( *, "(G0)" ) "The maximum number of blocks (block average) cannot be less than 1. Exiting... "
+    CALL EXIT(  )
+  END IF
+  ! Condition 3
+  IF( MIN_BLOCKS >= MAX_BLOCKS ) THEN
+    WRITE( *, "(2G0)" ) "The minimum number of blocks (block average) cannot be greater than or equal to the maximum number of ", &
+    &                   "blocks (block average). Exiting... "
+    CALL EXIT(  )
+  END IF
 END IF
 
 CLOSE( 10 )
