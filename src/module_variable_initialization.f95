@@ -33,9 +33,7 @@ IMPLICIT NONE
 
 ! *********************************************************************************************** !
 !                                     VARIABLE INITIALIZATION                                     !
-!       Most variables should be first specified in an input file ('mchgo_input.ini' file)        !
-!              Some variables are on-the-fly (OTF) and must be specified by the user              !
-!                               at the beginning of the simulation.                               !
+!              All variables should be first specified in an input file (*.ini file)              !
 !                       We provided an example .ini file to guide the user.                       !
 !                     Please also check our README file for more information.                     !
 ! *********************************************************************************************** !
