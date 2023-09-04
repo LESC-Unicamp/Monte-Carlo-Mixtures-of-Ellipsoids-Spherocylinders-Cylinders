@@ -1039,8 +1039,8 @@ REAL( KIND= REAL64 )                    :: TORTHOSQ                  ! Magnitude
 REAL( KIND= REAL64 )                    :: TSQ                       ! Magnitude of the vector T (squared)
 REAL( KIND= REAL64 )                    :: FI                        ! Objective function (root)
 REAL( KIND= REAL64 )                    :: LAMBDAI                   ! Minimization variable related to a point on the cylinder rim (i or j) (root)
-REAL( KIND= REAL64 )                    :: LAMBDAC                   ! Minimization variable related to a point on the cylinder rim (i or j) (midpoint) [c]
-REAL( KIND= REAL64 )                    :: LAMBDAD                   ! Minimization variable related to a point on the cylinder rim (i or j) (midpoint) [d]
+REAL( KIND= REAL64 )                    :: LAMBDAC                   ! Minimization variable related to a point on the cylinder rim (i or j) (root guess) [c]
+REAL( KIND= REAL64 )                    :: LAMBDAD                   ! Minimization variable related to a point on the cylinder rim (i or j) (root guess) [d]
 REAL( KIND= REAL64 )                    :: FC                        ! Objective function (midpoint)
 REAL( KIND= REAL64 )                    :: RSQ                       ! Radius of the cylinder (squared)
 REAL( KIND= REAL64 )                    :: DSQ                       ! Diameter of the combined cylinder disks (squared)
@@ -1151,7 +1151,7 @@ DKRRIM_EXDISK = ( DKRRIM(1) * EXDISK(1) ) + ( DKRRIM(2) * EXDISK(2) ) + ( DKRRIM
 DKRRIM_EYDISK = ( DKRRIM(1) * EYDISK(1) ) + ( DKRRIM(2) * EYDISK(2) ) + ( DKRRIM(3) * EYDISK(3) )
 
 ! *********************************************************************************************** !
-! NEW SPECIAL CASE (mainly for anisomorphic cylinders)                                            !
+! New special case (mainly for anisomorphic cylinders)                                            !
 ! *********************************************************************************************** !
 ! Any single point in the plane defined by the cylindrical disk
 PK = DK + HALFDDISK * EXDISK
@@ -1445,22 +1445,23 @@ IF( ALPHA > 0.D0 ) THEN
     ! ******************************************************************************************* !
     
     ! Initialization
-    COUNTERB    = 0      ! Iteration counter
-    TOLERANCE_B = 1.D-10 ! Numerical tolerance
-    LAMBDAD = 0.D0
+    COUNTERB      = 0       ! Iteration counter
+    TOLERANCE_B   = 1.D-10  ! Numerical tolerance
+    LAMBDAD       = 0.D0    ! Third-to-last root guess
+    BISECT_METHOD = .FALSE. ! Bissection root
 
     ! Brent's condition
     IF( ( F(2) * F(3) ) < 0.D0 ) THEN
       ! Swap condition
       IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
         ! Swap bounds
-        TEMPT   = LAMBDA(2)
+        TEMPT     = LAMBDA(2)
         LAMBDA(2) = LAMBDA(3)
         LAMBDA(3) = TEMPT
         ! Swap function values
         TEMPT = F(2)
-        F(2)    = F(3)
-        F(3)    = TEMPT
+        F(2)  = F(3)
+        F(3)  = TEMPT
       END IF
       ! Initialization of previous bound
       LAMBDAC = LAMBDA(2)
@@ -1472,37 +1473,36 @@ IF( ALPHA > 0.D0 ) THEN
       ! Stop criterion
       DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( LAMBDA(2) - LAMBDA(3) ) >= TOLERANCE_B )
         ! Initialize root of the function
-        IF( F(2) /= FC .AND. F(3) /= FC ) THEN
-          ! Inverse quadratic interpolation root finding method
-          LAMBDAI = (LAMBDA(2) * F(3) * FC) / ( (F(2) - F(3)) * (F(2) - FC) ) + (LAMBDA(3) * F(2) * FC) / ( (F(3) - F(2)) * &
-          & (F(3) - FC) ) + &
-          &         (LAMBDAC * F(2) * F(3)) / ( (FC - F(2)) * (FC - F(3)) )
+        IF( DABS( F(2) - FC ) >= EPSILON( 1.D0 ) .AND. DABS( F(3) - FC ) >= EPSILON( 1.D0 ) ) THEN
+          ! Inverse quadratic interpolation root-finding procedure
+          LAMBDAI = ( LAMBDA(2) * F(3) * FC ) / ( ( F(2) - F(3) ) * (F(2) - FC) ) + ( LAMBDA(3) * F(2) * FC ) / ( ( F(3) - F(2) ) &
+          &       * ( F(3) - FC ) ) + ( LAMBDAC * F(2) * F(3) ) / ( ( FC - F(2) ) * ( FC - F(3) ) )
         ELSE
           ! False position formula
-          LAMBDAI = LAMBDA(3) - F(3) * (LAMBDA(3) - LAMBDA(2)) / (F(3) - F(2))
+          LAMBDAI = LAMBDA(3) - F(3) * ( LAMBDA(3) - LAMBDA(2) ) / ( F(3) - F(2) )
         END IF
         ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
-        IF( ( (LAMBDAI - (3.D0 * LAMBDA(2) + LAMBDA(3)) / 4.D0) * (LAMBDAI - LAMBDA(3)) >= 0.D0) .OR. ( BISECT_METHOD .AND. &
-        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. &
-        &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
-        &   ( BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. &
-        &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE_B ) ) ) THEN
+        IF( ( (LAMBDAI - ( 3.D0 * LAMBDA(2) + LAMBDA(3) ) / 4.D0) * ( LAMBDAI - LAMBDA(3) ) >= 0.D0 ) .OR. ( BISECT_METHOD .AND. &
+        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. ( .NOT. BISECT_METHOD .AND. &
+        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. ( BISECT_METHOD .AND. &
+        &   ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. ( .NOT. BISECT_METHOD .AND. &
+        &   ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE_B ) ) ) THEN
           ! Root from bisection method
-          LAMBDAI = 0.5D0 * (LAMBDA(2) + LAMBDA(3))
+          LAMBDAI = 0.5D0 * ( LAMBDA(2) + LAMBDA(3) )
           BISECT_METHOD = .TRUE.
         ELSE
-          ! Root from interplation method or false position formula
+          ! Root from inverse quadratic interpolation or false position formula
           BISECT_METHOD = .FALSE.
         END IF
         ! Calculate function at the midpoint
         FI  = ( COEFF_QUARTIC(1) * LAMBDAI * LAMBDAI * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(2) * LAMBDAI * LAMBDAI * LAMBDAI ) &
-        &     + ( COEFF_QUARTIC(3) * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(4) * LAMBDAI ) + COEFF_QUARTIC(5)
+        &   + ( COEFF_QUARTIC(3) * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(4) * LAMBDAI ) + COEFF_QUARTIC(5)
         ! Set third-to-last root guess
         LAMBDAD = LAMBDAC
         ! Set second-to-last root guess
         LAMBDAC = LAMBDA(3)
         FC      = F(3)
-        ! Check signs of FA and FS
+        ! Check signs of functions
         IF( F(2) * FI < 0.D0 ) THEN
           LAMBDA(3) = LAMBDAI
           F(3)      = FI
@@ -1513,34 +1513,31 @@ IF( ALPHA > 0.D0 ) THEN
         ! Swap condition
         IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
           ! Swap bounds
-          TEMPT   = LAMBDA(2)
+          TEMPT     = LAMBDA(2)
           LAMBDA(2) = LAMBDA(3)
           LAMBDA(3) = TEMPT
           ! Swap function values
           TEMPT = F(2)
-          F(2)    = F(3)
-          F(3)    = TEMPT
+          F(2)  = F(3)
+          F(3)  = TEMPT
         END IF
+        ! Iteration
         COUNTERB = COUNTERB + 1
         IF( COUNTERB > 50 ) THEN
           WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
           CALL EXIT(  )
         END IF
       END DO
-
       ! Root (iterative process or initial guess)
       IF( DABS( FI ) < TOLERANCE_B ) THEN
         LAMBDA(1) = LAMBDAI
       ELSE IF( DABS( F(3) ) < TOLERANCE_B .OR. DABS( LAMBDA(2) - LAMBDA(3) ) < TOLERANCE_B ) THEN
         LAMBDA(1) = LAMBDA(3)
       END IF
-      
+    ! Algorithm should not reach this point
     ELSE
-
-      ! Error
-      WRITE( *, "(G0)" ) "The Brent's method failed! Exiting..."
-      CALL EXIT(  )
-
+      ! No real roots within this interval
+      CYCLE INTERVAL_LOOP
     END IF
 
     ! Point that minimizes the objective function is outside the cylinder rim
@@ -1549,9 +1546,7 @@ IF( ALPHA > 0.D0 ) THEN
     END IF
 
     ! ******************************************************************************************* !
-    ! Case 3 (λ = parameter that minimizes the objective function)                                !
-    ! ******************************************************************************************* !
-    !   λ = λroot [NEWTON-RAPHSON or BISSECTION]                                                  !
+    ! Find closest points on the circumference of the disk and the axis of the cylinder           !
     ! ******************************************************************************************* !
     OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
     ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
@@ -1559,24 +1554,24 @@ IF( ALPHA > 0.D0 ) THEN
     ! Trigonometric relations in the rectangle triangle
     COSPHI = ADJACENT_CAT / HYP
     SINPHI = OPPOSITE_CAT / HYP
-    ! Closest point on the circumference of the cylinder disk
+    ! Closest point on the circumference of the cylindrical disk
     PD(1) = DK(1) + ( HALFDDISK * COSPHI * EXDISK(1) ) + ( HALFDDISK * SINPHI * EYDISK(1) )
     PD(2) = DK(2) + ( HALFDDISK * COSPHI * EXDISK(2) ) + ( HALFDDISK * SINPHI * EYDISK(2) )
     PD(3) = DK(3) + ( HALFDDISK * COSPHI * EXDISK(3) ) + ( HALFDDISK * SINPHI * EYDISK(3) )
-    ! Closest point on the axial axis of the cylinder rim
+    ! Closest point on the axis of the cylindrical rim
     PC(1) = RRIM(1) + ( LAMBDA(1) * ERIM(1) )
     PC(2) = RRIM(2) + ( LAMBDA(1) * ERIM(2) )
     PC(3) = RRIM(3) + ( LAMBDA(1) * ERIM(3) )
-    ! Vector distance between the closest point on the circumference of a cylinder disk and the center of a cylinder rim
+    ! Vector distance between the closest point on the circumference of a cylindrical disk and the center of a cylindrical rim
     T(1)  = PD(1) - RRIM(1)
     T(2)  = PD(2) - RRIM(2)
     T(3)  = PD(3) - RRIM(3)
     ! Magnitude of the vector T (squared)
-    TSQ      = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
-    ! Magnitude of vector T parallel to the cylinder rim (squared)
+    TSQ = ( T(1) * T(1) ) + ( T(2) * T(2) ) + ( T(3) * T(3) )
+    ! Magnitude of vector T parallel to the cylindrical rim (squared)
     TPARALSQ = ( ERIM(1) * T(1) ) + ( ERIM(2) * T(2) ) + ( ERIM(3) * T(3) )
     TPARALSQ = TPARALSQ * TPARALSQ
-    ! Magnitude of vector T orthogonal to the cylinder rim (squared)
+    ! Magnitude of vector T orthogonal to the cylindrical rim (squared)
     TORTHOSQ = TSQ - TPARALSQ
     ! Overlap condition
     IF( TPARALSQ <= (HALFLRIM * HALFLRIM) .AND. TORTHOSQ <= (HALFDRIM * HALFDRIM) ) THEN
@@ -1588,7 +1583,7 @@ IF( ALPHA > 0.D0 ) THEN
 
   END DO INTERVAL_LOOP
 
-END IF
+END IF ! The end-to-end configuration have already been tested by other methods
 
 ! *********************************************************************************************** !
 ! -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*  IMPORTANT NOTES  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* !
