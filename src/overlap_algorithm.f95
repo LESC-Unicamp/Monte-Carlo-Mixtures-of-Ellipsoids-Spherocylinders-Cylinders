@@ -1159,14 +1159,11 @@ DKRRIM_EYDISK = ( DKRRIM(1) * EYDISK(1) ) + ( DKRRIM(2) * EYDISK(2) ) + ( DKRRIM
 ! *********************************************************************************************** !
 ! NEW SPECIAL CASE (mainly for anisomorphic cylinders)                                            !
 ! *********************************************************************************************** !
-
-! Any point in the plane defined by the cylindrical disk
+! Any single point in the plane defined by the cylindrical disk
 PK = DK + HALFDDISK * EXDISK
-
-! Any points in the line defined by the cylindrical axis
+! Any two points in the line defined by the cylindrical axis
 LA = RRIM + HALFLRIM * ERIM
 LB = RRIM - HALFLRIM * ERIM
-
 ! Checking whether the cylindrical axis is orthogonal to the normal vector of the plane (avoid the indeterminate form 0/0)
 IF( DABS( 1.D0 - DOT_PRODUCT( EZDISK, ERIM ) * DOT_PRODUCT( EZDISK, ERIM ) ) >= 1.D-10 ) THEN
   ! Scale parameter of the line equation that demarks the intersection point between the line and the disk
@@ -1208,7 +1205,7 @@ IF( ALPHA > 0.D0 ) THEN
   &                  (BETA * DKRRIM_ERIM * DKRRIM_ERIM) )
   COEFF_QUARTIC(5) = (DKRRIM_ERIM * DKRRIM_ERIM * GAMMA) - (BETA * BETA * HALFDDISK * HALFDDISK)
 
-  ! Reduction of the quartic function
+  ! Reduction of the quartic function (ensures a faster convergence of the numerical methods)
   MAXCOEFF = 0.D0
   DO I = 1, 5
     IF( DABS( COEFF_QUARTIC(I) ) >= MAXCOEFF ) THEN
@@ -1223,23 +1220,22 @@ IF( ALPHA > 0.D0 ) THEN
   COEFF_CARDANO(3) = 2.D0 * COEFF_QUARTIC(3)
   COEFF_CARDANO(4) = COEFF_QUARTIC(4)
 
-  ! *********************************************************************************************** !
-  ! Cardano's solution for the cubic function (finding the points where the derivative is zero)     !
-  ! *********************************************************************************************** !
-
+  ! ********************************************************************************************* !
+  ! Cardano's solution for the cubic function (finding the points where the derivative is zero)   !
+  ! ********************************************************************************************* !
+  
   ! Cardano's coefficients
   CARDANO_Q = ( ( 3.D0 * COEFF_CARDANO(1) * COEFF_CARDANO(3) ) - ( COEFF_CARDANO(2) * COEFF_CARDANO(2) ) ) / &
   &           ( 9.D0 * COEFF_CARDANO(1) * COEFF_CARDANO(1) )
   CARDANO_R = ( ( 9.D0 * COEFF_CARDANO(1) * COEFF_CARDANO(2) * COEFF_CARDANO(3) ) - ( 27.D0 *COEFF_CARDANO(1) * COEFF_CARDANO(1) * &
   &           COEFF_CARDANO(4) ) - ( 2.D0 * COEFF_CARDANO(2) * COEFF_CARDANO(2) * COEFF_CARDANO(2) ) ) / &
   &           ( 54.D0 * COEFF_CARDANO(1) * COEFF_CARDANO(1) * COEFF_CARDANO(1) )
-
+  
   ! Cardano's discriminant
   DISCRIMINANT = CARDANO_Q * CARDANO_Q * CARDANO_Q + CARDANO_R * CARDANO_R
-
+  
   ! If Δ < 0, all roots are real and unequal (Trigonometric Solution)
   IF( DISCRIMINANT < 0.D0 ) THEN
-
     ! Trigonometric function
     ARGUMENT = CARDANO_R / DSQRT( - CARDANO_Q * CARDANO_Q * CARDANO_Q )
     IF( ARGUMENT <= -1.D0 ) THEN
@@ -1248,14 +1244,12 @@ IF( ALPHA > 0.D0 ) THEN
       ARGUMENT = 1.D0
     END IF
     THETA = DACOS( ARGUMENT )
-
     ! Roots of the cubic equation
     ROOTS(1) = 2.D0 * DSQRT( - CARDANO_Q ) * DCOS( THETA / 3.D0 ) - COEFF_CARDANO(2) / ( 3.D0 * COEFF_CARDANO(1) )
     ROOTS(2) = 2.D0 * DSQRT( - CARDANO_Q ) * DCOS( (THETA / 3.D0) + (2.D0 * PI / 3.D0) ) - COEFF_CARDANO(2) / &
     &          ( 3.D0 * COEFF_CARDANO(1) )
     ROOTS(3) = 2.D0 * DSQRT( - CARDANO_Q ) * DCOS( (THETA / 3.D0) + (4.D0 * PI / 3.D0) ) - COEFF_CARDANO(2) / &
     &          ( 3.D0 * COEFF_CARDANO(1) )
-
     ! Sort roots in ascending order
     CPOINTS(1) = MINVAL( ROOTS )
     CPOINTS(3) = MAXVAL( ROOTS )
@@ -1264,44 +1258,37 @@ IF( ALPHA > 0.D0 ) THEN
         CPOINTS(2) = ROOTS(I)
       END IF
     END DO
-
   ! If Δ = 0, all roots are real and at least two are equal
   ELSE IF( DABS( DISCRIMINANT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-
     ! Cardano's coefficients
     CARDANO_S = CARDANO_R ** (1.D0 / 3.D0)
     CARDANO_T = CARDANO_S
-
     ! Roots of the cubic equation
     ROOTS(1) = CARDANO_S + CARDANO_T - COEFF_CARDANO(2) / ( 3.D0 * COEFF_CARDANO(1) )
     ROOTS(2) = - 0.5D0 * (CARDANO_S + CARDANO_T) - COEFF_CARDANO(2) / ( 3.D0 * COEFF_CARDANO(1) )
     ROOTS(3) = ROOTS(2)
-
     ! Sort roots in ascending order
     CPOINTS(1) = MINVAL( ROOTS )
     CPOINTS(2) = MAXVAL( ROOTS )
     CPOINTS(3) = CPOINTS(2)
-
   ! If Δ > 0, one roots is real and two are complex conjugates
   ELSE IF( DISCRIMINANT > 0.D0 ) THEN
-
     ! Cardano's coefficients
     CARDANO_S = ( CARDANO_R + DSQRT( (CARDANO_Q * CARDANO_Q * CARDANO_Q) + (CARDANO_R * CARDANO_R) ) ) ** (1.D0 / 3.D0)
     CARDANO_T = ( CARDANO_R - DSQRT( (CARDANO_Q * CARDANO_Q * CARDANO_Q) + (CARDANO_R * CARDANO_R) ) ) ** (1.D0 / 3.D0)
-
     ! Roots of the cubic equation
     ROOTS(1) = CARDANO_S + CARDANO_T - COEFF_CARDANO(2) / ( 3.D0 * COEFF_CARDANO(1) )
     ROOTS(2) = ROOTS(1) ! We are only interested in the real solution
     ROOTS(3) = ROOTS(1) ! We are only interested in the real solution
-
     ! Sort roots in ascending order
     CPOINTS(1) = ROOTS(1)
     CPOINTS(2) = CPOINTS(1)
     CPOINTS(3) = CPOINTS(1)
-
   END IF
 
-  ! Number of intervals
+  ! ********************************************************************************************* !
+  ! Number of intervals                                                                           !
+  ! ********************************************************************************************* !
   IF( DISCRIMINANT < 0.D0 ) THEN
     N_POINTS = 4
   ELSE IF( DABS( DISCRIMINANT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
@@ -1314,14 +1301,30 @@ IF( ALPHA > 0.D0 ) THEN
     N_POINTS = 1
   END IF
 
-  ! *********************************************************************************************** !
-  ! Loops (Initial Guesses/Intervals)                                                               !
-  ! *********************************************************************************************** !
-  !  First loop  :     -L/2      <= λ0 <= CUBIC_ROOT(1)                                             !
-  !  Second loop : CUBIC_ROOT(1) <= λ0 <= CUBIC_ROOT(2)                                             !
-  !  Third loop  : CUBIC_ROOT(2) <= λ0 <= CUBIC_ROOT(3)                                             !
-  !  Fourth loop : CUBIC_ROOT(3) <= λ0 <=     L/2                                                   !
-  ! *********************************************************************************************** !
+  ! ********************************************************************************************* !
+  ! Loops (Initial Guesses/Intervals)                                                             !
+  ! ********************************************************************************************* !
+  ! Number of intervals = 4                                                                       !
+  !   First loop  :     -L/2      <= λ0 <= CUBIC_ROOT(1)                                          !
+  !   Second loop : CUBIC_ROOT(1) <= λ0 <= CUBIC_ROOT(2)                                          !
+  !   Third loop  : CUBIC_ROOT(2) <= λ0 <= CUBIC_ROOT(3)                                          !
+  !   Fourth loop : CUBIC_ROOT(3) <= λ0 <=     L/2                                                !
+  !                                                                                               !
+  ! Number of intervals = 3                                                                       !
+  !   First loop  :     -L/2      <= λ0 <= CUBIC_ROOT(1)                                          !
+  !   Second loop : CUBIC_ROOT(1) <= λ0 <= CUBIC_ROOT(2)                                          !
+  !   Third loop  : CUBIC_ROOT(2) <= λ0 <= L/2                                                    !
+  !                                                                                               !
+  ! Number of intervals = 2                                                                       !
+  !   First loop  :     -L/2      <= λ0 <= CUBIC_ROOT(1)                                          !
+  !   Second loop : CUBIC_ROOT(1) <= λ0 <= L/2                                                    !
+  !                                                                                               !
+  ! Number of intervals = 1, if MIN( ROOT ) >= L/2                                                !
+  !   Single loop :     -L/2      <= λ0 <= MIN( ROOT )                                            !
+  !                                                                                               !
+  ! Number of intervals = 1, if MAX( ROOT ) <= -L/2                                               !
+  !   Single loop :  MAX( ROOT )  <= λ0 <= L/2                                                    !
+  ! ********************************************************************************************* !
   INTERVAL_LOOP: DO INTERVAL = 1, N_POINTS
 
     ! Ignore intervals where the function has the same sign at the extremum points (no real roots)
@@ -1664,11 +1667,11 @@ IF( ALPHA > 0.D0 ) THEN
       CYCLE INTERVAL_LOOP
     END IF
 
-    ! ********************************************************************************************* !
-    ! Case 3 (λ = parameter that minimizes the objective function)                                  !
-    ! ********************************************************************************************* !
-    !   λ = λroot [NEWTON-RAPHSON or BISSECTION]                                                    !
-    ! ********************************************************************************************* !
+    ! ******************************************************************************************* !
+    ! Case 3 (λ = parameter that minimizes the objective function)                                !
+    ! ******************************************************************************************* !
+    !   λ = λroot [NEWTON-RAPHSON or BISSECTION]                                                  !
+    ! ******************************************************************************************* !
     OPPOSITE_CAT = LAMBDA(1) * EYDISK_ERIM - DKRRIM_EYDISK 
     ADJACENT_CAT = LAMBDA(1) * EXDISK_ERIM - DKRRIM_EXDISK 
     HYP          = DSQRT( (OPPOSITE_CAT * OPPOSITE_CAT) + (ADJACENT_CAT * ADJACENT_CAT) )
@@ -1714,7 +1717,7 @@ END IF
 !                                                                                                 !
 ! (1) it is because the root obtained from the numerical methods returns a point in the           !
 ! circumference of the cylinder disk (j or i) that is outside the cylinder rim (i or j) but       !
-! within the limits of its length. RESULT = NO OVERLAP                                            !
+! within the extension of its length. RESULT = NO OVERLAP                                         !
 !                                                                                                 !
 ! (2) it is because no root was found in the considered intervals (-L/2 <= λ0 <= L/2), which      !
 ! means the root that minimizes the objective function is beyond the limits of the length of      !
