@@ -2,7 +2,7 @@
 !               NVT/NPT-Monte Carlo algorithm for cylindrically-symmetric molecules               !
 !          This module allows the user to choose one of the molecular configurations for          !
 !              isomorphic molecules - Simple Cube (SC), Body-Centered Cube (BCC), or              !
-!        Face-Centered Cube (FCC) -, and for nonisomorphic molecules - Random Box (RND) or        !
+!        Face-Centered Cube (FCC) -, and for anisomorphic molecules - Random Box (RND) or         !
 !                                        Packed Box (PB).                                         !
 !        Molecules will be then allocated in accordance to the selected crystal structure.        !
 !                       See Macpherson et al. (2007) for some information.                        !
