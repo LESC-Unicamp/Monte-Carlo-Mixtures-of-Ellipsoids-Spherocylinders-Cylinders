@@ -1016,7 +1016,6 @@ IMPLICIT NONE
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
 INTEGER( KIND= INT64 ) :: I        ! Counter
-INTEGER( KIND= INT64 ) :: COUNTER  ! Iteration counter (numerical methods)
 INTEGER( KIND= INT64 ) :: COUNTERB ! Cycles of the Brent's method
 INTEGER( KIND= INT64 ) :: INTERVAL ! Loop over λ intervals
 INTEGER( KIND= INT64 ) :: N_POINTS ! Maximum number of intervals
@@ -1030,9 +1029,7 @@ REAL( KIND= REAL64 )                    :: DKRRIM_EYDISK             ! Dot produ
 REAL( KIND= REAL64 )                    :: EXDISK_ERIM               ! Dot product of the orientation of the cylinder disk (j or i) along x-direction and the orientation of the cylinder rim (i or j)
 REAL( KIND= REAL64 )                    :: EYDISK_ERIM               ! Dot product of the orientation of the cylinder disk (j or i) along y-direction and the orientation of the cylinder rim (i or j)
 REAL( KIND= REAL64 )                    :: DKURIMSQ                  ! Magnitude of the vector distance between the closest point on the cylinder rim (i or j) and the center of the cylinder disk (j or i)
-REAL( KIND= REAL64 )                    :: DAMPING                   ! Damping factor of the Newton-Raphson method
-REAL( KIND= REAL64 )                    :: TOLERANCE_NR, TOLERANCE_B ! Numerical tolerance of the Newton-Raphson and Brent's methods
-REAL( KIND= REAL64 )                    :: FACTOR                    ! Newton-Raphson's factor (function over its derivative)
+REAL( KIND= REAL64 )                    :: TOLERANCE_B               ! Numerical tolerance of the Brent's method
 REAL( KIND= REAL64 )                    :: COSPHI, SINPHI            ! Cossine and sine of the angle φ that defines a point in the circumference of the cylinder disk (j or i)
 REAL( KIND= REAL64 )                    :: OPPOSITE_CAT              ! Opposite cathetus
 REAL( KIND= REAL64 )                    :: ADJACENT_CAT              ! Adjacent cathetus
@@ -1061,7 +1058,6 @@ REAL( KIND= REAL64 )                    :: MAXCOEFF                  ! Largest c
 REAL( KIND= REAL64 )                    :: TEMPT                     ! Temporary variable
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ROOTS                     ! Roots of the cubic equation
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: F                         ! Objective function
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DF                        ! Derivative of the objective function with respect to λ
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: LAMBDA                    ! Minimization variable related to a point on the cylinder rim (i or j)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RRIM                      ! Position of the cylinder rim (i or j)
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ERIM                      ! Orientation of the cylinder rim (i or j)
@@ -1085,13 +1081,11 @@ REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QDISK                     ! Quaternio
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
 LOGICAL :: OVERLAPDRIM   ! Detects overlap between two particles (disk-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: BRENT         ! Detects whether the Brent's method will be used after N iterations of the Newton-Raphson method
 LOGICAL :: BISECT_METHOD ! Checks whether the root from the bisection method will be used or not (Brent's method)
 
 ! Initialize logical variable
 OVERLAPDRIM   = .FALSE.
 BISECT_METHOD = .FALSE.
-BRENT         = .FALSE.
 
 ! Radius of the cylinder rim (squared)
 RSQ = ( HALFDRIM * HALFDRIM )
@@ -1330,244 +1324,191 @@ IF( ALPHA > 0.D0 ) THEN
     ! Ignore intervals where the function has the same sign at the extremum points (no real roots)
     IF( N_POINTS == 4 ) THEN
       IF( INTERVAL == 1 ) THEN
-        LAMBDA(1) = - HALFLRIM
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-        LAMBDA(2) = CPOINTS(1)
+        LAMBDA(2) = - HALFLRIM
         F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
         &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        LAMBDA(3) = CPOINTS(1)
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
           CYCLE INTERVAL_LOOP
         END IF
       ELSE IF( INTERVAL == 2 ) THEN
-        LAMBDA(1) = CPOINTS(1)
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-        LAMBDA(2) = CPOINTS(2)
+        LAMBDA(2) = CPOINTS(1)
         F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
         &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        LAMBDA(3) = CPOINTS(2)
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
           CYCLE INTERVAL_LOOP
         END IF
       ELSE IF( INTERVAL == 3 ) THEN
-        LAMBDA(1) = CPOINTS(2)
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(2)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        LAMBDA(3) = CPOINTS(3)
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 4 ) THEN
         LAMBDA(2) = CPOINTS(3)
         F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
         &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
-          CYCLE INTERVAL_LOOP
-        END IF
-      ELSE IF( INTERVAL == 4 ) THEN
-        LAMBDA(1) = CPOINTS(3)
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-        LAMBDA(2) = HALFLRIM
-        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
-        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        LAMBDA(3) = HALFLRIM
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
           CYCLE INTERVAL_LOOP
         END IF
       END IF
     ELSE IF( N_POINTS == 3 ) THEN
       IF( INTERVAL == 1 ) THEN
-        LAMBDA(1) = - HALFLRIM
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-        LAMBDA(2) = CPOINTS(1)
+        LAMBDA(2) = - HALFLRIM
         F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
         &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        LAMBDA(3) = CPOINTS(1)
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
           CYCLE INTERVAL_LOOP
         END IF
       ELSE IF( INTERVAL == 2 ) THEN
-        LAMBDA(1) = CPOINTS(1)
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = CPOINTS(1)
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        LAMBDA(3) = CPOINTS(2)
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 3 ) THEN
         LAMBDA(2) = CPOINTS(2)
         F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
         &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
-          CYCLE INTERVAL_LOOP
-        END IF
-      ELSE IF( INTERVAL == 3 ) THEN
-        LAMBDA(1) = CPOINTS(2)
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-        LAMBDA(2) = HALFLRIM
-        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
-        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        LAMBDA(3) = HALFLRIM
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
           CYCLE INTERVAL_LOOP
         END IF
       END IF
     ELSE IF( N_POINTS == 2 ) THEN
       IF( INTERVAL == 1 ) THEN
-        LAMBDA(1) = - HALFLRIM
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
+        LAMBDA(2) = - HALFLRIM
+        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
+        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
+        LAMBDA(3) = CPOINTS(1)
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
+          CYCLE INTERVAL_LOOP
+        END IF
+      ELSE IF( INTERVAL == 2 ) THEN
         LAMBDA(2) = CPOINTS(1)
         F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
         &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
-          CYCLE INTERVAL_LOOP
-        END IF
-      ELSE IF( INTERVAL == 2 ) THEN
-        LAMBDA(1) = CPOINTS(1)
-        F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-        &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-        LAMBDA(2) = HALFLRIM
-        F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
-        &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-        IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+        LAMBDA(3) = HALFLRIM
+        F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+        &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+        IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
           CYCLE INTERVAL_LOOP
         END IF
       END IF
     ELSE IF( N_POINTS == 1 .AND. MINVAL( CPOINTS ) >= HALFLRIM ) THEN
-      LAMBDA(1) = - HALFLRIM
-      F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-      &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-      LAMBDA(2) = MINVAL( CPOINTS )
+      LAMBDA(2) = - HALFLRIM
       F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
       &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-      IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+      LAMBDA(3) = MINVAL( CPOINTS )
+      F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+      &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+      IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
         CYCLE INTERVAL_LOOP
       END IF
     ELSE IF( N_POINTS == 1 .AND. MAXVAL( CPOINTS ) <= - HALFLRIM ) THEN
-      LAMBDA(1) = HALFLRIM
-      F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-      &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
       LAMBDA(2) = MAXVAL( CPOINTS )
       F(2) = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
       &      LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-      IF( ( F(1) >= 0.D0 .AND. F(2) >= 0.D0 ) .OR. ( F(1) < 0.D0 .AND. F(2) < 0.D0 ) ) THEN
+      LAMBDA(3) = HALFLRIM
+      F(3) = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
+      &      LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
+      IF( ( F(1) * F(2) ) >= 0.D0 ) THEN
         CYCLE INTERVAL_LOOP
       END IF
     END IF
 
-    ! Initial parameters of the Newton-Raphson method
-    DAMPING       = 1.D0  ! Damping factor
-    COUNTER       = 0     ! Iteration counter
-    TOLERANCE_NR  = 1D-10 ! Numerical tolerance
-
-    ! Initial guess, λ0 (Newton-Raphson)
-    IF( N_POINTS == 4 ) THEN
-      IF( INTERVAL == 1 ) THEN
-        LAMBDA(1) = 0.5D0 * ( - HALFLRIM + CPOINTS(1) )
-      ELSE IF( INTERVAL == 2 ) THEN
-        LAMBDA(1) = 0.5D0 * ( CPOINTS(1) + CPOINTS(2) )
-      ELSE IF( INTERVAL == 3 ) THEN
-        LAMBDA(1) = 0.5D0 * ( CPOINTS(2) + CPOINTS(3) )
-      ELSE IF( INTERVAL == 4 ) THEN
-        LAMBDA(1) = 0.5D0 * ( CPOINTS(3) + HALFLRIM )
+    ! ******************************************************************************************* !
+    ! Brent's method                                                                              !
+    ! ******************************************************************************************* !
+    
+    ! Initialization
+    COUNTERB    = 0      ! Iteration counter
+    TOLERANCE_B = 1.D-10 ! Numerical tolerance
+    LAMBDAD = 0.D0
+    ! Brent's condition
+    IF( ( F(2) * F(3) ) < 0.D0 ) THEN
+      ! Swap condition
+      IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
+        ! Swap bounds
+        TEMPT   = LAMBDA(2)
+        LAMBDA(2) = LAMBDA(3)
+        LAMBDA(3) = TEMPT
+        ! Swap function values
+        TEMPT = F(2)
+        F(2)    = F(3)
+        F(3)    = TEMPT
       END IF
-    ELSE IF( N_POINTS == 3 ) THEN
-      IF( INTERVAL == 1 ) THEN
-        LAMBDA(1) = 0.5D0 * ( - HALFLRIM + CPOINTS(1) )
-      ELSE IF( INTERVAL == 2 ) THEN
-        LAMBDA(1) = 0.5D0 * ( CPOINTS(1) + CPOINTS(2) )
-      ELSE IF( INTERVAL == 3 ) THEN
-        LAMBDA(1) = 0.5D0 * ( CPOINTS(2) + HALFLRIM )
-      END IF
-    ELSE IF( N_POINTS == 2 ) THEN
-      IF( INTERVAL == 1 ) THEN
-        LAMBDA(1) = 0.5D0 * ( - HALFLRIM + CPOINTS(1) )
-      ELSE IF( INTERVAL == 2 ) THEN
-        LAMBDA(1) = 0.5D0 * ( CPOINTS(1) + HALFLRIM )
-      END IF
-    ELSE IF( N_POINTS == 1 .AND. MINVAL( CPOINTS ) >= HALFLRIM ) THEN
-      LAMBDA(1) = 0.5D0 * ( - HALFLRIM + MINVAL( CPOINTS ) )
-    ELSE IF( N_POINTS == 1 .AND. MAXVAL( CPOINTS ) <= - HALFLRIM ) THEN
-      LAMBDA(1) = 0.5D0 * ( HALFLRIM + MAXVAL( CPOINTS ) )
-    END IF
-
-    ! Objective function
-    F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-    &      LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-
-    ! Derivative of the objective function with respect to λ
-    DF(1) = ( 4.D0 * COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( 3.D0 * COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) ) &
-    &       + ( 2.D0 * COEFF_QUARTIC(3) * LAMBDA(1) ) + COEFF_QUARTIC(4)
-
-    ! Newton-Raphson method
-    DO WHILE ( DABS( F(1) ) >= TOLERANCE_NR .AND. .NOT. BRENT)
-      ! Increment factor
-      FACTOR = F(1) / DF(1)
-      ! New λ point
-      LAMBDA(1) = LAMBDA(1) - DAMPING * FACTOR
-      ! Recalculate the function with a new λ
-      F(1) = ( COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(2) * LAMBDA(1) * LAMBDA(1) * &
-      &         LAMBDA(1) ) + ( COEFF_QUARTIC(3) * LAMBDA(1) * LAMBDA(1) ) + ( COEFF_QUARTIC(4) * LAMBDA(1) ) + COEFF_QUARTIC(5)
-      ! Recalculate the derivative of the objective function with a new λ
-      DF(1) = ( 4.D0 * COEFF_QUARTIC(1) * LAMBDA(1) * LAMBDA(1) * LAMBDA(1) ) + ( 3.D0 * COEFF_QUARTIC(2) * LAMBDA(1) * & 
-      &       LAMBDA(1) ) + ( 2.D0 * COEFF_QUARTIC(3) * LAMBDA(1) ) + COEFF_QUARTIC(4)
-      ! Iteration
-      COUNTER = COUNTER + 1
-      ! Stop criterion (bissection method)
-      IF( COUNTER > 25 ) THEN
-        BRENT = .TRUE.
-      END IF
-    END DO
-
-    ! Initialize bissection method if the Newton-Raphson method doesn't converge
-    IF( BRENT ) THEN
-      ! Initial parameters of the bissection method
-      BRENT = .FALSE.
-      COUNTERB    = 0      ! Iteration counter
-      TOLERANCE_B = 1.D-10 ! Numerical tolerance
-      ! Initial guess, λ0 (Newton-Raphson)
-      IF( N_POINTS == 4 ) THEN
-        IF( INTERVAL == 1 ) THEN
-          LAMBDA(2) = - HALFLRIM
-          LAMBDA(3) = CPOINTS(1)
-        ELSE IF( INTERVAL == 2 ) THEN
-          LAMBDA(2) = CPOINTS(1)
-          LAMBDA(3) = CPOINTS(2)
-        ELSE IF( INTERVAL == 3 ) THEN
-          LAMBDA(2) = CPOINTS(2)
-          LAMBDA(3) = CPOINTS(3)
-        ELSE IF( INTERVAL == 4 ) THEN
-          LAMBDA(2) = CPOINTS(3)
-          LAMBDA(3) = HALFLRIM
+      ! Initialization of previous bound
+      LAMBDAC = LAMBDA(2)
+      FC = F(2)
+      ! Initialize value of objective function
+      FI = - 1.D0
+      ! Initialize 'BISSECTION' flag as TRUE since the last iteration used was the bisection method
+      BISECT_METHOD = .TRUE.
+      ! Stop criterion
+      DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( LAMBDA(2) - LAMBDA(3) ) >= TOLERANCE_B )
+        ! Initialize root of the function
+        IF( F(2) /= FC .AND. F(3) /= FC ) THEN
+          ! Inverse quadratic interpolation root finding method
+          LAMBDAI = (LAMBDA(2) * F(3) * FC) / ( (F(2) - F(3)) * (F(2) - FC) ) + (LAMBDA(3) * F(2) * FC) / ( (F(3) - F(2)) * &
+          & (F(3) - FC) ) + &
+          &         (LAMBDAC * F(2) * F(3)) / ( (FC - F(2)) * (FC - F(3)) )
+        ELSE
+          ! False position formula
+          LAMBDAI = LAMBDA(3) - F(3) * (LAMBDA(3) - LAMBDA(2)) / (F(3) - F(2))
         END IF
-      ELSE IF( N_POINTS == 3 ) THEN
-        IF( INTERVAL == 1 ) THEN
-          LAMBDA(2) = - HALFLRIM
-          LAMBDA(3) = CPOINTS(1)
-        ELSE IF( INTERVAL == 2 ) THEN
-          LAMBDA(2) = CPOINTS(1)
-          LAMBDA(3) = CPOINTS(2)
-        ELSE IF( INTERVAL == 3 ) THEN
-          LAMBDA(2) = CPOINTS(2)
-          LAMBDA(3) = HALFLRIM
+        ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
+        IF( ( (LAMBDAI - (3.D0 * LAMBDA(2) + LAMBDA(3)) / 4.D0) * (LAMBDAI - LAMBDA(3)) >= 0.D0) .OR. ( BISECT_METHOD .AND. &
+        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. &
+        &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
+        &   ( BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. &
+        &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE_B ) ) ) THEN
+          ! Root from bisection method
+          LAMBDAI = 0.5D0 * (LAMBDA(2) + LAMBDA(3))
+          BISECT_METHOD = .TRUE.
+        ELSE
+          ! Root from interplation method or false position formula
+          BISECT_METHOD = .FALSE.
         END IF
-      ELSE IF( N_POINTS == 2 ) THEN
-        IF( INTERVAL == 1 ) THEN
-          LAMBDA(2) = - HALFLRIM
-          LAMBDA(3) = CPOINTS(1)
-        ELSE IF( INTERVAL == 2 ) THEN
-          LAMBDA(2) = CPOINTS(1)
-          LAMBDA(3) = HALFLRIM
+        ! Calculate function at the midpoint
+        FI  = ( COEFF_QUARTIC(1) * LAMBDAI * LAMBDAI * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(2) * LAMBDAI * LAMBDAI * LAMBDAI ) &
+        &     + ( COEFF_QUARTIC(3) * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(4) * LAMBDAI ) + COEFF_QUARTIC(5)
+        ! Set third-to-last root guess
+        LAMBDAD = LAMBDAC
+        ! Set second-to-last root guess
+        LAMBDAC = LAMBDA(3)
+        FC      = F(3)
+        ! Check signs of FA and FS
+        IF( F(2) * FI < 0.D0 ) THEN
+          LAMBDA(3) = LAMBDAI
+          F(3)      = FI
+        ELSE
+          LAMBDA(2) = LAMBDAI
+          F(2)      = FI
         END IF
-      ELSE IF( N_POINTS == 1 .AND. MINVAL( CPOINTS ) >= HALFLRIM ) THEN
-        LAMBDA(2) = - HALFLRIM
-        LAMBDA(3) = MINVAL( CPOINTS )
-      ELSE IF( N_POINTS == 1 .AND. MAXVAL( CPOINTS ) <= - HALFLRIM ) THEN
-        LAMBDA(2) = MAXVAL( CPOINTS )
-        LAMBDA(3) = HALFLRIM
-      END IF
-      ! Calculate function at λ0
-      F(2)  = ( COEFF_QUARTIC(1) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(2) * LAMBDA(2) * LAMBDA(2) * &
-      &       LAMBDA(2) ) + ( COEFF_QUARTIC(3) * LAMBDA(2) * LAMBDA(2) ) + ( COEFF_QUARTIC(4) * LAMBDA(2) ) + COEFF_QUARTIC(5)
-      ! Calculate function at λ0
-      F(3)  = ( COEFF_QUARTIC(1) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(2) * LAMBDA(3) * LAMBDA(3) * &
-      &       LAMBDA(3) ) + ( COEFF_QUARTIC(3) * LAMBDA(3) * LAMBDA(3) ) + ( COEFF_QUARTIC(4) * LAMBDA(3) ) + COEFF_QUARTIC(5)
-
-      ! Initialization
-      LAMBDAD = 0.D0
-      ! Brent's condition
-      IF( ( F(2) * F(3) ) < 0.D0 ) THEN
         ! Swap condition
         IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
           ! Swap bounds
@@ -1579,86 +1520,25 @@ IF( ALPHA > 0.D0 ) THEN
           F(2)    = F(3)
           F(3)    = TEMPT
         END IF
-        ! Initialization of previous bound
-        LAMBDAC = LAMBDA(2)
-        FC = F(2)
-        ! Initialize value of objective function
-        FI = - 1.D0
-        ! Initialize 'BISSECTION' flag as TRUE since the last iteration used was the bisection method
-        BISECT_METHOD = .TRUE.
-        ! Stop criterion
-        DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( LAMBDA(2) - LAMBDA(3) ) >= TOLERANCE_B )
-          ! Initialize root of the function
-          IF( F(2) /= FC .AND. F(3) /= FC ) THEN
-            ! Inverse quadratic interpolation root finding method
-            LAMBDAI = (LAMBDA(2) * F(3) * FC) / ( (F(2) - F(3)) * (F(2) - FC) ) + (LAMBDA(3) * F(2) * FC) / ( (F(3) - F(2)) * &
-            & (F(3) - FC) ) + &
-            &         (LAMBDAC * F(2) * F(3)) / ( (FC - F(2)) * (FC - F(3)) )
-          ELSE
-            ! False position formula
-            LAMBDAI = LAMBDA(3) - F(3) * (LAMBDA(3) - LAMBDA(2)) / (F(3) - F(2))
-          END IF
-          ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
-          IF( ( (LAMBDAI - (3.D0 * LAMBDA(2) + LAMBDA(3)) / 4.D0) * (LAMBDAI - LAMBDA(3)) >= 0.D0) .OR. ( BISECT_METHOD .AND. &
-          &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. &
-          &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
-          &   ( BISECT_METHOD .AND. ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. &
-          &   ( .NOT. BISECT_METHOD .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE_B ) ) ) THEN
-            ! Root from bisection method
-            LAMBDAI = 0.5D0 * (LAMBDA(2) + LAMBDA(3))
-            BISECT_METHOD = .TRUE.
-          ELSE
-            ! Root from interplation method or false position formula
-            BISECT_METHOD = .FALSE.
-          END IF
-          ! Calculate function at the midpoint
-          FI  = ( COEFF_QUARTIC(1) * LAMBDAI * LAMBDAI * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(2) * LAMBDAI * LAMBDAI * LAMBDAI ) &
-          &     + ( COEFF_QUARTIC(3) * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(4) * LAMBDAI ) + COEFF_QUARTIC(5)
-          ! Set third-to-last root guess
-          LAMBDAD = LAMBDAC
-          ! Set second-to-last root guess
-          LAMBDAC = LAMBDA(3)
-          FC      = F(3)
-          ! Check signs of FA and FS
-          IF( F(2) * FI < 0.D0 ) THEN
-            LAMBDA(3) = LAMBDAI
-            F(3)      = FI
-          ELSE
-            LAMBDA(2) = LAMBDAI
-            F(2)      = FI
-          END IF
-          ! Swap condition
-          IF( DABS( F(2) ) < DABS( F(3) ) ) THEN
-            ! Swap bounds
-            TEMPT   = LAMBDA(2)
-            LAMBDA(2) = LAMBDA(3)
-            LAMBDA(3) = TEMPT
-            ! Swap function values
-            TEMPT = F(2)
-            F(2)    = F(3)
-            F(3)    = TEMPT
-          END IF
-          COUNTERB = COUNTERB + 1
-          IF( COUNTERB > 50 ) THEN
-            WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
-            CALL EXIT(  )
-          END IF
-        END DO
-
-        ! Root (iterative process or initial guess)
-        IF( DABS( FI ) < TOLERANCE_B ) THEN
-          LAMBDA(1) = LAMBDAI
-        ELSE IF( DABS( F(3) ) < TOLERANCE_B .OR. DABS( LAMBDA(2) - LAMBDA(3) ) < TOLERANCE_B ) THEN
-          LAMBDA(1) = LAMBDA(3)
+        COUNTERB = COUNTERB + 1
+        IF( COUNTERB > 50 ) THEN
+          WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
+          CALL EXIT(  )
         END IF
-        
-      ELSE
+      END DO
 
-        ! Error
-        WRITE( *, "(G0)" ) "The Brent's method failed! Exiting..."
-        CALL EXIT(  )
-
+      ! Root (iterative process or initial guess)
+      IF( DABS( FI ) < TOLERANCE_B ) THEN
+        LAMBDA(1) = LAMBDAI
+      ELSE IF( DABS( F(3) ) < TOLERANCE_B .OR. DABS( LAMBDA(2) - LAMBDA(3) ) < TOLERANCE_B ) THEN
+        LAMBDA(1) = LAMBDA(3)
       END IF
+      
+    ELSE
+
+      ! Error
+      WRITE( *, "(G0)" ) "The Brent's method failed! Exiting..."
+      CALL EXIT(  )
 
     END IF
 
