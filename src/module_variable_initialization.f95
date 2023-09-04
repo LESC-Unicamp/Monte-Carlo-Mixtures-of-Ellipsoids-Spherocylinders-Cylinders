@@ -58,15 +58,24 @@ OPEN( UNIT= 10, FILE= "ini_montecarlo.ini" )
 ! Total number of cycles                                                                          !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, MAX_CYCLES
+! Condition
+IF( MAX_CYCLES < 1 ) THEN
+  WRITE( *, "(G0)" ) "The maximum number of cycles is less than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Number of equilibration cycles                                                                  !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, N_EQUIL
-
-! Condition
+! Condition 1
 IF( N_EQUIL >= MAX_CYCLES ) THEN
   WRITE( *, "(G0)" ) "Number of equilibration cycles greater than or equal to the maximum number of cycles. Exiting... "
+  CALL EXIT(  )
+END IF
+! Condition 2
+IF( N_EQUIL < 0 ) THEN
+  WRITE( *, "(G0)" ) "The number of equilibration cycles cannot be a negative integer. Exiting... "
   CALL EXIT(  )
 END IF
 
@@ -77,6 +86,11 @@ END IF
 !  [1000 = lower frequency, results will be written out every 1000 cycles]                        !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, N_SAVE
+! Condition
+IF( N_SAVE < 1 ) THEN
+  WRITE( *, "(G0)" ) "The saving frequency cannot be a negative integer nor zero. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Maximum displacement adjustment frequency                                                       !
@@ -85,37 +99,97 @@ READ( 10, * ) GET, N_SAVE
 !  [200  = moderate frequency, maximum displacement will be adjusted every 200 cycles]            !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, N_ADJUST
+! Condition
+IF( N_ADJUST < 1 ) THEN
+  WRITE( *, "(G0)" ) "The adjustment frequency (simulation) cannot be a negative integer nor zero. Exiting... "
+  CALL EXIT(  )
+END IF
 READ( 10, * ) GET, N_ADJUST_INIT
+! Condition
+IF( N_ADJUST_INIT < 1 ) THEN
+  WRITE( *, "(G0)" ) "The adjustment frequency (initial configuration) cannot be a negative integer nor zero. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Maximum translational displacement                                                              !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, MAX_TRANS
+! Condition
+IF( DABS( MAX_TRANS - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum translational displacement (simulation) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 READ( 10, * ) GET, DRMAX_INIT
+! Condition
+IF( DABS( DRMAX_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum translational displacement (initial configuration) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Maximum rotational displacement                                                                 !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, MAX_ROT
+! Condition
+IF( DABS( MAX_ROT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum rotational displacement (simulation) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 READ( 10, * ) GET, ANGMAX_INIT
+! Condition
+IF( DABS( ANGMAX_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum rotational displacement (initial configuration) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Maximum volumetric displacement                                                                 !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, MAX_VOLI
+! Condition
+IF( DABS( MAX_VOLI - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum isotropic volume change (simulation) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 READ( 10, * ) GET, MAX_VOLA
+! Condition
+IF( DABS( MAX_VOLA - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum anisotropic volume change (simulation) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 READ( 10, * ) GET, DVMAXISO_INIT
+! Condition
+IF( DABS( DVMAXISO_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum isotropic volume change (initial configuration) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 READ( 10, * ) GET, DVMAXANISO_INIT
+! Condition
+IF( DABS( DVMAXANISO_INIT - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+  WRITE( *, "(G0)" ) "The maximum anisotropic volume change (initial configuration) cannot be zero. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Minimum volumetric displacement (random configuration only)                                     !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, DVMIN_INIT
+! Condition
+IF( DVMIN_INIT >= DVMAXISO_INIT .OR. DVMIN_INIT >= DVMAXANISO_INIT ) THEN
+  WRITE( *, "(G0)" ) "The minimum volume change cannot be greater than or equal to the maximum volume change. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Maximum box distortion                                                                          !
 ! *********************************************************************************************** !
 READ( 10 , * ) GET, BOX_DIST
+! Condition
+IF( BOX_DIST < 1.D0 ) THEN
+  WRITE( *, "(G0)" ) "The maximum box distortion cannot be less than 1. Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! *********************************************************************************************** !
 ! Lattice reduction method                                                                        !
@@ -129,6 +203,9 @@ IF( LRTYPE == "FBM" ) THEN
 ! Lattice reduction: Lenstra-Lenstra-Lovász method
 ELSE IF( LRTYPE == "LLL" ) THEN
   LRED_SELEC(2) = .TRUE.
+ELSE ! Stop condition
+  WRITE( *, "(G0)" ) "The user-defined ", TRIM( LRTYPE ), " is not an available lattice reduction method. Exiting... "
+  CALL EXIT(  )
 END IF
 
 ! *********************************************************************************************** !
@@ -136,6 +213,11 @@ END IF
 ! *********************************************************************************************** !
 READ( 10, * ) GET, MC_ENSEMBLE
 CALL TO_UPPER( MC_ENSEMBLE, LEN_TRIM( MC_ENSEMBLE ), MC_ENSEMBLE )
+! Condition
+IF( MC_ENSEMBLE /= "NVT" .AND. MC_ENSEMBLE /= "NPT" ) THEN
+  WRITE( *, "The user-defined ", TRIM( MC_ENSEMBLE ), " is not an available simulation ensemble. Exiting... "
+  CALL EXIT(  )
+END IF
 WRITE( *, "(G0,G0)" ) "Monte Carlo ensemble: ", MC_ENSEMBLE
 WRITE( *, "(G0)" ) " "
 
@@ -162,15 +244,14 @@ OPEN( UNIT= 10, FILE= "ini_control.ini" )
 ! *********************************************************************************************** !
 !  Inquires whether a trajectory of particles shall be written out.                               !
 !  Answer Y (Yes) to write out trajectories or                                                    !
-!         N (No) to ignore it                                                                     !
+!         ANYTHING ELSE to ignore it                                                              !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, TRAJ_INQ
 CALL TO_UPPER( TRAJ_INQ, LEN_TRIM( TRAJ_INQ ), TRAJ_INQ )
-
 ! Transforms characters into logical variables
 IF( TRAJ_INQ == "Y" ) THEN
   TRAJ_CHECK = .TRUE.
-ELSE IF( TRAJ_INQ == "N" ) THEN
+ELSE
   TRAJ_CHECK = .FALSE.
 END IF
 
@@ -180,15 +261,14 @@ END IF
 !  Inquires whether the seed used in the pseudorandom number generator subroutine will be         !
 !  randomly defined (required for repeatability assays) or fixed (no repeatability).              !
 !  Answer Y (Yes) to fix the seed of the pseudorandom number generator subroutine or              !
-!         N (No) to randomly generate a seed every time the program is run                        !
+!         ANYTHING ELSE to randomly generate a seed every time the program is run                 !
 ! *********************************************************************************************** !
 READ( 10, * ) GET, SEED_INQ
 CALL TO_UPPER( SEED_INQ, LEN_TRIM( SEED_INQ ), SEED_INQ )
-
 ! Transforms characters into logical variables
 IF( SEED_INQ == "Y" ) THEN
   FSEED = .TRUE.
-ELSE IF( SEED_INQ == "N" ) THEN
+ELSE
   FSEED = .FALSE.
 END IF
 
@@ -208,9 +288,8 @@ IF( POTENTIAL_TYPE == "HARDCORE" ) THEN
   POTENTIAL_SELEC(1) = .TRUE.
 ELSE IF( POTENTIAL_TYPE == "SQUAREWELL" ) THEN
   POTENTIAL_SELEC(2) = .TRUE.
-ELSE
-  WRITE( *, "(3G0)" ) "The force field named [", TRIM( POTENTIAL_TYPE ), "] cannot be used! Exiting..."
-  CALL SLEEP( 1 )
+ELSE ! Stop condition
+  WRITE( *, "(3G0)" ) "The force field named [", TRIM( POTENTIAL_TYPE ), "] is not available. Exiting..."
   CALL EXIT(  )
 END IF
 
@@ -218,8 +297,8 @@ END IF
 ! Potential inquiry                                                                               !
 ! *********************************************************************************************** !
 !  Inquires whether all potential results will be written out or only production-related ones.    !
-!  Answer Y (Yes) to write out both equilibration- and production-related results or              !
-!         N (No) to write out only production-related results                                     !
+!  Answer Y (Yes) to write out only production-related potential results or                       !
+!         ANYTHING ELSE to write out both equilibration- and production-related potential results !
 ! *********************************************************************************************** !
 IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   READ( 10, * ) GET, POT_INQ
@@ -227,7 +306,7 @@ IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   ! Transforms characters into logical variables
   IF( POT_INQ == "Y" ) THEN
     POTENTIAL_CHECK = .TRUE.
-  ELSE IF( POT_INQ == "N" ) THEN
+  ELSE
     POTENTIAL_CHECK = .FALSE.
   END IF
 END IF
@@ -237,8 +316,8 @@ END IF
 ! *********************************************************************************************** !
 !  Inquires whether the post-processing block averaging subroutine will be called.                !
 !  This subroutine calculates the first- and second-order TPT coefficients on the fly.            !
-!  Answer Y (Yes) to calculate TPT coefficients or                                                !
-!         N (No) to ignore it                                                                     !
+!  Answer Y (Yes) to calculate the TPT coefficients or                                            !
+!         ANYTHING ELSE to ignore it                                                              !
 ! *********************************************************************************************** !
 IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   READ( 10, * ) GET, COEF_INQ
@@ -246,7 +325,7 @@ IF( .NOT. POTENTIAL_SELEC(1) ) THEN
   ! Transforms characters into logical variables
   IF( COEF_INQ == "Y" ) THEN
     COEF_CHECK = .TRUE.
-  ELSE IF( COEF_INQ == "N" ) THEN
+  ELSE
     COEF_CHECK = .FALSE.
   END IF
 END IF
