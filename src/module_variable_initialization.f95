@@ -1,8 +1,9 @@
 ! ############################################################################################### !
 !               NVT/NPT-Monte Carlo algorithm for cylindrically-symmetric molecules               !
-!      This module initialize common variables (number of particles, reduced number density,      !
-!     reduced temperature etc.) and Monte Carlo parameters (total number of cycles, number of     !
-!                                   equilibration cycles etc.).                                   !
+!  This module initialize common system variables (number of particles, reduced number density,   !
+!     reduced temperature etc.), molecular properties (geometry and dimensions), Monte Carlo      !
+!  parameters (ensemble type, total number of cycles, number of equilibration cycles etc.), and   !
+!                                 potential parameters (if any).                                  !
 !  This module also initialize some inquiry (character) variables, allowing the user to control   !
 ! which results will be written out in external files and to enable post-processing subroutines.  !
 !                                                                                                 !
