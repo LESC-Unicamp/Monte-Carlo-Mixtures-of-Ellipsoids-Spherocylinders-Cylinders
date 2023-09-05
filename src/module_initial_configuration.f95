@@ -644,9 +644,6 @@ CALL SLEEP( 1 )
 ! *********************************************************************************************** !
 HIT_AND_MISS_NVT: DO
 
-  ! Progress bar
-  CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
-
   DO CYCLES = 1, N_PARTICLES
 
     ! Component index
@@ -805,6 +802,9 @@ HIT_AND_MISS_NVT: DO
 
   ! Iteration
   ATTEMPTS = ATTEMPTS + 1
+
+  ! Progress bar
+  CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
 
   ! ********************************************************************************************* !
   ! Overlap check for the proposed initial configuration                                          !
