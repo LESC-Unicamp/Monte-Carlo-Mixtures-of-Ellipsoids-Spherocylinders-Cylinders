@@ -511,8 +511,6 @@ LOGICAL :: OVERLAP            ! Detects overlap between two particles: TRUE = ov
 LOGICAL :: OVERLAP_PRELIMINAR ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: OVERLAP_VALIDATION ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: PARALLEL           ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
-LOGICAL :: DISABLE_TRANS_ADJ  ! Disable translational adjustments
-LOGICAL :: DISABLE_ROT_ADJ    ! Disable rotational adjustments
 LOGICAL :: LATTICER           ! Detects if a lattice reduction is necessary : TRUE = lattice reduction; FALSE = box shape preserved
 LOGICAL :: MOV_ROT            ! Rotation move selection : TRUE = movement selected; FALSE = movement not selected
 LOGICAL :: MOV_TRANS          ! Translation movement selection : TRUE = movement selected; FALSE = movement not selected
@@ -550,9 +548,7 @@ ELSE IF( AXIS_SELEC(3) ) THEN
   AXISN(:) = AXISZ(:)
 END IF
 
-! *********************************************************************************************** !
-! Convert degrees to radians                                                                      !
-! *********************************************************************************************** !
+! Convert degrees to radians
 QUATERNION_ANGLE = QUATERNION_ANGLE * PI / 180.D0
 
 ! *********************************************************************************************** !
@@ -566,34 +562,24 @@ Q(1,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(1)  ! Imaginary part (Vector)
 Q(2,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(2)  ! Imaginary part (Vector)
 Q(3,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(3)  ! Imaginary part (Vector)
 
-! *********************************************************************************************** !
-! Box length (cube)                                                                               !
-! *********************************************************************************************** !
+! Box length (cube)
 BOX_LENGTH(:) = 0.D0
 BOX_LENGTH(1) = BOX_VOLUME ** (1.D0 / 3.D0)
 BOX_LENGTH(5) = BOX_VOLUME ** (1.D0 / 3.D0)
 BOX_LENGTH(9) = BOX_VOLUME ** (1.D0 / 3.D0)
 
-! *********************************************************************************************** !
-! Simulation box length (inverse)                                                                 !
-! *********************************************************************************************** !
+! Simulation box length (inverse)
 CALL INVERSE_COF( BOX_LENGTH, BOX_LENGTH_I, BOX_VOLUME )
 
-! *********************************************************************************************** !
-! Active Transformation (Orientation)                                                             !
-! *********************************************************************************************** !
+! Active transformation (orientation)
 DO I = 1, N_PARTICLES
   CALL ACTIVE_TRANSFORMATION( AXISZ, Q(:,I), E(:,I) )
 END DO
 
-! *********************************************************************************************** !
-! Packing fraction (NVT Simulation)                                                               !
-! *********************************************************************************************** !
+! Packing fraction (NVT Simulation)
 P_FRACTION_NVT = ETA_INI
 
-! *********************************************************************************************** !
-! Box length (NVT Simulation)                                                                     !
-! *********************************************************************************************** !
+! Box length (NVT Simulation)
 BOX_VOLUME_NVT = 0.D0
 DO C = 1, COMPONENTS
   BOX_VOLUME_NVT = BOX_VOLUME_NVT + N_COMPONENT(C) * PARTICLE_VOL(C)
@@ -606,31 +592,26 @@ BOX_LENGTH_NVT(1) = (BOX_VOLUME_NVT) ** (1.D0 / 3.D0)
 BOX_LENGTH_NVT(5) = (BOX_VOLUME_NVT) ** (1.D0 / 3.D0)
 BOX_LENGTH_NVT(9) = (BOX_VOLUME_NVT) ** (1.D0 / 3.D0)
 
-! *********************************************************************************************** !
-! Inverse of box length (NVT Simulation)                                                          !
-! *********************************************************************************************** !
+! Inverse of box length (NVT Simulation)
 CALL INVERSE_COF( BOX_LENGTH_NVT, BOX_LENGTH_NVT_I, BOX_VOLUME_NVT )
 
-! *********************************************************************************************** !
-! Positioning of particles (centers of mass)                                                      !
-! *********************************************************************************************** !
+! Positioning of particles (centers of mass)
 R(:,:) = 0.D0
 
 ! *********************************************************************************************** !
 ! Monte Carlo parameters (NVT Simulation)                                                         !
 ! *********************************************************************************************** !
-DISABLE_TRANS_ADJ = .FALSE. ! Translational adjustments             (initial value)
-DISABLE_ROT_ADJ   = .FALSE. ! Rotational adjustments                (initial value)
 MOV_TRANS         = .FALSE. ! Translational move selector           (initial value)
 MOV_ROT           = .FALSE. ! Rotational move selector              (initial value)
+! Maximum translational displacement                                (initial value)
 IF( GEOM_SELEC(1) ) THEN
   IF( MAXVAL( DIAMETER ) <= MAXVAL( LENGTH ) ) THEN
-    DRMAX         = 1.05D0 * MAXVAL( LENGTH )   ! Maximum translational displacement (initial value)
+    DRMAX         = 1.05D0 * MAXVAL( LENGTH )   
   ELSE
-    DRMAX         = 1.05D0 * MAXVAL( DIAMETER ) ! Maximum translational displacement (initial value)
+    DRMAX         = 1.05D0 * MAXVAL( DIAMETER )
   END IF
 ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
-  DRMAX           = 1.05D0 * ( MAXVAL( LENGTH ) + MAXVAL( DIAMETER ) ) ! Maximum translational displacement (initial value)
+  DRMAX           = 1.05D0 * ( MAXVAL( LENGTH ) + MAXVAL( DIAMETER ) )
 END IF
 ANGMAX            = 0.1D0   ! Maximum rotational displacement       (initial value)
 NACCT             = 0       ! Translational move acceptance counter (initial value)
@@ -715,7 +696,7 @@ HIT_AND_MISS_NVT: DO
     QM(:) = QMC(:,I) ! Quaternion
     EM(:) = EMC(:,I) ! Orientation
 
-    ! Translation Movement
+    ! Translational movement
     IF( MOV_TRANS ) THEN
       ! Random translation along x-axis
       CALL RANF(  )
@@ -726,31 +707,31 @@ HIT_AND_MISS_NVT: DO
       ! Random translation along z-axis
       CALL RANF(  )
       RN(3) = RM(3) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
-      ! Minimum Image Convention
+      ! Minimum image convention
       CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RN, S12 )
       S12 = S12 - ANINT( S12 )
       CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RN )
-    ! No Translation
+    ! No translation
     ELSE IF( .NOT. MOV_TRANS ) THEN
       RN(:) = RM(:)
     END IF
 
-    ! Rotation Movement
+    ! Rotational movement
     IF( MOV_ROT ) THEN
-      ! Random Composed Unit Quaternion
+      ! Random quaternion
       CALL COMPOSED_QUATERNION( QM, QN, ANGMAX )
       ! Active transformation
       CALL ACTIVE_TRANSFORMATION( AXISZ, QN, EN )
-    ! No Rotation
+    ! No rotation
     ELSE IF( .NOT. MOV_ROT ) THEN
       QN(:) = QM(:)
       EN(:) = EM(:)
     END IF
 
-    ! Overlap Check
+    ! Overlap vheck
     CALL CHECK_OVERLAP( CI, I, QN, EN, RN, CD, BOX_LENGTH_NVT, BOX_LENGTH_NVT_I, OVERLAP )
 
-    ! Acceptance Criterion
+    ! Acceptance criterion
     IF( .NOT. OVERLAP ) THEN
       ! System configuration update
       RMC(:,I) = RN(:) ! Update position
@@ -771,49 +752,29 @@ HIT_AND_MISS_NVT: DO
 
   END DO
 
-  ! Adjustment of maximum displacement (Translation and Rotation)
+  ! Adjustment of maximum displacement (translation and rotation)
   IF( MOD( (MOVT + MOVR), (N_ADJUST_INIT * N_PARTICLES) ) == 0 ) THEN
 
-    IF( .NOT. DISABLE_TRANS_ADJ ) THEN
-      ! Acceptance ratio (translation)
-      RATIO = DBLE( NACCT ) / DBLE( MOVT )
-      ! Translational adjustment
-      IF( RATIO <= R_ACC_T ) THEN
-        DRMAX = 0.95D0 * DRMAX
-      ELSE
-        DRMAX = 1.05D0 * DRMAX
-      END IF
+    ! Acceptance ratio (translation)
+    RATIO = DBLE( NACCT ) / DBLE( MOVT )
+    ! Translational adjustment
+    IF( RATIO <= R_ACC_T ) THEN
+      DRMAX = 0.95D0 * DRMAX
+    ELSE
+      DRMAX = 1.05D0 * DRMAX
     END IF
 
-    ! Limiting displacement (translation)
-    IF( DRMAX <= 1.D-2 .AND. .NOT. DISABLE_TRANS_ADJ ) THEN
-      IF( MAXVAL(DIAMETER) <= MAXVAL(LENGTH) ) THEN
-        DRMAX = 3.5D0 * MAXVAL(LENGTH)
-      ELSE
-        DRMAX = 3.5D0 * MAXVAL(DIAMETER)
-      END IF
-      DISABLE_TRANS_ADJ = .TRUE.
+    ! Acceptance ratio (rotation)
+    RATIO = DBLE( NACCR ) / DBLE( MOVR )
+    ! Rotational adjustment
+    IF( RATIO <= R_ACC_R ) THEN
+      ANGMAX = 0.95D0 * ANGMAX
+    ELSE
+      ANGMAX = 1.05D0 * ANGMAX
     END IF
-
-    IF( .NOT. DISABLE_ROT_ADJ ) THEN
-      ! Acceptance ratio (rotation)
-      RATIO = DBLE( NACCR ) / DBLE( MOVR )
-      ! Rotational adjustment
-      IF( RATIO <= R_ACC_R ) THEN
-        ANGMAX = 0.95D0 * ANGMAX
-      ELSE
-        ANGMAX = 1.05D0 * ANGMAX
-      END IF
-      ! 4π-rotation condition
-      IF( ( ANGMAX > 4.D0 * PI ) ) THEN
-        ANGMAX = ANGMAX - 2.D0 * PI
-      END IF
-    END IF
-
-    ! Limiting displacement (rotation)
-    IF( ANGMAX <= 1.D-2 .AND. .NOT. DISABLE_ROT_ADJ ) THEN
-      ANGMAX = 0.5D0 * PI
-      DISABLE_ROT_ADJ = .TRUE.
+    ! 4π-rotation condition
+    IF( ( ANGMAX > 4.D0 * PI ) ) THEN
+      ANGMAX = ANGMAX - 2.D0 * PI
     END IF
 
     ! Reset counter
@@ -1083,8 +1044,6 @@ CALL SLEEP( 1 )
 ! *********************************************************************************************** !
 ! Monte Carlo parameters (NPT Simulation)                                                         !
 ! *********************************************************************************************** !
-DISABLE_TRANS_ADJ = .FALSE.             ! Translational adjustments             (initial value)
-DISABLE_ROT_ADJ   = .FALSE.             ! Rotational adjustments                (initial value)
 MOV_TRANS         = .FALSE.             ! Translational move selector           (initial value)
 MOV_ROT           = .FALSE.             ! Rotational move selector              (initial value)
 MOV_VOL_I         = .FALSE.             ! Volume move selector                  (initial value)
