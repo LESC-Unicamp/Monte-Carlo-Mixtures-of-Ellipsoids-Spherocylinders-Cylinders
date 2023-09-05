@@ -846,9 +846,8 @@ HIT_AND_MISS_NVT: DO
           OVC_1: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
             ! Initialization
             OVERLAP_VALIDATION = .FALSE.
-            ! Checks if the current particle i is overlapping any other particles in the system
+            ! Checks if the current particle i is not overlapping any other particles in the system
             IF( .NOT. OVCOUNTLOG(I) ) THEN
-              ! Cycle if this particle is not overlapping any other particles
               CYCLE OVC_1
             END IF
             ! Second loop represents all particles with indexes j of component Cj
@@ -883,7 +882,7 @@ HIT_AND_MISS_NVT: DO
               RIJ(1) = RJ(1) - RI(1)
               RIJ(2) = RJ(2) - RI(2)
               RIJ(3) = RJ(3) - RI(3)
-              ! Minimum Image Convention
+              ! Minimum image convention
               CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RIJ, S12 )
               S12 = S12 - ANINT( S12 )
               CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RIJ )
@@ -894,7 +893,7 @@ HIT_AND_MISS_NVT: DO
               CUTOFF_D = CUTOFF_D * CUTOFF_D
               ! Preliminary test (circumscribing spheres)
               IF( RIJSQ <= CUTOFF_D ) THEN
-                ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+                ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
                 IF( GEOM_SELEC(1) ) THEN
                   CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP_VALIDATION )
                   ! Overlap criterion
@@ -902,7 +901,7 @@ HIT_AND_MISS_NVT: DO
                     ! Overlap detected
                     CYCLE OVC_1
                   END IF
-                ! Overlap test for spherocylinders (Vega-Lago Method)
+                ! Overlap test for spherocylinders (Vega-Lago method)
                 ELSE IF( GEOM_SELEC(2) ) THEN
                   CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_VALIDATION )
                   ! Overlap criterion
@@ -910,7 +909,7 @@ HIT_AND_MISS_NVT: DO
                     ! Overlap detected
                     CYCLE OVC_1
                   END IF
-                ! Overlap test for cylinders (Lopes et al. Method)
+                ! Overlap test for cylinders (modified Lopes et al. method)
                 ELSE IF( GEOM_SELEC(3) ) THEN
                   ! Preliminary test (circumscribing spherocylinders)
                   OVERLAP_PRELIMINAR = .FALSE.
@@ -931,6 +930,7 @@ HIT_AND_MISS_NVT: DO
                 END IF
               END IF
             END DO
+            ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
             OVCOUNTLOG(I) = .FALSE.
           END DO OVC_1
         END DO
@@ -943,9 +943,8 @@ HIT_AND_MISS_NVT: DO
         OVC_2: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
           ! Initialization
           OVERLAP_VALIDATION = .FALSE.
-          ! Checks if the current particle i is overlapping any other particles in the system
+          ! Checks if the current particle i is not overlapping any other particles in the system
           IF( .NOT. OVCOUNTLOG(I) ) THEN
-            ! Cycle if this particle is not overlapping any other particles
             CYCLE OVC_2
           END IF
           ! Second loop represents all other particles with indexes j > i of component Cj = Ci
@@ -980,7 +979,7 @@ HIT_AND_MISS_NVT: DO
             RIJ(1) = RJ(1) - RI(1)
             RIJ(2) = RJ(2) - RI(2)
             RIJ(3) = RJ(3) - RI(3)
-            ! Minimum Image Convention
+            ! Minimum image convention
             CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RIJ, S12 )
             S12 = S12 - ANINT( S12 )
             CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RIJ )
@@ -991,7 +990,7 @@ HIT_AND_MISS_NVT: DO
             CUTOFF_D = CUTOFF_D * CUTOFF_D
             ! Preliminary test (circumscribing spheres)
             IF( RIJSQ <= CUTOFF_D ) THEN
-              ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+              ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
               IF( GEOM_SELEC(1) ) THEN
                 CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP_VALIDATION )
                 ! Overlap criterion
@@ -999,7 +998,7 @@ HIT_AND_MISS_NVT: DO
                   ! Overlap detected
                   CYCLE OVC_2
                 END IF
-              ! Overlap test for spherocylinders (Vega-Lago Method)
+              ! Overlap test for spherocylinders (Vega-Lago method)
               ELSE IF( GEOM_SELEC(2) ) THEN
                 CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_VALIDATION )
                 ! Overlap criterion
@@ -1007,7 +1006,7 @@ HIT_AND_MISS_NVT: DO
                   ! Overlap detected
                   CYCLE OVC_2
                 END IF
-              ! Overlap test for cylinders (Lopes et al. Method)
+              ! Overlap test for cylinders (modified Lopes et al. method)
               ELSE IF( GEOM_SELEC(3) ) THEN
                 ! Preliminary test (circumscribing spherocylinders)
                 OVERLAP_PRELIMINAR = .FALSE.
@@ -1028,6 +1027,7 @@ HIT_AND_MISS_NVT: DO
               END IF
             END IF
           END DO
+          ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
           OVCOUNTLOG(I) = .FALSE.
         END DO OVC_2
       END DO
@@ -1053,9 +1053,7 @@ HIT_AND_MISS_NVT: DO
 
 END DO HIT_AND_MISS_NVT
 
-! *********************************************************************************************** !
-! Reassign positions, rotation quaternions, and orientations                                      !
-! *********************************************************************************************** !
+! Reassign positions, rotation quaternions, and orientations
 Q(:,:) = QMC(:,:) ! Quaternion of particles
 R(:,:) = RMC(:,:) ! Position of particles
 E(:,:) = EMC(:,:) ! Orientation of particles
