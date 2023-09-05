@@ -89,9 +89,7 @@ ELSE ! Stop condition
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Initial configuration inquiry                                                                   !
-! *********************************************************************************************** !
+! Initial configuration inquiry
 WRITE( *, "(G0)") "The molecules are: "//TRIM( GEOMETRY )//". "
 IF( GEOM_INQ == "EOR" ) THEN
   GEOM_SELEC(1) = .TRUE.
@@ -145,9 +143,7 @@ ELSE ! Stop condition
   CALL EXIT(  )
 END IF
 
-! *********************************************************************************************** !
-! Initial configuration inquiry                                                                   !
-! *********************************************************************************************** !
+! Initial configuration inquiry
 WRITE( *, "(G0)") "Initial configuration is: "//TRIM( CONFIGURATION )//". "
 IF( CONFIG_INQ == "SC" ) THEN
   CONFIG_SELEC(1) = .TRUE.
@@ -183,7 +179,7 @@ INTEGER( KIND= INT64 ) :: N_CELLS           ! Number of unit cells
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                 :: CELL_LENGTH ! Length of unit cell (cubic structure)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: S12         ! Scaling factor
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: S12         ! Scaling factor (unit box)
 
 ! Chosen unrotated reference (x-, y-, or z-axis)
 IF( AXIS_SELEC(1) ) THEN
@@ -194,9 +190,7 @@ ELSE IF( AXIS_SELEC(3) ) THEN
   AXISN(:) = AXISZ(:)
 END IF
 
-! *********************************************************************************************** !
-! Convert degrees to radians                                                                      !
-! *********************************************************************************************** !
+! Convert degrees to radians
 QUATERNION_ANGLE = QUATERNION_ANGLE * PI / 180.D0
 
 ! *********************************************************************************************** !
@@ -210,39 +204,27 @@ Q(1,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(1)  ! Imaginary part (Vector)
 Q(2,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(2)  ! Imaginary part (Vector)
 Q(3,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(3)  ! Imaginary part (Vector)
 
-! *********************************************************************************************** !
-! Number of unit cells per axis (Simple Cube)                                                     !
-! *********************************************************************************************** !
+! Number of unit cells per axis (Simple Cube)
 N_CELLS = NINT( DBLE( N_PARTICLES ) ** ( 1.D0 / 3.D0 ) )
 
-! *********************************************************************************************** !
-! Unit cell length (Simple Cube)                                                                  !
-! *********************************************************************************************** !
+! Unit cell length (Simple Cube)
 CELL_LENGTH = ( 1.D0 / TOTAL_RHO ) ** ( 1.D0 / 3.D0 )
 
-! *********************************************************************************************** !
-! Simulation box length                                                                           !
-! *********************************************************************************************** !
+! Simulation box length
 BOX_LENGTH(:) = 0.D0
 BOX_LENGTH(1) = CELL_LENGTH * DBLE( N_CELLS )
 BOX_LENGTH(5) = CELL_LENGTH * DBLE( N_CELLS )
 BOX_LENGTH(9) = CELL_LENGTH * DBLE( N_CELLS )
 
-! *********************************************************************************************** !
-! Simulation box length (inverse)                                                                 !
-! *********************************************************************************************** !
+! Simulation box length (inverse)
 CALL INVERSE_COF( BOX_LENGTH, BOX_LENGTH_I, BOX_VOLUME )
 
-! *********************************************************************************************** !
-! Position of particles (centers of mass)                                                         !
-! *********************************************************************************************** !
+! Position of particles (centers of mass)
 COUNTER = 1
 DO I = 1, N_CELLS
   DO J = 1, N_CELLS
     DO K = 1, N_CELLS
-      ! ***************************************************************************************** !
-      ! Particles on the right vertex of unit cell                                                !
-      ! ***************************************************************************************** !
+      ! Particles on the right vertex of unit cell
       R(1,COUNTER) = DBLE( I - 1 ) * CELL_LENGTH
       R(2,COUNTER) = DBLE( J - 1 ) * CELL_LENGTH
       R(3,COUNTER) = DBLE( K - 1 ) * CELL_LENGTH
@@ -251,9 +233,7 @@ DO I = 1, N_CELLS
   END DO
 END DO
 
-! *********************************************************************************************** !
-! Centralizing the simulation box at origin of the coordinate system (0, 0, 0)                    !
-! *********************************************************************************************** !
+! Centralizing the simulation box at origin of the coordinate system (0, 0, 0)
 DO I = 1, N_PARTICLES
   CALL MULTI_MATRIX( BOX_LENGTH_I, R(:,I), S12 )
   S12 = S12 - 0.5D0
@@ -281,7 +261,7 @@ INTEGER( KIND= INT64 ) :: N_CELLS           ! Number of unit cells
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                 :: CELL_LENGTH ! Length of unit cell (cubic structure)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: S12         ! Scaling factor
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: S12         ! Scaling factor (unit box)
 
 ! Chosen unrotated reference (x-, y-, or z-axis)
 IF( AXIS_SELEC(1) ) THEN
@@ -292,9 +272,7 @@ ELSE IF( AXIS_SELEC(3) ) THEN
   AXISN(:) = AXISZ(:)
 END IF
 
-! *********************************************************************************************** !
-! Convert degrees to radians                                                                      !
-! *********************************************************************************************** !
+! Convert degrees to radians
 QUATERNION_ANGLE = QUATERNION_ANGLE * PI / 180.D0
 
 ! *********************************************************************************************** !
@@ -308,46 +286,32 @@ Q(1,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(1)  ! Imaginary part (Vector)
 Q(2,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(2)  ! Imaginary part (Vector)
 Q(3,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(3)  ! Imaginary part (Vector)
 
-! *********************************************************************************************** !
-! Number of unit cells per axis (Body-Centered Cube)                                              !
-! *********************************************************************************************** !
+! Number of unit cells per axis (Body-Centered Cube)
 N_CELLS = NINT( ( 0.5D0 * DBLE( N_PARTICLES ) ) ** ( 1.D0 / 3.D0 ) )
 
-! *********************************************************************************************** !
-! Unit cell length (Body-Centered Cube)                                                           !
-! *********************************************************************************************** !
+! Unit cell length (Body-Centered Cube)
 CELL_LENGTH = ( 2.D0 / TOTAL_RHO ) ** ( 1.D0 / 3.D0 )
 
-! *********************************************************************************************** !
-! Simulation box length                                                                           !
-! *********************************************************************************************** !
+! Simulation box length
 BOX_LENGTH(:) = 0.D0
 BOX_LENGTH(1) = CELL_LENGTH * DBLE( N_CELLS )
 BOX_LENGTH(5) = CELL_LENGTH * DBLE( N_CELLS )
 BOX_LENGTH(9) = CELL_LENGTH * DBLE( N_CELLS )
 
-! *********************************************************************************************** !
-! Simulation box length (inverse)                                                                 !
-! *********************************************************************************************** !
+! Simulation box length (inverse)
 CALL INVERSE_COF( BOX_LENGTH, BOX_LENGTH_I, BOX_VOLUME )
 
-! *********************************************************************************************** !
-! Positioning of particles (centers of mass)                                                      !
-! *********************************************************************************************** !
+! Positioning of particles (centers of mass)
 COUNTER = 1
 DO I = 1, N_CELLS
   DO J = 1, N_CELLS
     DO K = 1, N_CELLS
-      ! ***************************************************************************************** !
-      ! Particles on the right vertex of unit cell                                                !
-      ! ***************************************************************************************** !
+      ! Particles on the right vertex of unit cell
       R(1,COUNTER) = DBLE( I - 1 ) * CELL_LENGTH
       R(2,COUNTER) = DBLE( J - 1 ) * CELL_LENGTH
       R(3,COUNTER) = DBLE( K - 1 ) * CELL_LENGTH
       COUNTER = COUNTER + 1
-      ! ***************************************************************************************** !
-      ! Particles on the center of unit cell                                                      !
-      ! ***************************************************************************************** !
+      ! Particles on the center of unit cell
       R(1,COUNTER) = ( DBLE( I ) - 0.5D0 ) * CELL_LENGTH
       R(2,COUNTER) = ( DBLE( J ) - 0.5D0 ) * CELL_LENGTH
       R(3,COUNTER) = ( DBLE( K ) - 0.5D0 ) * CELL_LENGTH
@@ -356,9 +320,7 @@ DO I = 1, N_CELLS
   END DO
 END DO
 
-! *********************************************************************************************** !
-! Centralizing the simulation box at origin of the coordinate system (0, 0, 0)                    !
-! *********************************************************************************************** !
+! Centralizing the simulation box at origin of the coordinate system (0, 0, 0)
 DO I = 1, N_PARTICLES
   CALL MULTI_MATRIX( BOX_LENGTH_I, R(:,I), S12 )
   S12 = S12 - 0.5D0
@@ -386,7 +348,7 @@ INTEGER( KIND= INT64 ) :: N_CELLS           ! Number of unit cells
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                 :: CELL_LENGTH ! Length of unit cell (cubic structure)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: S12         ! Scaling factor
+REAL( KIND= REAL64 ), DIMENSION( 3 ) :: S12         ! Scaling factor (unit box)
 
 ! Chosen unrotated reference (x-, y-, or z-axis)
 IF( AXIS_SELEC(1) ) THEN
@@ -397,9 +359,7 @@ ELSE IF( AXIS_SELEC(3) ) THEN
   AXISN(:) = AXISZ(:)
 END IF
 
-! *********************************************************************************************** !
-! Convert degrees to radians                                                                      !
-! *********************************************************************************************** !
+! Convert degrees to radians
 QUATERNION_ANGLE = QUATERNION_ANGLE * PI / 180.D0
 
 ! *********************************************************************************************** !
@@ -413,60 +373,42 @@ Q(1,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(1)  ! Imaginary part (Vector)
 Q(2,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(2)  ! Imaginary part (Vector)
 Q(3,:) = DSIN( QUATERNION_ANGLE * 0.5D0 ) * AXISN(3)  ! Imaginary part (Vector)
 
-! *********************************************************************************************** !
-! Number of unit cells per axis (Face-Centered Cube)                                              !
-! *********************************************************************************************** !
+! Number of unit cells per axis (Face-Centered Cube)
 N_CELLS = NINT( ( 0.25D0 * DBLE( N_PARTICLES ) ) ** ( 1.D0 / 3.D0 ) )
 
-! *********************************************************************************************** !
-! Unit cell length (Face-Centered Cube)                                                           !
-! *********************************************************************************************** !
+! Unit cell length (Face-Centered Cube)
 CELL_LENGTH = ( 4.D0 / TOTAL_RHO ) ** ( 1.D0 / 3.D0 )
 
-! *********************************************************************************************** !
-! Simulation box length                                                                           !
-! *********************************************************************************************** !
+! Simulation box length
 BOX_LENGTH(:) = 0.D0
 BOX_LENGTH(1) = CELL_LENGTH * DBLE( N_CELLS )
 BOX_LENGTH(5) = CELL_LENGTH * DBLE( N_CELLS )
 BOX_LENGTH(9) = CELL_LENGTH * DBLE( N_CELLS )
 
-! *********************************************************************************************** !
-! Simulation box length (inverse)                                                                 !
-! *********************************************************************************************** !
+! Simulation box length (inverse)
 CALL INVERSE_COF( BOX_LENGTH, BOX_LENGTH_I, BOX_VOLUME )
 
-! *********************************************************************************************** !
-! Positioning of particles (centers of mass)                                                      !
-! *********************************************************************************************** !
+! Positioning of particles (centers of mass)
 COUNTER = 1
 DO I = 1, N_CELLS
   DO J = 1, N_CELLS
     DO K = 1, N_CELLS
-      ! ***************************************************************************************** !
-      ! Particles on the right vertex of unit cell                                                !
-      ! ***************************************************************************************** !
+      ! Particles on the right vertex of unit cell
       R(1,COUNTER) = DBLE( I - 1 ) * CELL_LENGTH
       R(2,COUNTER) = DBLE( J - 1 ) * CELL_LENGTH
       R(3,COUNTER) = DBLE( K - 1 ) * CELL_LENGTH
       COUNTER = COUNTER + 1
-      ! ***************************************************************************************** !
-      ! Particles on the front face of unit cell                                                  !
-      ! ***************************************************************************************** !
+      ! Particles on the front face of unit cell
       R(1,COUNTER) = DBLE( I - 1 ) * CELL_LENGTH
       R(2,COUNTER) = ( DBLE( J ) - 0.5D0 ) * CELL_LENGTH
       R(3,COUNTER) = ( DBLE( K ) - 0.5D0 ) * CELL_LENGTH
       COUNTER = COUNTER + 1
-      ! ***************************************************************************************** !
-      ! Particles on the left face of unit cell                                                   !
-      ! ***************************************************************************************** !
+      ! Particles on the left face of unit cell
       R(1,COUNTER) = ( DBLE( I ) - 0.5D0 ) * CELL_LENGTH
       R(2,COUNTER) = DBLE( J - 1 ) * CELL_LENGTH
       R(3,COUNTER) = ( DBLE( K ) - 0.5D0 ) * CELL_LENGTH
       COUNTER = COUNTER + 1
-      ! ***************************************************************************************** !
-      ! Particles on the lower face of unit cell                                                  !
-      ! ***************************************************************************************** !
+      ! Particles on the lower face of unit cell
       R(1,COUNTER) = ( DBLE( I ) - 0.5D0 ) * CELL_LENGTH
       R(2,COUNTER) = ( DBLE( J ) - 0.5D0 ) * CELL_LENGTH
       R(3,COUNTER) = DBLE( K - 1 ) * CELL_LENGTH
@@ -475,9 +417,7 @@ DO I = 1, N_CELLS
   END DO
 END DO
 
-! *********************************************************************************************** !
-! Centralizing the simulation box at origin of the coordinate system (0, 0, 0)                    !
-! *********************************************************************************************** !
+! Centralizing the simulation box at origin of the coordinate system (0, 0, 0)
 DO I = 1, N_PARTICLES
   CALL MULTI_MATRIX( BOX_LENGTH_I, R(:,I), S12 )
   S12 = S12 - 0.5D0
@@ -515,7 +455,7 @@ INTEGER( KIND= INT64 ) :: COMPONENT  ! Box matrix component
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                          :: CD               ! Contact distance (Perram-Wertheim or Vega-Lago Methods)
+REAL( KIND= REAL64 )                          :: CD               ! Contact distance (Perram-Wertheim or Vega-Lago methods)
 REAL( KIND= REAL64 )                          :: RIJSQ            ! Magnitude of the vector distance between particles i and j (squared)
 REAL( KIND= REAL64 )                          :: CUTOFF_D         ! Cutoff distance
 REAL( KIND= REAL64 )                          :: BOX_VOLUME_NVT   ! Box volume (NVT Simulation)
