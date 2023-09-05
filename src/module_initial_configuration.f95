@@ -2418,7 +2418,7 @@ WRITE( UNIT= BAR(56:60), FMT= "(I0.5)" ) OVC
 ! *********************************************************************************************** !
 ! Print progress bar                                                                              !
 ! *********************************************************************************************** !
-IF( K >= 100 ) THEN
+IF( I >= 1000 ) THEN
   WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A60,A65)", ADVANCE= "NO" ) CHAR(13), BAR, " (Too many attempts! Try decreasing the"// &
   &                                                                             " initial packing fraction)"
 ELSE
