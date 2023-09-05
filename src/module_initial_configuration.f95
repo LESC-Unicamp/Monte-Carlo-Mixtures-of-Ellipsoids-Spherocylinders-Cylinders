@@ -451,6 +451,7 @@ INTEGER( KIND= INT64 ) :: MOVR       ! Move counter (Rotation)
 INTEGER( KIND= INT64 ) :: MOVVI      ! Move counter (Isotropic volume change)
 INTEGER( KIND= INT64 ) :: MOVVA      ! Move counter (Anisotropic volume change)
 INTEGER( KIND= INT64 ) :: COMPONENT  ! Box matrix component
+INTEGER( KIND= INT64 ) :: OVCOUNTER  ! Counter of overlapping particles
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -518,11 +519,20 @@ LOGICAL :: MOV_VOL_I          ! Isotropic volume change selection : TRUE = movem
 LOGICAL :: MOV_VOL_A          ! Anisotropic volume change selection : TRUE = movement selected; FALSE = movement not selected
 LOGICAL :: IGNORE             ! Detects if a box deformation is valid or not : TRUE = ignore box deformation; FALSE = consider box deformation
 
+! *********************************************************************************************** !
+! LOGICAL VARIABLES (Allocatable)                                                                 !
+! *********************************************************************************************** !
+LOGICAL, DIMENSION( : ), ALLOCATABLE :: OVCOUNTLOG ! Checks how many particles are overlapping each other during the hit-and-miss algorithm
+
 ! Allocation
 ALLOCATE( RMCV(3,N_PARTICLES) )
 ALLOCATE( QPROT(0:3,N_PARTICLES) )
 ALLOCATE( RPROT(3,N_PARTICLES) )
 ALLOCATE( EPROT(3,N_PARTICLES) )
+ALLOCATE( OVCOUNTLOG(N_PARTICLES) )
+
+! Initialization
+OVCOUNTLOG = .TRUE.
 
 ! Diameter of circumscribing sphere
 IF( GEOM_SELEC(1) ) THEN
@@ -728,7 +738,7 @@ HIT_AND_MISS_NVT: DO
       EN(:) = EM(:)
     END IF
 
-    ! Overlap vheck
+    ! Overlap check
     CALL CHECK_OVERLAP( CI, I, QN, EN, RN, CD, BOX_LENGTH_NVT, BOX_LENGTH_NVT_I, OVERLAP )
 
     ! Acceptance criterion
@@ -756,28 +766,32 @@ HIT_AND_MISS_NVT: DO
   IF( MOD( (MOVT + MOVR), (N_ADJUST_INIT * N_PARTICLES) ) == 0 ) THEN
 
     ! Acceptance ratio (translation)
-    RATIO = DBLE( NACCT ) / DBLE( MOVT )
-    ! Translational adjustment
-    IF( RATIO <= R_ACC_T ) THEN
-      DRMAX = 0.95D0 * DRMAX
-    ELSE
-      DRMAX = 1.05D0 * DRMAX
+    IF( MOVT > 0 ) THEN
+      RATIO = DBLE( NACCT ) / DBLE( MOVT )
+      ! Translational adjustment
+      IF( RATIO <= R_ACC_T ) THEN
+        DRMAX = 0.95D0 * DRMAX
+      ELSE
+        DRMAX = 1.05D0 * DRMAX
+      END IF
     END IF
 
     ! Acceptance ratio (rotation)
-    RATIO = DBLE( NACCR ) / DBLE( MOVR )
-    ! Rotational adjustment
-    IF( RATIO <= R_ACC_R ) THEN
-      ANGMAX = 0.95D0 * ANGMAX
-    ELSE
-      ANGMAX = 1.05D0 * ANGMAX
-    END IF
-    ! 4π-rotation condition
-    IF( ( ANGMAX > 4.D0 * PI ) ) THEN
-      ANGMAX = ANGMAX - 2.D0 * PI
+    IF( MOVR > 0 ) THEN
+      RATIO = DBLE( NACCR ) / DBLE( MOVR )
+      ! Rotational adjustment
+      IF( RATIO <= R_ACC_R ) THEN
+        ANGMAX = 0.95D0 * ANGMAX
+      ELSE
+        ANGMAX = 1.05D0 * ANGMAX
+      END IF
+      ! 4π-rotation condition
+      IF( ( ANGMAX > 4.D0 * PI ) ) THEN
+        ANGMAX = ANGMAX - 2.D0 * PI
+      END IF
     END IF
 
-    ! Reset counter
+    ! Reset counters
     NACCT = 0
     MOVT  = 0
     NACCR = 0
@@ -790,9 +804,6 @@ HIT_AND_MISS_NVT: DO
 
   ! Overlap check for the proposed initial configuration
   IF( MOD( ATTEMPTS, MAX_ATTEMPTS ) == 0 ) THEN
-
-    ! Progress bar
-    CALL PROGRESS_BAR_HITMISS( ATTEMPTS, MAX_ATTEMPTS )
 
     ! Finalization condition
     IF( ATTEMPTS / MAX_ATTEMPTS >= 9999 ) THEN
@@ -822,19 +833,24 @@ HIT_AND_MISS_NVT: DO
         END DO
       END DO
     END IF
+    FLUSH( 55 )
     CLOSE( 55 )
 
     ! Validation loop
     LOOP_VALIDATION_INITIAL_CONF: DO
 
-      ! Initialization
-      OVERLAP_VALIDATION = .FALSE.
-
       ! Anisomorphic molecules (unlike components)
       DO CI = 1, COMPONENTS - 1
         DO CJ = CI + 1, COMPONENTS
           ! First loop represents all particles with indexes i of component Ci
-          DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
+          OVC_1: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
+            ! Initialization
+            OVERLAP_VALIDATION = .FALSE.
+            ! Checks if the current particle i is overlapping any other particles in the system
+            IF( .NOT. OVCOUNTLOG(I) ) THEN
+              ! Cycle if this particle is not overlapping any other particles
+              CYCLE OVC_1
+            END IF
             ! Second loop represents all particles with indexes j of component Cj
             DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
               ! Position of particle i
@@ -884,7 +900,7 @@ HIT_AND_MISS_NVT: DO
                   ! Overlap criterion
                   IF( OVERLAP_VALIDATION ) THEN
                     ! Overlap detected
-                    CYCLE HIT_AND_MISS_NVT
+                    CYCLE OVC_1
                   END IF
                 ! Overlap test for spherocylinders (Vega-Lago Method)
                 ELSE IF( GEOM_SELEC(2) ) THEN
@@ -892,7 +908,7 @@ HIT_AND_MISS_NVT: DO
                   ! Overlap criterion
                   IF( OVERLAP_VALIDATION ) THEN
                     ! Overlap detected
-                    CYCLE HIT_AND_MISS_NVT
+                    CYCLE OVC_1
                   END IF
                 ! Overlap test for cylinders (Lopes et al. Method)
                 ELSE IF( GEOM_SELEC(3) ) THEN
@@ -909,13 +925,14 @@ HIT_AND_MISS_NVT: DO
                     ! Overlap criterion
                     IF( OVERLAP_VALIDATION ) THEN
                       ! Overlap detected
-                      CYCLE HIT_AND_MISS_NVT
+                      CYCLE OVC_1
                     END IF
                   END IF
                 END IF
               END IF
             END DO
-          END DO
+            OVCOUNTLOG(I) = .FALSE.
+          END DO OVC_1
         END DO
       END DO
 
@@ -923,7 +940,14 @@ HIT_AND_MISS_NVT: DO
       DO CI = 1, COMPONENTS
         CJ = CI
         ! First loop represents a particle with an index i of component Ci
-        DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
+        OVC_2: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
+          ! Initialization
+          OVERLAP_VALIDATION = .FALSE.
+          ! Checks if the current particle i is overlapping any other particles in the system
+          IF( .NOT. OVCOUNTLOG(I) ) THEN
+            ! Cycle if this particle is not overlapping any other particles
+            CYCLE OVC_2
+          END IF
           ! Second loop represents all other particles with indexes j > i of component Cj = Ci
           DO J = I + 1, SUM( N_COMPONENT(0:CI) )
             ! Position of particle i
@@ -973,7 +997,7 @@ HIT_AND_MISS_NVT: DO
                 ! Overlap criterion
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
-                  CYCLE HIT_AND_MISS_NVT
+                  CYCLE OVC_2
                 END IF
               ! Overlap test for spherocylinders (Vega-Lago Method)
               ELSE IF( GEOM_SELEC(2) ) THEN
@@ -981,7 +1005,7 @@ HIT_AND_MISS_NVT: DO
                 ! Overlap criterion
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
-                  CYCLE HIT_AND_MISS_NVT
+                  CYCLE OVC_2
                 END IF
               ! Overlap test for cylinders (Lopes et al. Method)
               ELSE IF( GEOM_SELEC(3) ) THEN
@@ -998,18 +1022,29 @@ HIT_AND_MISS_NVT: DO
                   ! Overlap criterion
                   IF( OVERLAP_VALIDATION ) THEN
                     ! Overlap detected
-                    CYCLE HIT_AND_MISS_NVT
+                    CYCLE OVC_2
                   END IF
                 END IF
               END IF
             END IF
           END DO
-        END DO
+          OVCOUNTLOG(I) = .FALSE.
+        END DO OVC_2
       END DO
 
-      ! Possible initial configuration
-      IF( .NOT. OVERLAP_VALIDATION ) THEN
+      ! Count overlapping particles
+      OVCOUNTER = COUNT( OVCOUNTLOG, DIM= 1 ) - 1 ! There can only be at most N-1 particles in overlapping configurations
+
+      ! Progress bar
+      CALL PROGRESS_BAR_HITMISS( ATTEMPTS, MAX_ATTEMPTS, OVCOUNTER )
+
+      ! Check number of overlapping particles
+      IF( OVCOUNTER == 0 ) THEN
+        ! Possible initial configuration
         EXIT HIT_AND_MISS_NVT
+      ELSE
+        ! Attempt another configuration
+        CYCLE HIT_AND_MISS_NVT
       END IF
 
     END DO LOOP_VALIDATION_INITIAL_CONF
@@ -2350,7 +2385,7 @@ END SUBROUTINE CONFIG_PB
 ! *********************************************************************************************** !
 !          This subroutine generates a progress bar for the HIT-AND-MISS NVT algorithm.           !
 ! *********************************************************************************************** !
-SUBROUTINE PROGRESS_BAR_HITMISS( I, J )
+SUBROUTINE PROGRESS_BAR_HITMISS( I, J, OVC )
 
 USE ISO_FORTRAN_ENV
 
@@ -2360,11 +2395,12 @@ IMPLICIT NONE
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
 INTEGER( KIND= INT64 ) :: I, J, K ! Counters
+INTEGER( KIND= INT64 ) :: OVC     ! Counter of overlapping particles
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 29 ) :: BAR ! Progress bar
+CHARACTER( LEN= 60 ) :: BAR ! Progress bar
 
 ! Attempts
 K = I / J
@@ -2372,22 +2408,23 @@ K = I / J
 ! *********************************************************************************************** !
 ! Progress bar (FORMAT)                                                                           !
 ! *********************************************************************************************** !
-BAR = "Cycle #?????? | Attempt #????"
+BAR = "Cycle #?????? | Attempt #???? | Overlapping Particles: ?????"
 
 ! *********************************************************************************************** !
 ! Progress bar (replace character positions)                                                      !
 ! *********************************************************************************************** !
 WRITE( UNIT= BAR(8:13), FMT= "(I0.6)" ) I
 WRITE( UNIT= BAR(26:29), FMT= "(I0.4)" ) K
+WRITE( UNIT= BAR(56:60), FMT= "(I0.5)" ) OVC
 
 ! *********************************************************************************************** !
 ! Print progress bar                                                                              !
 ! *********************************************************************************************** !
 IF( K >= 100 ) THEN
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A29,A65)", ADVANCE= "NO" ) CHAR(13), BAR, " (Too many attempts! Try decreasing the"// &
+  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A60,A65)", ADVANCE= "NO" ) CHAR(13), BAR, " (Too many attempts! Try decreasing the"// &
   &                                                                             " initial packing fraction)"
 ELSE
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A29)", ADVANCE= "NO" ) CHAR(13), BAR
+  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A60)", ADVANCE= "NO" ) CHAR(13), BAR
 END IF
 
 ! *********************************************************************************************** !
