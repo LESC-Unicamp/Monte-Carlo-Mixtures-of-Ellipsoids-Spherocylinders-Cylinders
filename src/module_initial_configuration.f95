@@ -803,9 +803,6 @@ HIT_AND_MISS_NVT: DO
   ! Iteration
   ATTEMPTS = ATTEMPTS + 1
 
-  ! Progress bar
-  CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
-
   ! ********************************************************************************************* !
   ! Overlap check for the proposed initial configuration                                          !
   ! ********************************************************************************************* !
@@ -1031,6 +1028,9 @@ HIT_AND_MISS_NVT: DO
 
     ! Count overlapping particles
     OVCOUNTER = COUNT( OVCOUNTLOG, DIM= 1 ) - 1 ! There can only be at most N-1 particles in overlapping configurations
+
+    ! Progress bar
+    CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
 
     ! Check number of overlapping particles
     IF( OVCOUNTER == 0 ) THEN
