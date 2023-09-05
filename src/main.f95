@@ -2470,7 +2470,6 @@ DO C = 1, COMPONENTS
 END DO
 IF( CONFIG_SELEC(4) ) THEN
   WRITE( CHAR_LABEL(40,1), "(G0.5)" ) ETA_INI
-  WRITE( CHAR_LABEL(41,1), "(G0.5)" ) MAX_ATTEMPTS
   WRITE( CHAR_LABEL(42,1), "(G0.5)" ) PRESS_RND
   WRITE( CHAR_LABEL(43,1), "(G0)"   ) N_ADJUST_INIT
   WRITE( CHAR_LABEL(44,1), "(G0.5)" ) DRMAX_INIT
@@ -2583,7 +2582,6 @@ LOG_STRINGS_T(39,1) = "Unrotated Axis (Initial Configuration): "//TRIM( CHAR_LAB
 LOG_STRINGS_T(40,1) = "Quaternion Angle (Initial Configuration): "//TRIM( CHAR_LABEL(35,1) )
 LOG_STRINGS_T(41,1) = "●Configuration: "//TRIM( CHAR_LABEL(36,1) )//" Structure"
 LOG_STRINGS_T(42,1) = "Initial Packing Fraction (Random Configuration): "//TRIM( CHAR_LABEL(40,1) )
-LOG_STRINGS_T(43,1) = "Maximum Attempts (Random Configuration): "//TRIM( CHAR_LABEL(41,1) )
 LOG_STRINGS_T(44,1) = "Target Reduced Pressure (Random Configuration): "//TRIM( CHAR_LABEL(42,1) )
 LOG_STRINGS_T(45,1) = "Adjustment Frequency (Random Configuration): Every "//TRIM( CHAR_LABEL(43,1) )//" Cycle(s)"
 LOG_STRINGS_T(46,1) = "Maximum Rotation (Random Configuration): "//TRIM( CHAR_LABEL(44,1) )
@@ -2811,7 +2809,6 @@ IF( .NOT. FILE_EXIST ) THEN
   WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(41,1) )//REPEAT( " ", NINT( STRST(41,1) ) + 2 )//CH_VS
   IF( CONFIG_SELEC(4) ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(42,1) )//REPEAT( " ", NINT( STRST(42,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(43,1) )//REPEAT( " ", NINT( STRST(43,1) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(44,1) )//REPEAT( " ", NINT( STRST(44,1) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(45,1) )//REPEAT( " ", NINT( STRST(45,1) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(46,1) )//REPEAT( " ", NINT( STRST(46,1) ) - 1 )//CH_VS
