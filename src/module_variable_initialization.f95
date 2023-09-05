@@ -631,14 +631,6 @@ READ( 100, * ) GET, QUATERNION_ANGLE
 
 ! Random configuration
 IF( CONFIG_SELEC(4) ) THEN
-  ! Maximum number of attempts to distribute particles in a random configuration
-  READ( 100, * ) GET, MAX_ATTEMPTS
-  ! Condition
-  IF( MAX_ATTEMPTS < 1 ) THEN
-    WRITE( *, "(4G0)" ) "The maximum number of attempts to randomly distribute particles [", MAX_ATTEMPTS, "] inside the ", &
-    &                   "simulation box cannot be less than 1. Exiting... "
-    CALL EXIT(  )
-  END IF
   ! Initial packing fraction for the random configuration
   READ( 100, * ) GET, ETA_INI
   ! Condition 1
@@ -841,8 +833,6 @@ WRITE( *, "(G0,G0.5,G0)" ) "Quaternion Angle: ", QUATERNION_ANGLE, "°"
 WRITE( *, * ) " "
 IF( CONFIG_SELEC(4) ) THEN
   WRITE( *, "(G0,G0.5)" ) "Initial Packing Fraction (Random Configuration): ", ETA_INI
-  WRITE( *, * ) " "
-  WRITE( *, "(G0,G0.5)" ) "Maximum Attempts (Random Configuration): ", MAX_ATTEMPTS
   WRITE( *, * ) " "
   WRITE( *, "(G0,G0.5)" ) "Target Reduced Pressure (Random Configuration): ", PRESS_RND
   WRITE( *, * ) " "
