@@ -1053,12 +1053,12 @@ E(:,:) = EMC(:,:) ! Orientation of particles
 ! Summary
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0)" ) " "
-IF( (ATTEMPTS / MAX_ATTEMPTS) == 1 ) THEN
+IF( ATTEMPTS == 1 ) THEN
   WRITE( *, "(3G0)" ) "Possible random initial configuration found by the hit-and-miss algorithm with ", &
-  &                   ATTEMPTS / MAX_ATTEMPTS, " attempt."
-ELSE IF( (ATTEMPTS / MAX_ATTEMPTS) > 1 ) THEN
+  &                   ATTEMPTS, " attempt."
+ELSE IF( ATTEMPTS > 1 ) THEN
   WRITE( *, "(3G0)" ) "Possible random initial configuration found by the hit-and-miss algorithm with ", &
-  &                   ATTEMPTS / MAX_ATTEMPTS, " attempts."
+  &                   ATTEMPTS, " attempts."
 END IF
 CALL SLEEP( 3 )
 WRITE( *, "(G0)" ) " "
