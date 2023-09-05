@@ -23,7 +23,6 @@
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
-
 MODULE INITVAR
 
 ! Uses one module: global variables
