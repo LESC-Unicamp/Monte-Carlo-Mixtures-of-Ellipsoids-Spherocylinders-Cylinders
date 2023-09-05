@@ -533,6 +533,7 @@ ALLOCATE( OVCOUNTLOG(N_PARTICLES) )
 
 ! Initialization
 OVCOUNTLOG = .TRUE.
+OVCOUNTER  = COUNT( OVCOUNTLOG, DIM= 1 ) - 1
 
 ! Diameter of circumscribing sphere
 IF( GEOM_SELEC(1) ) THEN
@@ -642,6 +643,9 @@ CALL SLEEP( 1 )
 ! Hit-and-miss (NVT Simulation)                                                                   !
 ! *********************************************************************************************** !
 HIT_AND_MISS_NVT: DO
+
+  ! Progress bar
+  CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
 
   DO CYCLES = 1, N_PARTICLES
 
@@ -802,153 +806,49 @@ HIT_AND_MISS_NVT: DO
   ! Iteration
   ATTEMPTS = ATTEMPTS + 1
 
-  ! Overlap check for the proposed initial configuration
-  IF( MOD( ATTEMPTS, MAX_ATTEMPTS ) == 0 ) THEN
+  ! ********************************************************************************************* !
+  ! Overlap check for the proposed initial configuration                                          !
+  ! ********************************************************************************************* !
 
-    ! Finalization condition
-    IF( ATTEMPTS / MAX_ATTEMPTS >= 9999 ) THEN
-      WRITE( *, * ) " "
-      WRITE( *, * ) " "
-      WRITE( *, "(G0)" ) "Too many attempts! Try decreasing the initial packing fraction of the system. Exiting..."
-      CALL EXIT(  )
-    END IF
-
-    ! Initial configuration (partial)
-    OPEN( UNIT= 55, FILE= "Initial_Configuration/OVITO/"//TRIM( DESCRIPTOR_DATE )//"/initconf_rnd_"// &
-    &                     TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-    WRITE( 55, "(I4)" ) N_PARTICLES
-    WRITE( 55, * ) " "
-    IF( GEOM_SELEC(1) ) THEN
-      DO C = 1, COMPONENTS
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-        END DO
+  ! Initial configuration (partial)
+  OPEN( UNIT= 55, FILE= "Initial_Configuration/OVITO/"//TRIM( DESCRIPTOR_DATE )//"/initconf_rnd_"// &
+  &                     TRIM( DESCRIPTOR_FILE3 )//".xyz" )
+  WRITE( 55, "(I4)" ) N_PARTICLES
+  WRITE( 55, * ) " "
+  IF( GEOM_SELEC(1) ) THEN
+    DO C = 1, COMPONENTS
+      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+        WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+        &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
       END DO
-    ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
-      DO C = 1, COMPONENTS
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
-        END DO
+    END DO
+  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+        WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+        &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
       END DO
-    END IF
-    FLUSH( 55 )
-    CLOSE( 55 )
+    END DO
+  END IF
+  FLUSH( 55 )
+  CLOSE( 55 )
 
-    ! Validation loop
-    LOOP_VALIDATION_INITIAL_CONF: DO
+  ! Validation loop
+  LOOP_VALIDATION_INITIAL_CONF: DO
 
-      ! Anisomorphic molecules (unlike components)
-      DO CI = 1, COMPONENTS - 1
-        DO CJ = CI + 1, COMPONENTS
-          ! First loop represents all particles with indexes i of component Ci
-          OVC_1: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
-            ! Initialization
-            OVERLAP_VALIDATION = .FALSE.
-            ! Checks if the current particle i is not overlapping any other particles in the system
-            IF( .NOT. OVCOUNTLOG(I) ) THEN
-              CYCLE OVC_1
-            END IF
-            ! Second loop represents all particles with indexes j of component Cj
-            DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
-              ! Position of particle i
-              RI(1)  = RMC(1,I)
-              RI(2)  = RMC(2,I)
-              RI(3)  = RMC(3,I)
-              ! Position of particle j
-              RJ(1)  = RMC(1,J)
-              RJ(2)  = RMC(2,J)
-              RJ(3)  = RMC(3,J)
-              ! Orientation of particle i
-              EI(1)  = EMC(1,I)
-              EI(2)  = EMC(2,I)
-              EI(3)  = EMC(3,I)
-              ! Orientation of particle j
-              EJ(1)  = EMC(1,J)
-              EJ(2)  = EMC(2,J)
-              EJ(3)  = EMC(3,J)
-              ! Quaternion of particle i
-              QI(0)  = QMC(0,I)
-              QI(1)  = QMC(1,I)
-              QI(2)  = QMC(2,I)
-              QI(3)  = QMC(3,I)
-              ! Quaternion of particle j
-              QJ(0)  = QMC(0,J)
-              QJ(1)  = QMC(1,J)
-              QJ(2)  = QMC(2,J)
-              QJ(3)  = QMC(3,J)
-              ! Vector distance between particles i and j
-              RIJ(1) = RJ(1) - RI(1)
-              RIJ(2) = RJ(2) - RI(2)
-              RIJ(3) = RJ(3) - RI(3)
-              ! Minimum image convention
-              CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RIJ, S12 )
-              S12 = S12 - ANINT( S12 )
-              CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RIJ )
-              ! Magnitude of the vector distance (squared)
-              RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-              ! Cutoff distance (squared)
-              CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-              CUTOFF_D = CUTOFF_D * CUTOFF_D
-              ! Preliminary test (circumscribing spheres)
-              IF( RIJSQ <= CUTOFF_D ) THEN
-                ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-                IF( GEOM_SELEC(1) ) THEN
-                  CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP_VALIDATION )
-                  ! Overlap criterion
-                  IF( OVERLAP_VALIDATION ) THEN
-                    ! Overlap detected
-                    CYCLE OVC_1
-                  END IF
-                ! Overlap test for spherocylinders (Vega-Lago method)
-                ELSE IF( GEOM_SELEC(2) ) THEN
-                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_VALIDATION )
-                  ! Overlap criterion
-                  IF( OVERLAP_VALIDATION ) THEN
-                    ! Overlap detected
-                    CYCLE OVC_1
-                  END IF
-                ! Overlap test for cylinders (modified Lopes et al. method)
-                ELSE IF( GEOM_SELEC(3) ) THEN
-                  ! Preliminary test (circumscribing spherocylinders)
-                  OVERLAP_PRELIMINAR = .FALSE.
-                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                  ! Overlap criterion
-                  IF( OVERLAP_PRELIMINAR ) THEN
-                    ! Retrive position of the particle j after applying the PBC
-                    RJ(1) = RI(1) + RIJ(1)
-                    RJ(2) = RI(2) + RIJ(2)
-                    RJ(3) = RI(3) + RIJ(3)
-                    CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
-                    ! Overlap criterion
-                    IF( OVERLAP_VALIDATION ) THEN
-                      ! Overlap detected
-                      CYCLE OVC_1
-                    END IF
-                  END IF
-                END IF
-              END IF
-            END DO
-            ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
-            OVCOUNTLOG(I) = .FALSE.
-          END DO OVC_1
-        END DO
-      END DO
-
-      ! Isomorphic molecules (like components)
-      DO CI = 1, COMPONENTS
-        CJ = CI
-        ! First loop represents a particle with an index i of component Ci
-        OVC_2: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
+    ! Anisomorphic molecules (unlike components)
+    DO CI = 1, COMPONENTS - 1
+      DO CJ = CI + 1, COMPONENTS
+        ! First loop represents all particles with indexes i of component Ci
+        OVC_1: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
           ! Initialization
           OVERLAP_VALIDATION = .FALSE.
           ! Checks if the current particle i is not overlapping any other particles in the system
           IF( .NOT. OVCOUNTLOG(I) ) THEN
-            CYCLE OVC_2
+            CYCLE OVC_1
           END IF
-          ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-          DO J = I + 1, SUM( N_COMPONENT(0:CI) )
+          ! Second loop represents all particles with indexes j of component Cj
+          DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
             ! Position of particle i
             RI(1)  = RMC(1,I)
             RI(2)  = RMC(2,I)
@@ -996,7 +896,7 @@ HIT_AND_MISS_NVT: DO
                 ! Overlap criterion
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
-                  CYCLE OVC_2
+                  CYCLE OVC_1
                 END IF
               ! Overlap test for spherocylinders (Vega-Lago method)
               ELSE IF( GEOM_SELEC(2) ) THEN
@@ -1004,7 +904,7 @@ HIT_AND_MISS_NVT: DO
                 ! Overlap criterion
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
-                  CYCLE OVC_2
+                  CYCLE OVC_1
                 END IF
               ! Overlap test for cylinders (modified Lopes et al. method)
               ELSE IF( GEOM_SELEC(3) ) THEN
@@ -1021,7 +921,7 @@ HIT_AND_MISS_NVT: DO
                   ! Overlap criterion
                   IF( OVERLAP_VALIDATION ) THEN
                     ! Overlap detected
-                    CYCLE OVC_2
+                    CYCLE OVC_1
                   END IF
                 END IF
               END IF
@@ -1029,27 +929,119 @@ HIT_AND_MISS_NVT: DO
           END DO
           ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
           OVCOUNTLOG(I) = .FALSE.
-        END DO OVC_2
+        END DO OVC_1
       END DO
+    END DO
 
-      ! Count overlapping particles
-      OVCOUNTER = COUNT( OVCOUNTLOG, DIM= 1 ) - 1 ! There can only be at most N-1 particles in overlapping configurations
+    ! Isomorphic molecules (like components)
+    DO CI = 1, COMPONENTS
+      CJ = CI
+      ! First loop represents a particle with an index i of component Ci
+      OVC_2: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
+        ! Initialization
+        OVERLAP_VALIDATION = .FALSE.
+        ! Checks if the current particle i is not overlapping any other particles in the system
+        IF( .NOT. OVCOUNTLOG(I) ) THEN
+          CYCLE OVC_2
+        END IF
+        ! Second loop represents all other particles with indexes j > i of component Cj = Ci
+        DO J = I + 1, SUM( N_COMPONENT(0:CI) )
+          ! Position of particle i
+          RI(1)  = RMC(1,I)
+          RI(2)  = RMC(2,I)
+          RI(3)  = RMC(3,I)
+          ! Position of particle j
+          RJ(1)  = RMC(1,J)
+          RJ(2)  = RMC(2,J)
+          RJ(3)  = RMC(3,J)
+          ! Orientation of particle i
+          EI(1)  = EMC(1,I)
+          EI(2)  = EMC(2,I)
+          EI(3)  = EMC(3,I)
+          ! Orientation of particle j
+          EJ(1)  = EMC(1,J)
+          EJ(2)  = EMC(2,J)
+          EJ(3)  = EMC(3,J)
+          ! Quaternion of particle i
+          QI(0)  = QMC(0,I)
+          QI(1)  = QMC(1,I)
+          QI(2)  = QMC(2,I)
+          QI(3)  = QMC(3,I)
+          ! Quaternion of particle j
+          QJ(0)  = QMC(0,J)
+          QJ(1)  = QMC(1,J)
+          QJ(2)  = QMC(2,J)
+          QJ(3)  = QMC(3,J)
+          ! Vector distance between particles i and j
+          RIJ(1) = RJ(1) - RI(1)
+          RIJ(2) = RJ(2) - RI(2)
+          RIJ(3) = RJ(3) - RI(3)
+          ! Minimum image convention
+          CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RIJ, S12 )
+          S12 = S12 - ANINT( S12 )
+          CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RIJ )
+          ! Magnitude of the vector distance (squared)
+          RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
+          ! Cutoff distance (squared)
+          CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
+          CUTOFF_D = CUTOFF_D * CUTOFF_D
+          ! Preliminary test (circumscribing spheres)
+          IF( RIJSQ <= CUTOFF_D ) THEN
+            ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
+            IF( GEOM_SELEC(1) ) THEN
+              CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP_VALIDATION )
+              ! Overlap criterion
+              IF( OVERLAP_VALIDATION ) THEN
+                ! Overlap detected
+                CYCLE OVC_2
+              END IF
+            ! Overlap test for spherocylinders (Vega-Lago method)
+            ELSE IF( GEOM_SELEC(2) ) THEN
+              CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_VALIDATION )
+              ! Overlap criterion
+              IF( OVERLAP_VALIDATION ) THEN
+                ! Overlap detected
+                CYCLE OVC_2
+              END IF
+            ! Overlap test for cylinders (modified Lopes et al. method)
+            ELSE IF( GEOM_SELEC(3) ) THEN
+              ! Preliminary test (circumscribing spherocylinders)
+              OVERLAP_PRELIMINAR = .FALSE.
+              CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+              ! Overlap criterion
+              IF( OVERLAP_PRELIMINAR ) THEN
+                ! Retrive position of the particle j after applying the PBC
+                RJ(1) = RI(1) + RIJ(1)
+                RJ(2) = RI(2) + RIJ(2)
+                RJ(3) = RI(3) + RIJ(3)
+                CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
+                ! Overlap criterion
+                IF( OVERLAP_VALIDATION ) THEN
+                  ! Overlap detected
+                  CYCLE OVC_2
+                END IF
+              END IF
+            END IF
+          END IF
+        END DO
+        ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
+        OVCOUNTLOG(I) = .FALSE.
+      END DO OVC_2
+    END DO
 
-      ! Progress bar
-      CALL PROGRESS_BAR_HITMISS( ATTEMPTS, MAX_ATTEMPTS, OVCOUNTER )
+    ! Count overlapping particles
+    OVCOUNTER = COUNT( OVCOUNTLOG, DIM= 1 ) - 1 ! There can only be at most N-1 particles in overlapping configurations
 
-      ! Check number of overlapping particles
-      IF( OVCOUNTER == 0 ) THEN
-        ! Possible initial configuration
-        EXIT HIT_AND_MISS_NVT
-      ELSE
-        ! Attempt another configuration
-        CYCLE HIT_AND_MISS_NVT
-      END IF
+    ! Check number of overlapping particles
+    IF( OVCOUNTER == 0 ) THEN
+      ! Possible initial configuration
+      EXIT HIT_AND_MISS_NVT
+    ELSE
+      ! Attempt another configuration
+      CYCLE HIT_AND_MISS_NVT
+    END IF
 
-    END DO LOOP_VALIDATION_INITIAL_CONF
-
-  END IF
+  END DO LOOP_VALIDATION_INITIAL_CONF
 
 END DO HIT_AND_MISS_NVT
 
@@ -2383,7 +2375,7 @@ END SUBROUTINE CONFIG_PB
 ! *********************************************************************************************** !
 !          This subroutine generates a progress bar for the HIT-AND-MISS NVT algorithm.           !
 ! *********************************************************************************************** !
-SUBROUTINE PROGRESS_BAR_HITMISS( I, J, OVC )
+SUBROUTINE PROGRESS_BAR_HITMISS( I, OVC )
 
 USE ISO_FORTRAN_ENV
 
@@ -2392,38 +2384,29 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: I, J, K ! Counters
-INTEGER( KIND= INT64 ) :: OVC     ! Counter of overlapping particles
+INTEGER( KIND= INT64 ) :: I   ! Counters
+INTEGER( KIND= INT64 ) :: OVC ! Counter of overlapping particles
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 60 ) :: BAR ! Progress bar
-
-! Attempts
-K = I / J
+CHARACTER( LEN= 44 ) :: BAR ! Progress bar
 
 ! *********************************************************************************************** !
 ! Progress bar (FORMAT)                                                                           !
 ! *********************************************************************************************** !
-BAR = "Cycle #?????? | Attempt #???? | Overlapping Particles: ?????"
+BAR = "Cycle #?????? | Overlapping Particles: ?????"
 
 ! *********************************************************************************************** !
 ! Progress bar (replace character positions)                                                      !
 ! *********************************************************************************************** !
 WRITE( UNIT= BAR(8:13), FMT= "(I0.6)" ) I
-WRITE( UNIT= BAR(26:29), FMT= "(I0.4)" ) K
-WRITE( UNIT= BAR(56:60), FMT= "(I0.5)" ) OVC
+WRITE( UNIT= BAR(40:44), FMT= "(I0.5)" ) OVC
 
 ! *********************************************************************************************** !
 ! Print progress bar                                                                              !
 ! *********************************************************************************************** !
-IF( I >= 1000 ) THEN
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A60,A65)", ADVANCE= "NO" ) CHAR(13), BAR, " (Too many attempts! Try decreasing the"// &
-  &                                                                             " initial packing fraction)"
-ELSE
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A60)", ADVANCE= "NO" ) CHAR(13), BAR
-END IF
+WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A60)", ADVANCE= "NO" ) CHAR(13), BAR
 
 ! *********************************************************************************************** !
 ! Flush standard output unit                                                                      !
