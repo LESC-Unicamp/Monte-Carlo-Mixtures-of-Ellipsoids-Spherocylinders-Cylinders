@@ -2383,33 +2383,99 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: I   ! Counters
-INTEGER( KIND= INT64 ) :: OVC ! Counter of overlapping particles
+INTEGER( KIND= INT64 ) :: I    ! Counters
+INTEGER( KIND= INT64 ) :: OVC  ! Counter of overlapping particles
+INTEGER( KIND= INT64 ) :: AUX1 ! Auxiliar
+INTEGER( KIND= INT64 ) :: AUX2 ! Auxiliar
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 49 ) :: BAR ! Progress bar
+CHARACTER( LEN= 59 ) :: BAR  ! Progress bar
+CHARACTER( LEN= 02 ) :: STR1 ! String size
+CHARACTER( LEN= 08 ) :: STR2 ! String size
 
-! *********************************************************************************************** !
-! Progress bar (FORMAT)                                                                           !
-! *********************************************************************************************** !
-BAR = "Attempts: ??????? | Overlapping Particles: ?????"
+! Initialization
+AUX1 = 0
+AUX2 = 0
 
-! *********************************************************************************************** !
-! Progress bar (replace character positions)                                                      !
-! *********************************************************************************************** !
-WRITE( UNIT= BAR(11:17), FMT= "(I0.7)" ) I
-WRITE( UNIT= BAR(44:49), FMT= "(I0.5)" ) OVC
+! Progress bar (FORMAT)
+IF( I < 10 ) THEN
+  AUX1 = 0
+  BAR(1:(12+AUX1)) = "Attempts: ? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I1)" ) I
+ELSE IF( I < 100 ) THEN
+  AUX1 = 1
+  BAR(1:(12+AUX1)) = "Attempts: ?? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I2)" ) I
+ELSE IF( I < 1000 ) THEN
+  AUX1 = 2
+  BAR(1:(12+AUX1)) = "Attempts: ??? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I3)" ) I
+ELSE IF( I < 10000 ) THEN
+  AUX1 = 3
+  BAR(1:(12+AUX1)) = "Attempts: ???? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I4)" ) I
+ELSE IF( I < 100000 ) THEN
+  AUX1 = 4
+  BAR(1:(12+AUX1)) = "Attempts: ????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I5)" ) I
+ELSE IF( I < 1000000 ) THEN
+  AUX1 = 5
+  BAR(1:(12+AUX1)) = "Attempts: ?????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I6)" ) I
+ELSE IF( I < 10000000 ) THEN
+  AUX1 = 6
+  BAR(1:(12+AUX1)) = "Attempts: ??????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I7)" ) I
+ELSE IF( I < 100000000 ) THEN
+  AUX1 = 7
+  BAR(1:(12+AUX1)) = "Attempts: ???????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I8)" ) I
+ELSE IF( I < 1000000000 ) THEN
+  AUX1 = 8
+  BAR(1:(12+AUX1)) = "Attempts: ????????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I9)" ) I
+ELSE IF( I >= 1000000000 ) THEN
+  AUX1 = 10
+  BAR(1:(12+AUX1)) = "Attempts: > 1 billion "
+END IF
+IF( OVC < 10 ) THEN
+  AUX2 = 0
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: ?"
+  WRITE( UNIT= BAR((38+AUX1):(38+AUX1+AUX2)), FMT= "(I1)" ) OVC
+ELSE IF( OVC < 100 ) THEN
+  AUX2 = 1
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: ??"
+  WRITE( UNIT= BAR((38+AUX1):(38+AUX1+AUX2)), FMT= "(I2)" ) OVC
+ELSE IF( OVC < 1000 ) THEN
+  AUX2 = 2
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: ???"
+  WRITE( UNIT= BAR((38+AUX1):(38+AUX1+AUX2)), FMT= "(I3)" ) OVC
+ELSE IF( OVC < 10000 ) THEN
+  AUX2 = 3
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: ????"
+  WRITE( UNIT= BAR((38+AUX1):(38+AUX1+AUX2)), FMT= "(I4)" ) OVC
+ELSE IF( OVC < 100000 ) THEN
+  AUX2 = 4
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: ?????"
+  WRITE( UNIT= BAR((38+AUX1):(38+AUX1+AUX2)), FMT= "(I5)" ) OVC
+ELSE IF( OVC < 1000000 ) THEN
+  AUX2 = 5
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: ??????"
+  WRITE( UNIT= BAR((38+AUX1):(38+AUX1+AUX2)), FMT= "(I6)" ) OVC
+ELSE IF( OVC >= 1000000 ) THEN
+  AUX2 = 10
+  BAR((13+AUX1):(38+AUX1+AUX2)) = "| Overlapping Particles: > 1 million"
+END IF
+BAR((39+AUX1+AUX2):59) = REPEAT( " ", ( (20 - AUX1 - AUX2) + 1 ) )
 
-! *********************************************************************************************** !
-! Print progress bar                                                                              !
-! *********************************************************************************************** !
-WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A49)", ADVANCE= "NO" ) CHAR(13), BAR
+! Print progress bar
+WRITE( STR1, "(I0.2)" ) 38 + AUX1 + AUX2 + 1
+STR2 = "(A1,A"//TRIM( STR1 )//")"
+WRITE( UNIT= OUTPUT_UNIT, FMT= STR2, ADVANCE= "NO" ) CHAR(13), BAR(1:(38+AUX1+AUX2+1))
 
-! *********************************************************************************************** !
-! Flush standard output unit                                                                      !
-! *********************************************************************************************** !
+! Flush standard output unit
 FLUSH( UNIT= OUTPUT_UNIT )
 
 RETURN
