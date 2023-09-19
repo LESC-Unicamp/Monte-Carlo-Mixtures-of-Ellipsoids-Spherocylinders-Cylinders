@@ -776,6 +776,13 @@ HIT_AND_MISS_NVT: DO
       END IF
     END IF
 
+    ! Set minimum translational displacement
+    IF( MAXVAL( DIAMETER ) <= MAXVAL( LENGTH ) ) THEN
+      IF( DRMAX <= MAXVAL( LENGTH ) ) DRMAX = MAXVAL( LENGTH )
+    ELSE
+      IF( DRMAX <= MAXVAL( DIAMETER ) ) DRMAX = MAXVAL( DIAMETER )
+    END IF
+
     ! Acceptance ratio (rotation)
     IF( MOVR > 0 ) THEN
       RATIO = DBLE( NACCR ) / DBLE( MOVR )
