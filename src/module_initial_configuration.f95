@@ -1075,30 +1075,30 @@ CALL SLEEP( 1 )
 ! *********************************************************************************************** !
 ! Monte Carlo parameters (NPT Simulation)                                                         !
 ! *********************************************************************************************** !
-MOV_TRANS         = .FALSE.             ! Translational move selector           (initial value)
-MOV_ROT           = .FALSE.             ! Rotational move selector              (initial value)
-MOV_VOL_I         = .FALSE.             ! Volume move selector                  (initial value)
-MOV_VOL_A         = .FALSE.             ! Volume move selector                  (initial value)
-DRMAX             = DRMAX_INIT          ! Maximum translational displacement    (initial value)
-ANGMAX            = ANGMAX_INIT         ! Maximum rotational displacement       (initial value)
-DVMAXISO          = DVMAXISO_INIT       ! Maximum isovolumetric displacement    (initial value)
-DVMAXANI          = DVMAXANISO_INIT     ! Maximum anisovolumetric displacement  (initial value)
-NACCT             = 0                   ! Translational move acceptance counter (initial value)
-NACCR             = 0                   ! Rotational move acceptance counter    (initial value)
-NACCVI            = 0                   ! Volumetric move acceptance counter    (initial value)
-NACCVA            = 0                   ! Volumetric move acceptance counter    (initial value)
-MOVT              = 0                   ! Translational move counter            (initial value)
-MOVR              = 0                   ! Rotational move counter               (initial value)
-MOVVI             = 0                   ! Volume change counter                 (initial value)
-MOVVA             = 0                   ! Volume change counter                 (initial value)
-QMC(:,:)          = Q(:,:)              ! Quaternion algebra                    (initial value)
-RMC(:,:)          = R(:,:)              ! Position of particles                 (initial value)
-EMC(:,:)          = E(:,:)              ! Orientation of particles              (initial value)
-BOXLMC(:)         = BOX_LENGTH_NVT(:)   ! Box length                            (initial value)
-BOXLMC_I(:)       = BOX_LENGTH_NVT_I(:) ! Inverse of box length                 (initial value)
-BOXVMC_RND        = BOX_VOLUME_NVT      ! Box volume                            (initial value)
-ATTEMPTS          = 0                   ! Number of attempts                    (initial value)
-ETA_NPT           = P_FRACTION_NVT      ! Packing fraction                      (initial value)
+MOV_TRANS   = .FALSE.             ! Translational move selector           (initial value)
+MOV_ROT     = .FALSE.             ! Rotational move selector              (initial value)
+MOV_VOL_I   = .FALSE.             ! Volume move selector                  (initial value)
+MOV_VOL_A   = .FALSE.             ! Volume move selector                  (initial value)
+DRMAX       = DRMAX_INIT          ! Maximum translational displacement    (initial value)
+ANGMAX      = ANGMAX_INIT         ! Maximum rotational displacement       (initial value)
+DVMAXISO    = DVMAXISO_INIT       ! Maximum isovolumetric displacement    (initial value)
+DVMAXANI    = DVMAXANISO_INIT     ! Maximum anisovolumetric displacement  (initial value)
+NACCT       = 0                   ! Translational move acceptance counter (initial value)
+NACCR       = 0                   ! Rotational move acceptance counter    (initial value)
+NACCVI      = 0                   ! Volumetric move acceptance counter    (initial value)
+NACCVA      = 0                   ! Volumetric move acceptance counter    (initial value)
+MOVT        = 0                   ! Translational move counter            (initial value)
+MOVR        = 0                   ! Rotational move counter               (initial value)
+MOVVI       = 0                   ! Volume change counter                 (initial value)
+MOVVA       = 0                   ! Volume change counter                 (initial value)
+QMC(:,:)    = Q(:,:)              ! Quaternion algebra                    (initial value)
+RMC(:,:)    = R(:,:)              ! Position of particles                 (initial value)
+EMC(:,:)    = E(:,:)              ! Orientation of particles              (initial value)
+BOXLMC(:)   = BOX_LENGTH_NVT(:)   ! Box length                            (initial value)
+BOXLMC_I(:) = BOX_LENGTH_NVT_I(:) ! Inverse of box length                 (initial value)
+BOXVMC_RND  = BOX_VOLUME_NVT      ! Box volume                            (initial value)
+ATTEMPTS    = 0                   ! Number of attempts                    (initial value)
+ETA_NPT     = P_FRACTION_NVT      ! Packing fraction                      (initial value)
 
 ! Isobaric-Isothermal Monte Carlo Simulation
 NPT_SIMULATION: DO
@@ -1183,7 +1183,7 @@ NPT_SIMULATION: DO
       QM(:) = QMC(:,I) ! Quaternion
       EM(:) = EMC(:,I) ! Orientation
 
-      ! Translation Movement
+      ! Translational movement
       IF( MOV_TRANS ) THEN
         ! Random translation along x-axis
         CALL RANF(  )
@@ -1194,31 +1194,31 @@ NPT_SIMULATION: DO
         ! Random translation along z-axis
         CALL RANF(  )
         RN(3) = RM(3) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
-        ! Minimum Image Convention
+        ! Minimum image convention
         CALL MULTI_MATRIX( BOXLMC_I, RN, S12 )
         S12 = S12 - ANINT( S12 )
         CALL MULTI_MATRIX( BOXLMC, S12, RN )
-      ! No Translation
+      ! No translation
       ELSE IF( .NOT. MOV_TRANS ) THEN
         RN(:) = RM(:)
       END IF
 
-      ! Rotation Movement
+      ! Rotational movement
       IF( MOV_ROT ) THEN
         ! Random Composed Unit Quaternion
         CALL COMPOSED_QUATERNION( QM, QN, ANGMAX )
         ! Active transformation
         CALL ACTIVE_TRANSFORMATION( AXISZ, QN, EN )
-      ! No Rotation
+      ! No rotation
       ELSE IF( .NOT. MOV_ROT ) THEN
         QN(:) = QM(:)
         EN(:) = EM(:)
       END IF
 
-      ! Overlap Check
+      ! Overlap check
       CALL CHECK_OVERLAP( CI, I, QN, EN, RN, CD, BOXLMC, BOXLMC_I, OVERLAP )
 
-      ! Acceptance Criterion
+      ! Acceptance criterion
       IF( .NOT. OVERLAP ) THEN
         ! System configuration update
         RMC(:,I) = RN(:) ! Update position
@@ -1239,6 +1239,7 @@ NPT_SIMULATION: DO
 
     END DO
 
+  ! Volume change (isotropic or anisotropic)
   ELSE IF( MOV_VOL_I .OR. MOV_VOL_A ) THEN
 
     ! Assignment of previous configuration (microstate m)   
@@ -1268,17 +1269,17 @@ NPT_SIMULATION: DO
       CALL RANF(  )
       COMPONENT = INT( RANDOM_N * 6.D0 ) + 1
       IF( COMPONENT == 1 ) THEN
-        COMPONENT = 1 ! x vector
+        COMPONENT = 1 ! XX component
       ELSE IF( COMPONENT == 2 ) THEN
-        COMPONENT = 4 ! y vector
+        COMPONENT = 4 ! YX component
       ELSE IF( COMPONENT == 3 ) THEN
-        COMPONENT = 5 ! y vector
+        COMPONENT = 5 ! YY component
       ELSE IF( COMPONENT == 4 ) THEN
-        COMPONENT = 7 ! z vector
+        COMPONENT = 7 ! ZX component
       ELSE IF( COMPONENT == 5 ) THEN
-        COMPONENT = 8 ! z vector
+        COMPONENT = 8 ! ZY component
       ELSE IF( COMPONENT == 6 ) THEN
-        COMPONENT = 9 ! z vector
+        COMPONENT = 9 ! ZZ component
       END IF
       BOXLN(:) = BOXLM(:)
       ! Random factor
@@ -1335,13 +1336,13 @@ NPT_SIMULATION: DO
     ! Box not too distorted
     IF( .NOT. IGNORE ) THEN
 
-      ! Enthalpy (weighing function)
+      ! Enthalpy change (weighing function)
       HNM = ( PRESS_RND * ( BOXVN - BOXVM ) ) - ( DBLE( N_PARTICLES ) * DLOG( BOXVN / BOXVM ) )
 
       ! Random number
       CALL RANF(  )
 
-      ! Enthalpy Criterion
+      ! Enthalpy criterion
       IF( DEXP( - HNM ) >= RANDOM_N ) THEN
 
         ! System configuration
@@ -1407,7 +1408,7 @@ NPT_SIMULATION: DO
                   RIJ(1) = RJ(1) - RI(1)
                   RIJ(2) = RJ(2) - RI(2)
                   RIJ(3) = RJ(3) - RI(3)
-                  ! Minimum Image Convention
+                  ! Minimum image convention
                   CALL MULTI_MATRIX( BOXLN_I, RIJ, S12 )
                   S12 = S12 - ANINT( S12 )
                   CALL MULTI_MATRIX( BOXLN, S12, RIJ )
@@ -1418,7 +1419,7 @@ NPT_SIMULATION: DO
                   CUTOFF_D = CUTOFF_D * CUTOFF_D
                   ! Preliminary test (circumscribing spheres)
                   IF( RIJSQ <= CUTOFF_D ) THEN
-                    ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+                    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
                     IF( GEOM_SELEC(1) ) THEN
                       CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
                       ! Overlap criterion
@@ -1426,7 +1427,7 @@ NPT_SIMULATION: DO
                         ! Overlap detected
                         EXIT LOOP_OVERLAP_NPT
                       END IF
-                    ! Overlap test for spherocylinders (Vega-Lago Method)
+                    ! Overlap test for spherocylinders (Vega-Lago method)
                     ELSE IF( GEOM_SELEC(2) ) THEN
                       CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                       ! Overlap criterion
@@ -1434,7 +1435,7 @@ NPT_SIMULATION: DO
                         ! Overlap detected
                         EXIT LOOP_OVERLAP_NPT
                       END IF
-                    ! Overlap test for cylinders (Lopes et al. Method)
+                    ! Overlap test for cylinders (modified Lopes et al. Method)
                     ELSE IF( GEOM_SELEC(3) ) THEN
                       ! Preliminary test (circumscribing spherocylinders)
                       OVERLAP_PRELIMINAR = .FALSE.
@@ -1495,7 +1496,7 @@ NPT_SIMULATION: DO
                 RIJ(1) = RJ(1) - RI(1)
                 RIJ(2) = RJ(2) - RI(2)
                 RIJ(3) = RJ(3) - RI(3)
-                ! Minimum Image Convention
+                ! Minimum image convention
                 CALL MULTI_MATRIX( BOXLN_I, RIJ, S12 )
                 S12 = S12 - ANINT( S12 )
                 CALL MULTI_MATRIX( BOXLN, S12, RIJ )
@@ -1506,7 +1507,7 @@ NPT_SIMULATION: DO
                 CUTOFF_D = CUTOFF_D * CUTOFF_D
                 ! Preliminary test (circumscribing spheres)
                 IF( RIJSQ <= CUTOFF_D ) THEN
-                  ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+                  ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
                   IF( GEOM_SELEC(1) ) THEN
                     CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
                     ! Overlap criterion
@@ -1514,7 +1515,7 @@ NPT_SIMULATION: DO
                       ! Overlap detected
                       EXIT LOOP_OVERLAP_NPT
                     END IF
-                  ! Overlap test for spherocylinders (Vega-Lago Method)
+                  ! Overlap test for spherocylinders (Vega-Lago method)
                   ELSE IF( GEOM_SELEC(2) ) THEN
                     CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                     ! Overlap criterion
@@ -1522,7 +1523,7 @@ NPT_SIMULATION: DO
                       ! Overlap detected
                       EXIT LOOP_OVERLAP_NPT
                     END IF
-                  ! Overlap test for cylinders (Lopes et al. Method)
+                  ! Overlap test for cylinders (modified Lopes et al. Method)
                   ELSE IF( GEOM_SELEC(3) ) THEN
                     ! Preliminary test (circumscribing spherocylinders)
                     OVERLAP_PRELIMINAR = .FALSE.
@@ -1551,7 +1552,7 @@ NPT_SIMULATION: DO
 
         END DO LOOP_OVERLAP_NPT
 
-        ! Acceptance Criterion
+        ! Acceptance criterion
         IF( .NOT. OVERLAP ) THEN
           ! Assigns the simulation box properties of a trial volume change to the system configuration.
           BOXVMC_RND  = BOXVN      ! Update volume
@@ -1574,7 +1575,7 @@ NPT_SIMULATION: DO
             ! Calculate the new reciprocal box basis vectors
             CALL INVERSE_COF( BOXLMC, BOXLMC_I, BOXVMC_RND )
             DO K = 1, N_PARTICLES
-              ! Minimum Image Convention
+              ! Minimum image convention
               CALL MULTI_MATRIX( BOXLMC_I, RMC(:,K), S12 )
               S12 = S12 - ANINT( S12 )
               CALL MULTI_MATRIX( BOXLMC, S12, RMC(:,K) )
@@ -1750,7 +1751,7 @@ NPT_SIMULATION: DO
   ! Iteration
   ATTEMPTS = ATTEMPTS + 1
 
-  ! Adjustment of maximum displacement (Translation, Rotation, and Volume Change)
+  ! Adjustment of maximum displacement (translation, rotation, and volume change)
   IF( MOD( ATTEMPTS, N_ADJUST_INIT ) == 0 ) THEN
 
     ! Translational adjustment
@@ -1794,7 +1795,7 @@ NPT_SIMULATION: DO
     END IF
 
     ! Volumetric adjustment (isotropic)
-    IF( MOVVI >= 25 ) THEN
+    IF( MOVVI >= 100 ) THEN
       ! Acceptance ratio (non-overlapping microstates over sampled microstates)
       RATIO = DBLE( NACCVI ) / DBLE( MOVVI )
       ! Volumetric adjustment
@@ -1809,7 +1810,7 @@ NPT_SIMULATION: DO
     END IF
 
     ! Volumetric adjustment (anisotropic)
-    IF( MOVVA >= 25 ) THEN
+    IF( MOVVA >= 100 ) THEN
       ! Acceptance ratio (non-overlapping microstates over sampled microstates)
       RATIO = DBLE( NACCVA ) / DBLE( MOVVA )
       ! Volumetric adjustment
@@ -1875,7 +1876,7 @@ NPT_SIMULATION: DO
 
 END DO NPT_SIMULATION
 
-CALL SLEEP( 3 )
+CALL SLEEP( 1 )
 
 ! *********************************************************************************************** !
 ! Monte Carlo parameters (NVT Simulation | Fixing the packing fraction)                           !
