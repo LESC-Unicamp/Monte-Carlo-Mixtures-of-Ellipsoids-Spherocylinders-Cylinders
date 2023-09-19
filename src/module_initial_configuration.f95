@@ -1066,7 +1066,7 @@ ELSE IF( ATTEMPTS > 1 ) THEN
   WRITE( *, "(3G0)" ) "Possible random initial configuration found by the hit-and-miss algorithm with ", &
   &                   ATTEMPTS, " attempts."
 END IF
-CALL SLEEP( 3 )
+CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0,G0.5,G0)" ) "Now running an NPT simulation up to the target packing fraction of ", PACKING_F,"..."
 WRITE( *, "(G0)" ) " "
