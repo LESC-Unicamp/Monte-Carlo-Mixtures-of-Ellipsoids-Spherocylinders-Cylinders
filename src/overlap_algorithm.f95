@@ -573,6 +573,22 @@ IF( DABS( CC ) < 1.D-10 ) THEN
     ! Overlap criterion
     IF( RVL <= SHORTEST_DSQ ) THEN
       OVERLAP_SPC = .TRUE.
+      RETURN
+    END IF
+    ! Take the extreme side of particle j
+    DLAMBDA = DSIGN( HALFLENGTH(2), RIJEJ )
+    ! Closest point between particle j and particle i
+    DMU = ( DLAMBDA * EIEJ ) - RIJEI
+    ! Take the extreme side of particle i if λ' > L/2
+    IF( DABS( DMU ) > HALFLENGTH(1) ) THEN
+      DMU = DSIGN( HALFLENGTH(1), DMU )
+    END IF
+    ! Shortest distance (squared)
+    RVL = RIJSQ + ( DLAMBDA * DLAMBDA ) + ( DMU * DMU ) - ( 2.D0 * DLAMBDA * DMU * EIEJ ) + ( 2.D0 * DMU * RIJEJ ) - &
+    &     ( 2.D0 * DLAMBDA * RIJEI )
+    IF( RVL <= SHORTEST_DSQ ) THEN
+      OVERLAP_SPC = .TRUE.
+      RETURN
     END IF
     ! Return immediately
     RETURN
