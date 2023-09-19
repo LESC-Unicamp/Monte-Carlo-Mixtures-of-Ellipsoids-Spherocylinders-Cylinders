@@ -1841,13 +1841,13 @@ NPT_SIMULATION: DO
   IF( ETA_NPT >= PACKING_F .AND. ATTEMPTS == 1 ) THEN
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) " "
-    WRITE( *, "(3G0,G0.5)" ) "Target packing fraction reached after ", ATTEMPTS, " attempt! Final value: ", ETA_NPT
+    WRITE( *, "(3G0,G0.7)" ) "Target packing fraction reached after ", ATTEMPTS, " attempt! Final value: ", ETA_NPT
     WRITE( *, "(G0)" ) " "
     EXIT NPT_SIMULATION
   ELSE IF( ETA_NPT >= PACKING_F .AND. ATTEMPTS > 1 ) THEN
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) " "
-    WRITE( *, "(3G0,G0.5)" ) "Target packing fraction reached after ", ATTEMPTS, " attempts! Final value: ", ETA_NPT
+    WRITE( *, "(3G0,G0.7)" ) "Target packing fraction reached after ", ATTEMPTS, " attempts! Final value: ", ETA_NPT
     WRITE( *, "(G0)" ) " "
     EXIT NPT_SIMULATION
   END IF
@@ -1881,15 +1881,15 @@ CALL SLEEP( 1 )
 ! *********************************************************************************************** !
 ! Monte Carlo parameters (NVT Simulation | Fixing the packing fraction)                           !
 ! *********************************************************************************************** !
-MOV_TRANS         = .FALSE.           ! Translational move selector           (initial value)
-MOV_ROT           = .FALSE.           ! Rotational move selector              (initial value)
-DRMAX             = DRMAX_INIT        ! Maximum translational displacement    (initial value)
-ANGMAX            = ANGMAX_INIT       ! Maximum rotational displacement       (initial value)
-NACCT             = 0                 ! Translational move acceptance counter (initial value)
-NACCR             = 0                 ! Rotational move acceptance counter    (initial value)
-MOVT              = 0                 ! Translational move counter            (initial value)
-MOVR              = 0                 ! Rotational move counter               (initial value)
-ATTEMPTS          = 0                 ! Number of attempts                    (initial value)
+MOV_TRANS         = .FALSE.     ! Translational move selector           (initial value)
+MOV_ROT           = .FALSE.     ! Rotational move selector              (initial value)
+DRMAX             = DRMAX_INIT  ! Maximum translational displacement    (initial value)
+ANGMAX            = ANGMAX_INIT ! Maximum rotational displacement       (initial value)
+NACCT             = 0           ! Translational move acceptance counter (initial value)
+NACCR             = 0           ! Rotational move acceptance counter    (initial value)
+MOVT              = 0           ! Translational move counter            (initial value)
+MOVR              = 0           ! Rotational move counter               (initial value)
+ATTEMPTS          = 0           ! Number of attempts                    (initial value)
 
 ! Scale factor
 SCALE_FACTOR = ETA_NPT / PACKING_F
@@ -1905,10 +1905,10 @@ CALL INVERSE_COF( BOX_LENGTH, BOX_LENGTH_I, BOXVMC )
 IF( ETA_NPT > PACKING_F ) THEN
 
   ! Summary
-  WRITE( *, "(G0,G0.5,G0,G0.5,G0)" ) "Attempting to fix the packing fraction of ", ETA_NPT, &
+  WRITE( *, "(G0,G0.7,G0,G0.7,G0)" ) "Attempting to fix the packing fraction of ", ETA_NPT, &
   &                                  " obtained in the NPT simulation to the target value of ", PACKING_F, "..."
   WRITE( *, "(G0)" ) " "
-  CALL SLEEP( 2 )
+  CALL SLEEP( 1 )
 
   LOOP_PFRACTION_FIX: DO
 
@@ -1970,7 +1970,7 @@ IF( ETA_NPT > PACKING_F ) THEN
               RIJ(1) = RJ(1) - RI(1)
               RIJ(2) = RJ(2) - RI(2)
               RIJ(3) = RJ(3) - RI(3)
-              ! Minimum Image Convention
+              ! Minimum image convention
               CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
               S12 = S12 - ANINT( S12 )
               CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
@@ -1981,7 +1981,7 @@ IF( ETA_NPT > PACKING_F ) THEN
               CUTOFF_D = CUTOFF_D * CUTOFF_D
               ! Preliminary test (circumscribing spheres)
               IF( RIJSQ <= CUTOFF_D ) THEN
-                ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+                ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
                 IF( GEOM_SELEC(1) ) THEN
                   CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
                   ! Overlap criterion
@@ -1989,7 +1989,7 @@ IF( ETA_NPT > PACKING_F ) THEN
                     ! Overlap detected
                     EXIT LOOP_OVERLAP_NPT_FIX
                   END IF
-                ! Overlap test for spherocylinders (Vega-Lago Method)
+                ! Overlap test for spherocylinders (Vega-Lago method)
                 ELSE IF( GEOM_SELEC(2) ) THEN
                   CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                   ! Overlap criterion
@@ -1997,7 +1997,7 @@ IF( ETA_NPT > PACKING_F ) THEN
                     ! Overlap detected
                     EXIT LOOP_OVERLAP_NPT_FIX
                   END IF
-                ! Overlap test for cylinders (Lopes et al. Method)
+                ! Overlap test for cylinders (modified Lopes et al. method)
                 ELSE IF( GEOM_SELEC(3) ) THEN
                   ! Preliminary test (circumscribing spherocylinders)
                   OVERLAP_PRELIMINAR = .FALSE.
@@ -2058,7 +2058,7 @@ IF( ETA_NPT > PACKING_F ) THEN
             RIJ(1) = RJ(1) - RI(1)
             RIJ(2) = RJ(2) - RI(2)
             RIJ(3) = RJ(3) - RI(3)
-            ! Minimum Image Convention
+            ! Minimum image convention
             CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
             S12 = S12 - ANINT( S12 )
             CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
@@ -2069,7 +2069,7 @@ IF( ETA_NPT > PACKING_F ) THEN
             CUTOFF_D = CUTOFF_D * CUTOFF_D
             ! Preliminary test (circumscribing spheres)
             IF( RIJSQ <= CUTOFF_D ) THEN
-              ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+              ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
               IF( GEOM_SELEC(1) ) THEN
                 CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
                 ! Overlap criterion
@@ -2077,7 +2077,7 @@ IF( ETA_NPT > PACKING_F ) THEN
                   ! Overlap detected
                   EXIT LOOP_OVERLAP_NPT_FIX
                 END IF
-              ! Overlap test for spherocylinders (Vega-Lago Method)
+              ! Overlap test for spherocylinders (Vega-Lago method)
               ELSE IF( GEOM_SELEC(2) ) THEN
                 CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                 ! Overlap criterion
@@ -2085,7 +2085,7 @@ IF( ETA_NPT > PACKING_F ) THEN
                   ! Overlap detected
                   EXIT LOOP_OVERLAP_NPT_FIX
                 END IF
-              ! Overlap test for cylinders (Lopes et al. Method)
+              ! Overlap test for cylinders (modified Lopes et al. method)
               ELSE IF( GEOM_SELEC(3) ) THEN
                 ! Preliminary test (circumscribing spherocylinders)
                 OVERLAP_PRELIMINAR = .FALSE.
@@ -2114,12 +2114,15 @@ IF( ETA_NPT > PACKING_F ) THEN
 
     END DO LOOP_OVERLAP_NPT_FIX
 
+    ! Summary
+    CALL PROGRESS_BAR_RND( ATTEMPTS )
+
     ! Packing fraction fixed
     IF( .NOT. OVERLAP ) THEN
 
       EXIT LOOP_PFRACTION_FIX
 
-    ! Attempt fixing the packing fraction with a new configuration of particles
+    ! Attempt to fix the packing fraction with a new configuration of particles
     ELSE IF( OVERLAP ) THEN
 
       ! Displace particles (constant volume)
@@ -2186,7 +2189,7 @@ IF( ETA_NPT > PACKING_F ) THEN
         QM(:) = QMC(:,I) ! Quaternion
         EM(:) = EMC(:,I) ! Orientation
 
-        ! Translation Movement
+        ! Translational movement
         IF( MOV_TRANS ) THEN
           ! Random translation along x-axis
           CALL RANF(  )
@@ -2197,7 +2200,7 @@ IF( ETA_NPT > PACKING_F ) THEN
           ! Random translation along z-axis
           CALL RANF(  )
           RN(3) = RM(3) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
-          ! Minimum Image Convention
+          ! Minimum image convention
           CALL MULTI_MATRIX( BOXLMC_I, RN, S12 )
           S12 = S12 - ANINT( S12 )
           CALL MULTI_MATRIX( BOXLMC, S12, RN )
@@ -2206,7 +2209,7 @@ IF( ETA_NPT > PACKING_F ) THEN
           RN(:) = RM(:)
         END IF
 
-        ! Rotation Movement
+        ! Rotational movement
         IF( MOV_ROT ) THEN
           ! Random Composed Unit Quaternion
           CALL COMPOSED_QUATERNION( QM, QN, ANGMAX )
@@ -2218,10 +2221,10 @@ IF( ETA_NPT > PACKING_F ) THEN
           EN(:) = EM(:)
         END IF
 
-        ! Overlap Check
+        ! Overlap check
         CALL CHECK_OVERLAP( CI, I, QN, EN, RN, CD, BOXLMC, BOXLMC_I, OVERLAP )
 
-        ! Acceptance Criterion
+        ! Acceptance criterion
         IF( .NOT. OVERLAP ) THEN
           ! System configuration update
           RMC(:,I) = RN(:) ! Update position
@@ -2242,7 +2245,7 @@ IF( ETA_NPT > PACKING_F ) THEN
 
       END DO
 
-      ! Adjustment of maximum displacement (Translation and Rotation)
+      ! Adjustment of maximum displacement (translation and rotation)
       IF( MOD( (MOVT + MOVR), (N_ADJUST_INIT * N_PARTICLES) ) == 0 ) THEN
 
         ! Acceptance ratio (translation)
@@ -2276,9 +2279,6 @@ IF( ETA_NPT > PACKING_F ) THEN
 
       END IF
 
-      ! Summary
-      CALL PROGRESS_BAR_RND( ATTEMPTS )
-
       CYCLE LOOP_PFRACTION_FIX
 
     END IF
@@ -2291,18 +2291,18 @@ END IF
 DEALLOCATE( RMCV, QPROT, RPROT, EPROT )
 
 ! Summary
-IF( ATTEMPTS > 1 ) THEN
-  WRITE( *, "(G0)" ) " "
-  WRITE( *, "(G0)" ) " "
-END IF
 IF( ETA_NPT > PACKING_F .AND. ATTEMPTS == 1 ) THEN
+  WRITE( *, "(G0)" ) " "
+  WRITE( *, "(G0)" ) " "
   WRITE( *, "(G0,G0,G0)" ) "Packing fraction fixed after ", ATTEMPTS, " attempt."
   WRITE( *, "(G0)" ) " "
 ELSE IF( ETA_NPT > PACKING_F .AND. ATTEMPTS > 1 ) THEN
+  WRITE( *, "(G0)" ) " "
+  WRITE( *, "(G0)" ) " "
   WRITE( *, "(G0,G0,G0)" ) "Packing fraction fixed after ", ATTEMPTS, " attempts."
   WRITE( *, "(G0)" ) " "
 END IF
-CALL SLEEP( 2 )
+CALL SLEEP( 1 )
 
 RETURN
 
@@ -2586,7 +2586,7 @@ END SUBROUTINE PROGRESS_BAR_NPT
 ! *********************************************************************************************** !
 !                 This subroutine generates a progress bar for the RND algorithm.                 !
 ! *********************************************************************************************** !
-SUBROUTINE PROGRESS_BAR_RND( J )
+SUBROUTINE PROGRESS_BAR_RND( I )
 
 USE ISO_FORTRAN_ENV
 
@@ -2595,31 +2595,65 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: J ! Counter
+INTEGER( KIND= INT64 ) :: I    ! Counter
+INTEGER( KIND= INT64 ) :: AUX1 ! Auxiliar
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 16 ) :: BAR ! Progress bar
+CHARACTER( LEN= 22 ) :: BAR  ! Progress bar
+CHARACTER( LEN= 02 ) :: STR1 ! String size
+CHARACTER( LEN= 08 ) :: STR2 ! String size
 
-! *********************************************************************************************** !
-! Progress bar (FORMAT)                                                                           !
-! *********************************************************************************************** !
-BAR = "Attempts: ??????"
+! Progress bar (FORMAT)
+IF( I < 10 ) THEN
+  AUX1 = 0
+  BAR(1:(11+AUX1)) = "Attempts: ?"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I1)" ) I
+ELSE IF( I < 100 ) THEN
+  AUX1 = 1
+  BAR(1:(11+AUX1)) = "Attempts: ??"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I2)" ) I
+ELSE IF( I < 1000 ) THEN
+  AUX1 = 2
+  BAR(1:(11+AUX1)) = "Attempts: ???"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I3)" ) I
+ELSE IF( I < 10000 ) THEN
+  AUX1 = 3
+  BAR(1:(11+AUX1)) = "Attempts: ????"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I4)" ) I
+ELSE IF( I < 100000 ) THEN
+  AUX1 = 4
+  BAR(1:(11+AUX1)) = "Attempts: ?????"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I5)" ) I
+ELSE IF( I < 1000000 ) THEN
+  AUX1 = 5
+  BAR(1:(11+AUX1)) = "Attempts: ??????"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I6)" ) I
+ELSE IF( I < 10000000 ) THEN
+  AUX1 = 6
+  BAR(1:(11+AUX1)) = "Attempts: ???????"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I7)" ) I
+ELSE IF( I < 100000000 ) THEN
+  AUX1 = 7
+  BAR(1:(11+AUX1)) = "Attempts: ????????"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I8)" ) I
+ELSE IF( I < 1000000000 ) THEN
+  AUX1 = 8
+  BAR(1:(11+AUX1)) = "Attempts: ?????????"
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I9)" ) I
+ELSE IF( I >= 1000000000 ) THEN
+  AUX1 = 10
+  BAR(1:(11+AUX1)) = "Attempts: > 1 billion"
+END IF
+BAR((12+AUX1):22) = REPEAT( " ", ( (10 - AUX1) + 1 ) )
 
-! *********************************************************************************************** !
-! Progress bar (replace character positions)                                                      !
-! *********************************************************************************************** !
-WRITE( UNIT= BAR(11:16), FMT= "(I6.6)" ) J
+! Print progress bar
+WRITE( STR1, "(I0.2)" ) 11 + AUX1 + 1
+STR2 = "(A1,A"//TRIM( STR1 )//")"
+WRITE( UNIT= OUTPUT_UNIT, FMT= STR2, ADVANCE= "NO" ) CHAR(13), BAR(1:(11+AUX1+1))
 
-! *********************************************************************************************** !
-! Print progress bar                                                                              !
-! *********************************************************************************************** !
-WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A16)", ADVANCE= "NO" ) CHAR(13), BAR
-
-! *********************************************************************************************** !
-! Flush standard output unit                                                                      !
-! *********************************************************************************************** !
+! Flush standard output unit
 FLUSH( UNIT= OUTPUT_UNIT )
 
 RETURN
