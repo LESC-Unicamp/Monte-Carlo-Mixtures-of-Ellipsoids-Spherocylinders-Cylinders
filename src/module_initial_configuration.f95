@@ -2515,7 +2515,7 @@ REAL( KIND= REAL64 ) :: ETA_NPT, ETA ! Packing fraction
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 74 ) :: BAR  ! Progress bar
+CHARACTER( LEN= 78 ) :: BAR  ! Progress bar
 CHARACTER( LEN= 02 ) :: STR1 ! String size
 CHARACTER( LEN= 08 ) :: STR2 ! String size
 
@@ -2563,16 +2563,16 @@ ELSE IF( I >= 1000000000 ) THEN
   AUX1 = 10
   BAR(1:(12+AUX1)) = "Attempts: > 1 billion "
 END IF
-BAR((13+AUX1):(43+AUX1)) = "| Packing fraction: ?????????? "
-WRITE( UNIT= BAR((33+AUX1):(43+AUX1)), FMT= "(E10.4)" ) ETA_NPT
-BAR((44+AUX1):(63+AUX1)) = "(TARGET: ??????????)"
-WRITE( UNIT= BAR((53+AUX1):(62+AUX1)), FMT= "(E10.4)" ) ETA
-BAR((64+AUX1):74) = REPEAT( " ", ( (10 - AUX1) + 1 ) )
+BAR((13+AUX1):(45+AUX1)) = "| Packing fraction: ???????????? "
+WRITE( UNIT= BAR((33+AUX1):(44+AUX1)), FMT= "(E12.6)" ) ETA_NPT
+BAR((46+AUX1):(67+AUX1)) = "(TARGET: ????????????)"
+WRITE( UNIT= BAR((55+AUX1):(66+AUX1)), FMT= "(E12.6)" ) ETA
+BAR((68+AUX1):78) = REPEAT( " ", ( (10 - AUX1) + 1 ) )
 
 ! Print progress bar
-WRITE( STR1, "(I0.2)" ) 63 + AUX1 + 1
+WRITE( STR1, "(I0.2)" ) 67 + AUX1 + 1
 STR2 = "(A1,A"//TRIM( STR1 )//")"
-WRITE( UNIT= OUTPUT_UNIT, FMT= STR2, ADVANCE= "NO" ) CHAR(13), BAR(1:(63+AUX1+1))
+WRITE( UNIT= OUTPUT_UNIT, FMT= STR2, ADVANCE= "NO" ) CHAR(13), BAR(1:(67+AUX1+1))
 
 ! Flush standard output unit
 FLUSH( UNIT= OUTPUT_UNIT )
