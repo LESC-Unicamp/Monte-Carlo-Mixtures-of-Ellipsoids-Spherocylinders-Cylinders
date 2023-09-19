@@ -2503,7 +2503,8 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: I ! Counter
+INTEGER( KIND= INT64 ) :: I    ! Counter
+INTEGER( KIND= INT64 ) :: AUX1 ! Auxiliar
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -2513,86 +2514,66 @@ REAL( KIND= REAL64 ) :: ETA_NPT, ETA ! Packing fraction
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 67 ) :: BAR ! Progress bar
+CHARACTER( LEN= 74 ) :: BAR  ! Progress bar
+CHARACTER( LEN= 02 ) :: STR1 ! String size
+CHARACTER( LEN= 08 ) :: STR2 ! String size
 
-! *********************************************************************************************** !
-! Progress bar (FORMAT)                                                                           !
-! *********************************************************************************************** !
+! Initialization
+AUX1 = 0
+
+! Progress bar (FORMAT)
 IF( I < 10 ) THEN
-  BAR = "Attempts: ? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 0
+  BAR(1:(12+AUX1)) = "Attempts: ? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I1)" ) I
 ELSE IF( I < 100 ) THEN
-  BAR = "Attempts: ?? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 1
+  BAR(1:(12+AUX1)) = "Attempts: ?? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I2)" ) I
 ELSE IF( I < 1000 ) THEN
-  BAR = "Attempts: ??? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 2
+  BAR(1:(12+AUX1)) = "Attempts: ??? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I3)" ) I
 ELSE IF( I < 10000 ) THEN
-  BAR = "Attempts: ???? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 3
+  BAR(1:(12+AUX1)) = "Attempts: ???? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I4)" ) I
 ELSE IF( I < 100000 ) THEN
-  BAR = "Attempts: ????? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 4
+  BAR(1:(12+AUX1)) = "Attempts: ????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I5)" ) I
 ELSE IF( I < 1000000 ) THEN
-  BAR = "Attempts: ?????? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 5
+  BAR(1:(12+AUX1)) = "Attempts: ?????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I6)" ) I
 ELSE IF( I < 10000000 ) THEN
-  BAR = "Attempts: ??????? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 6
+  BAR(1:(12+AUX1)) = "Attempts: ??????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I7)" ) I
 ELSE IF( I < 100000000 ) THEN
-  BAR = "Attempts: ???????? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 7
+  BAR(1:(12+AUX1)) = "Attempts: ???????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I8)" ) I
 ELSE IF( I < 1000000000 ) THEN
-  BAR = "Attempts: ????????? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 8
+  BAR(1:(12+AUX1)) = "Attempts: ????????? "
+  WRITE( UNIT= BAR(11:(11+AUX1)), FMT= "(I9)" ) I
 ELSE IF( I >= 1000000000 ) THEN
-  BAR = "Attempts: ?????????? | Packing fraction: ??????? (TARGET = ???????)"
+  AUX1 = 10
+  BAR(1:(12+AUX1)) = "Attempts: > 1 billion "
 END IF
+BAR((13+AUX1):(43+AUX1)) = "| Packing fraction: ?????????? "
+WRITE( UNIT= BAR((33+AUX1):(43+AUX1)), FMT= "(E10.4)" ) ETA_NPT
+BAR((44+AUX1):(63+AUX1)) = "(TARGET: ??????????)"
+WRITE( UNIT= BAR((53+AUX1):(62+AUX1)), FMT= "(E10.4)" ) ETA
+BAR((64+AUX1):74) = REPEAT( " ", ( (10 - AUX1) + 1 ) )
 
-! *********************************************************************************************** !
-! Progress bar (replace character positions)                                                      !
-! *********************************************************************************************** !
-IF( I < 10 ) THEN
-  WRITE( UNIT= BAR(11:11), FMT= "(I1)" ) I
-  WRITE( UNIT= BAR(33:39), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(51:57), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 100 ) THEN
-  WRITE( UNIT= BAR(11:12), FMT= "(I2)" ) I
-  WRITE( UNIT= BAR(34:40), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(52:58), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 1000 ) THEN
-  WRITE( UNIT= BAR(11:13), FMT= "(I3)" ) I
-  WRITE( UNIT= BAR(35:41), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(53:59), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 10000 ) THEN
-  WRITE( UNIT= BAR(11:14), FMT= "(I4)" ) I
-  WRITE( UNIT= BAR(36:42), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(54:60), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 100000 ) THEN
-  WRITE( UNIT= BAR(11:15), FMT= "(I5)" ) I
-  WRITE( UNIT= BAR(37:43), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(55:61), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 1000000 ) THEN
-  WRITE( UNIT= BAR(11:16), FMT= "(I6)" ) I
-  WRITE( UNIT= BAR(38:44), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(56:62), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 10000000 ) THEN
-  WRITE( UNIT= BAR(11:17), FMT= "(I7)" ) I
-  WRITE( UNIT= BAR(39:45), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(57:63), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 100000000 ) THEN
-  WRITE( UNIT= BAR(11:18), FMT= "(I8)" ) I
-  WRITE( UNIT= BAR(40:46), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(58:64), FMT= "(F7.5)" ) ETA
-ELSE IF( I < 1000000000 ) THEN
-  WRITE( UNIT= BAR(11:19), FMT= "(I9)" ) I
-  WRITE( UNIT= BAR(41:47), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(59:65), FMT= "(F7.5)" ) ETA
-ELSE IF( I >= 1000000000 ) THEN
-  WRITE( UNIT= BAR(11:20), FMT= "(I10)" ) I
-  WRITE( UNIT= BAR(42:48), FMT= "(F7.5)" ) ETA_NPT
-  WRITE( UNIT= BAR(60:66), FMT= "(F7.5)" ) ETA
-END IF
+! Print progress bar
+WRITE( STR1, "(I0.2)" ) 63 + AUX1 + 1
+STR2 = "(A1,A"//TRIM( STR1 )//")"
+WRITE( UNIT= OUTPUT_UNIT, FMT= STR2, ADVANCE= "NO" ) CHAR(13), BAR(1:(63+AUX1+1))
 
-! *********************************************************************************************** !
-! Print progress bar                                                                              !
-! *********************************************************************************************** !
-WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A67)", ADVANCE= "NO" ) CHAR(13), BAR
-
-! *********************************************************************************************** !
-! Flush standard output unit                                                                      !
-! *********************************************************************************************** !
+! Flush standard output unit
 FLUSH( UNIT= OUTPUT_UNIT )
 
 RETURN
