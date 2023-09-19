@@ -2672,9 +2672,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 INTEGER( KIND= INT64 ) :: I, C ! Counter
 
-! *********************************************************************************************** !
-! Simple cubic structure                                                                          !
-! *********************************************************************************************** !
+! Simple cubic structure
 IF( CONFIG_SELEC(1) ) THEN
 
   ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
@@ -2757,9 +2755,7 @@ IF( CONFIG_SELEC(1) ) THEN
     CLOSE( 10 )
   END IF
 
-! *********************************************************************************************** !
-! Body-centered cubic structure                                                                   !
-! *********************************************************************************************** !
+! Body-centered cubic structure
 ELSE IF( CONFIG_SELEC(2) ) THEN
 
   ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
@@ -2842,9 +2838,7 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
     CLOSE( 10 )
   END IF
 
-! *********************************************************************************************** !
-! Face-centered cubic structure                                                                   !
-! *********************************************************************************************** !
+! Face-centered cubic structure
 ELSE IF( CONFIG_SELEC(3) ) THEN
 
   ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
@@ -2927,9 +2921,7 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
     CLOSE( 10 )
   END IF
 
-! *********************************************************************************************** !
-! Random cubic structure                                                                          !
-! *********************************************************************************************** !
+! Random cubic structure
 ELSE IF( CONFIG_SELEC(4) ) THEN
 
   ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
@@ -3012,9 +3004,7 @@ ELSE IF( CONFIG_SELEC(4) ) THEN
     CLOSE( 10 )
   END IF
 
-! *********************************************************************************************** !
-! Packed cubic box structure                                                                      !
-! *********************************************************************************************** !
+! Packed cubic box structure
 ELSE IF( CONFIG_SELEC(5) ) THEN
 
   ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
