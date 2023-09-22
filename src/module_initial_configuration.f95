@@ -809,10 +809,6 @@ HIT_AND_MISS_NVT: DO
   ! Iteration
   ATTEMPTS = ATTEMPTS + 1
 
-  ! ********************************************************************************************* !
-  ! Overlap check for the proposed initial configuration                                          !
-  ! ********************************************************************************************* !
-
   ! Initial configuration (partial)
   OPEN( UNIT= 55, FILE= "Initial_Configuration/OVITO/"//TRIM( DESCRIPTOR_DATE )//"/initconf_rnd_"// &
   &                     TRIM( DESCRIPTOR_FILE3 )//".xyz" )
@@ -835,6 +831,10 @@ HIT_AND_MISS_NVT: DO
   END IF
   FLUSH( 55 )
   CLOSE( 55 )
+
+  ! ********************************************************************************************* !
+  ! Overlap check for the proposed initial configuration                                          !
+  ! ********************************************************************************************* !
 
   ! Validation loop
   LOOP_VALIDATION_INITIAL_CONF: DO
@@ -2675,7 +2675,7 @@ INTEGER( KIND= INT64 ) :: I, C ! Counter
 ! Simple cubic structure
 IF( CONFIG_SELEC(1) ) THEN
 
-  ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
+  ! Initial configuration (OVITO) | Positions, orientations, and geometric details
   IF( MC_ENSEMBLE == "NVT" ) THEN
     OPEN( UNIT= 10, FILE= "Initial_Configuration/OVITO/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
     &                     "_initconf_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_sc_"// &
