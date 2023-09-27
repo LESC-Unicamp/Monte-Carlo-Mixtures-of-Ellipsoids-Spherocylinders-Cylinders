@@ -16,7 +16,11 @@ Luís Fernando Mercier Franco<br></p>
 
 - Added an instruction which undoes any rotation of the simulation box after performing a lattice reduction;
 
-- Added an option to enable the calculation of the intermolecular potential (perturbed system only). Molecular configurations are still defined by a purely repulsive hard-core potential.
+- Added an option to enable the calculation of the intermolecular potential (perturbed system only). Molecular configurations are still defined by a purely repulsive hard-core potential;
+
+- Added an overlap check between cylindrical and spherical particles;
+
+- Spherical particles now must be properly identified by the user.
 
 **Version 1.0.0**
 
