@@ -79,6 +79,7 @@ The authors make no warranties about the use of this software. The authors hold 
 | **Oblate Cylinders** | **Equilateral Cylinders** | **Prolate Cylinders** |
 | ![oblate_cyl](https://user-images.githubusercontent.com/73966482/220222417-9817f7b8-2905-44de-a75f-bb5723921b89.gif) | ![equilateral_cyl](https://user-images.githubusercontent.com/73966482/220222480-c467f205-8ca0-4434-b1ed-328b12710627.gif) | ![prolate_cyl](https://user-images.githubusercontent.com/73966482/220222442-54428487-292d-4050-9bb5-1a3db933ac3a.gif) |
 | | | |
+
 <font size="5">The mLCYL algorithm also searches for overlapping configurations between cylinders and spheres (<b>Version 1.1.0</b>).</font>
 
 <p align="justify">
