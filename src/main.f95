@@ -7,7 +7,7 @@
 !  The algorithm of Lopes et al. (J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti, 2021) !
 !         is used to search for molecular overlaps between cylinders after a trial move.          !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -15,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 11th, 2023                                        !
+!                                        August 25th, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                 J. W. Perram, M. S. Wertheim                                   !
 !                               J. Comput. Phys 15, 409-416 (1985)                                !
@@ -47,7 +47,6 @@
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
-
 PROGRAM MAIN
 
 ! USES FOUR MODULES: global variables, variable initialization, initial configuration, and directory creator
@@ -164,7 +163,7 @@ LOGICAL :: MOV_ROT            ! Rotation move selection : TRUE = movement select
 LOGICAL :: MOV_TRANS          ! Translation movement selection : TRUE = movement selected; FALSE = movement not selected
 LOGICAL :: MOV_VOL_I          ! Volumetric movement selection : TRUE = movement selected; FALSE = movement not selected
 LOGICAL :: MOV_VOL_A          ! Volumetric movement selection : TRUE = movement selected; FALSE = movement not selected
-LOGICAL :: IGNORE             ! Detects if a box deformation is valid or not : TRUE = ignore box deformation; FALSE = consider box deformation
+LOGICAL :: IGNORE_VOL_ATTEMPT ! Detects if a box deformation is valid or not : TRUE = ignore box deformation; FALSE = consider box deformation
 LOGICAL :: LATTICER           ! Detects if a lattice reduction is necessary : TRUE = lattice reduction; FALSE = box shape preserved
 LOGICAL :: FLAG               ! Generic TRUE/FALSE flag
 
@@ -173,39 +172,25 @@ WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 6 )//"NVT/NPT-MONTE CARLO SIMULATION OF MIXTURES"//REPEAT( " ", 7 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
 
-! *********************************************************************************************** !
-! Molecular geometry selection (see 'INITCONFIG' module)                                          !
-! *********************************************************************************************** !
+! Molecular geometry selection (see 'INITCONFIG' module)
 CALL GEOM_SELECTION(  )
 
-! *********************************************************************************************** !
-! Molecular configuration selection (see 'INITCONFIG' module)                                     !
-! *********************************************************************************************** !
+! Molecular configuration selection (see 'INITCONFIG' module)
 CALL CONFIG_SELECTION(  )
 
-! *********************************************************************************************** !
-! Initialization of Monte Carlo parameters (see 'INITVAR' module)                                 !
-! *********************************************************************************************** !
+! Initialization of Monte Carlo parameters (see 'INITVAR' module)
 CALL MONTECARLO_VAR(  )
 
-! *********************************************************************************************** !
-! Initialization of Inquiry/Control variables (see 'INITVAR' module)                              !
-! *********************************************************************************************** !
+! Initialization of Inquiry/Control variables (see 'INITVAR' module)
 CALL INQUERY_VAR(  )
 
-! *********************************************************************************************** !
-! Initialization of common variables (see 'INITVAR' module)                                       !
-! *********************************************************************************************** !
+! Initialization of common variables (see 'INITVAR' module)
 CALL COMMON_VAR(  )
 
-! *********************************************************************************************** !
-! Initialization of potential variables (see 'INITVAR' module)                                    !
-! *********************************************************************************************** !
+! Initialization of potential variables (see 'INITVAR' module)
 CALL POTENTIAL_VAR(  )
 
-! *********************************************************************************************** !
-! Pseudorandom number generator seed                                                              !
-! *********************************************************************************************** !
+! Pseudorandom number generator seed
 IF( FSEED ) THEN
   SEED = 123456789
 ELSE IF( .NOT. FSEED ) THEN
@@ -232,33 +217,24 @@ ALLOCATE( QPROT(0:3,N_PARTICLES) )
 ALLOCATE( RPROT(3,N_PARTICLES) )
 ALLOCATE( EPROT(3,N_PARTICLES) )
 
-! *********************************************************************************************** !
-! Atom ID (Required in some visualization and analysis software)                                  !
-! *********************************************************************************************** !
+! Atom ID (Required in some visualization and analysis software)
 ALLOCATE( INDEX_P(COMPONENTS) )
 DO C = 1, COMPONENTS
   INDEX_P(C) = C
 END DO
 
-! *********************************************************************************************** !
-! Unrotated reference orientation (Allen and Tildesley, 2nd Edition, pages 106-111)               !
-! *********************************************************************************************** !
-! X-axis
-AXISX(1) = 1.D0
-AXISX(2) = 0.D0
-AXISX(3) = 0.D0
-! Y-axis
-AXISY(1) = 0.D0
-AXISY(2) = 1.D0
-AXISY(3) = 0.D0
-! Z-axis
-AXISZ(1) = 0.D0
-AXISZ(2) = 0.D0
-AXISZ(3) = 1.D0
+! Unrotated reference orientation (Allen and Tildesley, 2nd Edition, pages 106-111)
+AXISX(1) = 1.D0 ! X-axis
+AXISX(2) = 0.D0 ! X-axis
+AXISX(3) = 0.D0 ! X-axis
+AXISY(1) = 0.D0 ! Y-axis
+AXISY(2) = 1.D0 ! Y-axis
+AXISY(3) = 0.D0 ! Y-axis
+AXISZ(1) = 0.D0 ! Z-axis
+AXISZ(2) = 0.D0 ! Z-axis
+AXISZ(3) = 1.D0 ! Z-axis
 
-! *********************************************************************************************** !
-! CPU Clock                                                                                       !
-! *********************************************************************************************** !
+! CPU Clock
 CALL DATE_AND_TIME( VALUES= DATE_TIME )
 
 ! Date format (YYYY/MM/DD)
@@ -270,11 +246,7 @@ FORMAT_HOUR = "(3I2.2)"
 ! Hour descriptor
 WRITE( DESCRIPTOR_HOUR, FORMAT_HOUR ) DATE_TIME(5), DATE_TIME(6), DATE_TIME(7)
 
-! *********************************************************************************************** !
-! Output file descriptors (p. fraction/pressure [1], # of components [2], and geometry [3])       !
-! *********************************************************************************************** !
-!  Might be necessary to change formats if the number of decimal places are greater than 5.       !
-! *********************************************************************************************** !
+! Output file descriptors (p. fraction/pressure [1], # of components [2], and geometry [3])
 FORMAT_FILE1 = "(F0.5)"
 IF( MC_ENSEMBLE == "NVT" ) THEN
   WRITE( DESCRIPTOR_FILE1, FORMAT_FILE1 ) PACKING_F
@@ -286,9 +258,7 @@ WRITE( DESCRIPTOR_FILE2, FORMAT_FILE2 ) COMPONENTS
 FORMAT_FILE3 = "(A3)"
 WRITE( DESCRIPTOR_FILE3, FORMAT_FILE3 ) GEO_ACRONYM
 
-! *********************************************************************************************** !
-! Initial configuration (see 'INITCONFIG' module)                                                 !
-! *********************************************************************************************** !
+! Initial configuration (see 'INITCONFIG' module)
 WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 17 )//"INITIAL CONFIGURATION"//REPEAT( " ", 17 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
@@ -296,9 +266,7 @@ WRITE( *, "(G0)" ) "Setting up initial configuration folder..."
 CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Initial configuration folder (see 'FOLDERS' module)                                             !
-! *********************************************************************************************** !
+! Initial configuration folder (see 'FOLDERS' module)
 CALL INITFOLDER(  )
 
 ! Calls 'CONFIG_SC' subroutine if the user chooses a simple cubic structure
@@ -306,10 +274,28 @@ IF( CONFIG_SELEC(1) ) THEN
   IF( .NOT. INIT_CONF ) THEN
     DO C = 1, COMPONENTS - 1
       IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
-        WRITE( *, "(6G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                   "The simple cubic structure cannot be selected. Try selecting the random configuration."
-        CALL SLEEP( 1 )
-        CALL EXIT(  )
+        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
+        &                         "The simple cubic structure might create overlaping configurations. ", &
+        &                         "Do you wish to continue?"
+        READ( *, * ) DUMMY
+        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
+        IF( DUMMY /= "Y" ) THEN
+          CALL SLEEP( 1 )
+          CALL EXIT(  )
+        END IF
+        WRITE( *, "(G0)" ) " "
+      END IF
+      IF( ( SPHERCOMP(C) .AND. .NOT. SPHERCOMP(C+1) ) .OR. ( .NOT. SPHERCOMP(C) .AND. SPHERCOMP(C+1) ) ) THEN
+        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
+        &                         "The simple cubic structure might create overlapping configurations. ", &
+        &                         "Do you wish to continue?"
+        READ( *, * ) DUMMY
+        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
+        IF( DUMMY /= "Y" ) THEN
+          CALL SLEEP( 1 )
+          CALL EXIT(  )
+        END IF
+        WRITE( *, "(G0)" ) " "
       END IF
     END DO
     CALL CONFIG_SC(  )
@@ -335,7 +321,7 @@ IF( CONFIG_SELEC(1) ) THEN
       CALL EXIT(  )
     END IF
     WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_sc_" &
     &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
     READ( 10, * ) DUMMY, GEOM_INQ
@@ -376,6 +362,14 @@ IF( CONFIG_SELEC(1) ) THEN
     READ( 10, * ) DUMMY, PACKING_F
     READ( 10, * ) DUMMY, COMPONENTS
     DO C = 1, COMPONENTS
+      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
+      IF( SPHCOMP_INQ(C) == "T" ) THEN
+        SPHERCOMP(C) = .TRUE.
+      ELSE
+        SPHERCOMP(C) = .FALSE.
+      END IF
+    END DO
+    DO C = 1, COMPONENTS
       READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
     END DO
     DO C = 1, COMPONENTS
@@ -415,7 +409,7 @@ IF( CONFIG_SELEC(1) ) THEN
     END DO
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     WRITE( *, "(G0)" ) " "
     CALL CONFIG_OUT(  )
   END IF
@@ -424,10 +418,28 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
   IF( .NOT. INIT_CONF ) THEN
     DO C = 1, COMPONENTS - 1
       IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
-        WRITE( *, "(6G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                   "The body-centered cubic structure cannot be selected. Try selecting the random configuration."
-        CALL SLEEP( 1 )
-        CALL EXIT(  )
+        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
+        &                         "The body-centered cubic structure might create overlapping configurations. ", &
+        &                         "Do you wish to continue?"
+        READ( *, * ) DUMMY
+        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
+        IF( DUMMY /= "Y" ) THEN
+          CALL SLEEP( 1 )
+          CALL EXIT(  )
+        END IF
+        WRITE( *, "(G0)" ) " "
+      END IF
+      IF( ( SPHERCOMP(C) .AND. .NOT. SPHERCOMP(C+1) ) .OR. ( .NOT. SPHERCOMP(C) .AND. SPHERCOMP(C+1) ) ) THEN
+        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
+        &                         "The body-centered cubic structure might create overlapping configurations. ", &
+        &                         "Do you wish to continue?"
+        READ( *, * ) DUMMY
+        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
+        IF( DUMMY /= "Y" ) THEN
+          CALL SLEEP( 1 )
+          CALL EXIT(  )
+        END IF
+        WRITE( *, "(G0)" ) " "
       END IF
     END DO
     CALL CONFIG_BCC(  )
@@ -453,7 +465,7 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
       CALL EXIT(  )
     END IF
     WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_bcc_" &
     &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
     READ( 10, * ) DUMMY, GEOM_INQ
@@ -494,6 +506,14 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
     READ( 10, * ) DUMMY, PACKING_F
     READ( 10, * ) DUMMY, COMPONENTS
     DO C = 1, COMPONENTS
+      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
+      IF( SPHCOMP_INQ(C) == "T" ) THEN
+        SPHERCOMP(C) = .TRUE.
+      ELSE
+        SPHERCOMP(C) = .FALSE.
+      END IF
+    END DO
+    DO C = 1, COMPONENTS
       READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
     END DO
     DO C = 1, COMPONENTS
@@ -533,7 +553,7 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
     END DO
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     WRITE( *, "(G0)" ) " "
     CALL CONFIG_OUT(  )
   END IF
@@ -542,10 +562,28 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
   IF( .NOT. INIT_CONF ) THEN
     DO C = 1, COMPONENTS - 1
       IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
-        WRITE( *, "(6G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                   "The face-centered cubic structure cannot be selected. Try selecting the random configuration."
-        CALL SLEEP( 1 )
-        CALL EXIT(  )
+        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
+        &                         "The face-centered cubic structure might create overlapping configurations. ", &
+        &                         "Do you wish to continue?"
+        READ( *, * ) DUMMY
+        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
+        IF( DUMMY /= "Y" ) THEN
+          CALL SLEEP( 1 )
+          CALL EXIT(  )
+        END IF
+        WRITE( *, "(G0)" ) " "
+      END IF
+      IF( ( SPHERCOMP(C) .AND. .NOT. SPHERCOMP(C+1) ) .OR. ( .NOT. SPHERCOMP(C) .AND. SPHERCOMP(C+1) ) ) THEN
+        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
+        &                         "The face-centered cubic structure might create overlapping configurations. ", &
+        &                         "Do you wish to continue?"
+        READ( *, * ) DUMMY
+        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
+        IF( DUMMY /= "Y" ) THEN
+          CALL SLEEP( 1 )
+          CALL EXIT(  )
+        END IF
+        WRITE( *, "(G0)" ) " "
       END IF
     END DO
     CALL CONFIG_FCC(  )
@@ -571,7 +609,7 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
       CALL EXIT(  )
     END IF
     WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_fcc_" &
     &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
     READ( 10, * ) DUMMY, GEOM_INQ
@@ -612,6 +650,14 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
     READ( 10, * ) DUMMY, PACKING_F
     READ( 10, * ) DUMMY, COMPONENTS
     DO C = 1, COMPONENTS
+      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
+      IF( SPHCOMP_INQ(C) == "T" ) THEN
+        SPHERCOMP(C) = .TRUE.
+      ELSE
+        SPHERCOMP(C) = .FALSE.
+      END IF
+    END DO
+    DO C = 1, COMPONENTS
       READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
     END DO
     DO C = 1, COMPONENTS
@@ -651,7 +697,7 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
     END DO
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     WRITE( *, "(G0)" ) " "
     CALL CONFIG_OUT(  )
   END IF
@@ -681,7 +727,7 @@ ELSE IF( CONFIG_SELEC(4) ) THEN
       CALL EXIT(  )
     END IF
     WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_rnd_" &
     &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
     READ( 10, * ) DUMMY, GEOM_INQ
@@ -722,6 +768,14 @@ ELSE IF( CONFIG_SELEC(4) ) THEN
     READ( 10, * ) DUMMY, PACKING_F
     READ( 10, * ) DUMMY, COMPONENTS
     DO C = 1, COMPONENTS
+      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
+      IF( SPHCOMP_INQ(C) == "T" ) THEN
+        SPHERCOMP(C) = .TRUE.
+      ELSE
+        SPHERCOMP(C) = .FALSE.
+      END IF
+    END DO
+    DO C = 1, COMPONENTS
       READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
     END DO
     DO C = 1, COMPONENTS
@@ -761,7 +815,7 @@ ELSE IF( CONFIG_SELEC(4) ) THEN
     END DO
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     WRITE( *, "(G0)" ) " "
     CALL CONFIG_OUT(  )
   END IF
@@ -791,7 +845,7 @@ ELSE IF( CONFIG_SELEC(5) ) THEN
       CALL EXIT(  )
     END IF
     WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_pb_" &
     &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
     READ( 10, * ) DUMMY, GEOM_INQ
@@ -832,6 +886,14 @@ ELSE IF( CONFIG_SELEC(5) ) THEN
     READ( 10, * ) DUMMY, PACKING_F
     READ( 10, * ) DUMMY, COMPONENTS
     DO C = 1, COMPONENTS
+      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
+      IF( SPHCOMP_INQ(C) == "T" ) THEN
+        SPHERCOMP(C) = .TRUE.
+      ELSE
+        SPHERCOMP(C) = .FALSE.
+      END IF
+    END DO
+    DO C = 1, COMPONENTS
       READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
     END DO
     DO C = 1, COMPONENTS
@@ -871,7 +933,7 @@ ELSE IF( CONFIG_SELEC(5) ) THEN
     END DO
     WRITE( *, "(G0)" ) " "
     WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 2 )
+    CALL SLEEP( 1 )
     WRITE( *, "(G0)" ) " "
     CALL CONFIG_OUT(  )
   END IF
@@ -885,52 +947,52 @@ WRITE( *, "(G0)" ) "Setting up folders..."
 CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Create output directories (see 'FOLDERS' module)                                                !
-! *********************************************************************************************** !
+! Create output directories (see 'FOLDERS' module)
 CALL INQUIRE_FOLDERS(  )
 
-! *********************************************************************************************** !
-! Create date subfolders (see 'FOLDERS' module)                                                   !
-! *********************************************************************************************** !
+! Create date subfolders (see 'FOLDERS' module)
 CALL DATE_FOLDERS(  )
 
-! *********************************************************************************************** !
-! Initialization of the attractive range subfolders (see 'FOLDERS' module)                        !
-! *********************************************************************************************** !
+! Initialization of the attractive range subfolders (see 'FOLDERS' module)
 IF( POTENTIAL_SELEC(2) ) THEN
   CALL LAMBDA_FOLDERS(  )
 END IF
 
-! *********************************************************************************************** !
-! Hard-core volumetric relation (EOR/SPC/HC and SPHERES)                                          !
-! *********************************************************************************************** !
+! Hard-core volumetric relation (EOR/SPC/HC and SPHERES)
 IF( GEOM_SELEC(1) ) THEN
   DO C = 1, COMPONENTS
-    SIGSPHERE(C) = DIAMETER(C) * ( ( ASPECT_RATIO(C) ) ** ( 1.D0 / 3.D0 ) ) ! Ellipsoids of revolution
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      SIGSPHERE(C) = DIAMETER(C) * ( ( ASPECT_RATIO(C) ) ** ( 1.D0 / 3.D0 ) ) ! Ellipsoids of revolution
+    ELSE
+      SIGSPHERE(C) = DIAMETER(C) ! Spheres
+    END IF
   END DO
 ELSE IF( GEOM_SELEC(2) ) THEN
   DO C = 1, COMPONENTS
-    SIGSPHERE(C) = DIAMETER(C) * ( ( 1.D0 + ( 1.5D0 * ASPECT_RATIO(C) ) ) ** ( 1.D0 / 3.D0 ) ) ! Spherocylinders
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      SIGSPHERE(C) = DIAMETER(C) * ( ( 1.D0 + ( 1.5D0 * ASPECT_RATIO(C) ) ) ** ( 1.D0 / 3.D0 ) ) ! Spherocylinders
+    ELSE
+      SIGSPHERE(C) = DIAMETER(C) ! Spheres
+    END IF
   END DO
 ELSE IF( GEOM_SELEC(3) ) THEN
   DO C = 1, COMPONENTS
-    SIGSPHERE(C) = DIAMETER(C) * ( ( 1.5D0 * ASPECT_RATIO(C) ) ** ( 1.D0 / 3.D0 ) ) ! Cylinders
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      SIGSPHERE(C) = DIAMETER(C) * ( ( 1.5D0 * ASPECT_RATIO(C) ) ** ( 1.D0 / 3.D0 ) ) ! Cylinders
+    ELSE
+      SIGSPHERE(C) = DIAMETER(C) ! Spheres
+    END IF
   END DO
 END IF
 
-! *********************************************************************************************** !
-! Effective range of attraction                                                                   !
-! *********************************************************************************************** !
+! Effective range of attraction
 IF( POTENTIAL_SELEC(2) ) THEN
   DO C = 1, COMPONENTS
     SWRANGE(C,:) = L_RANGE(:) * SIGSPHERE(C)
   END DO
 END IF
 
-! *********************************************************************************************** !
-! Active transformation (orientation of particles)                                                !
-! *********************************************************************************************** !
+! Active transformation (orientation of particles)
 DO I = 1, N_PARTICLES
   CALL ACTIVE_TRANSFORMATION( AXISZ, Q(:,I), E(:,I) )
 END DO
@@ -940,30 +1002,41 @@ WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 6 )//"OVERLAP CHECK FOR THE INITIAL CONFIGURATION"//REPEAT( " ", 6 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
 WRITE( *, "(G0)" ) "Verifying initial configuration..."
-CALL SLEEP( 3 )
+CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Diameter of circumscribing sphere                                                               !
-! *********************************************************************************************** !
+! Diameter of circumscribing sphere
 IF( GEOM_SELEC(1) ) THEN
   DO C = 1, COMPONENTS
-    IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) <= 1.D0 ) THEN
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) < 1.D0 ) THEN
+        CUTOFF(C) = DIAMETER(C)
+      ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
+        CUTOFF(C) = LENGTH(C)
+      END IF
+    ELSE
       CUTOFF(C) = DIAMETER(C)
-    ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
-      CUTOFF(C) = LENGTH(C)
     END IF
   END DO
-ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+ELSE IF( GEOM_SELEC(2) ) THEN
   DO C = 1, COMPONENTS
-    CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C)
+    END IF
+  END DO
+ELSE IF( GEOM_SELEC(3) ) THEN
+  DO C = 1, COMPONENTS
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C)
+    END IF
   END DO
 END IF
 
-! *********************************************************************************************** !
-! Overlap check (initial configuration)                                                           !
-! *********************************************************************************************** !
-! Initialization
+! Overlap check (initial configuration)
 OVERLAP = .FALSE.
 ! Anisomorphic molecules (unlike components)
 DO CI = 1, COMPONENTS - 1
@@ -1002,7 +1075,7 @@ DO CI = 1, COMPONENTS - 1
         RIJ(1) = RJ(1) - RI(1)
         RIJ(2) = RJ(2) - RI(2)
         RIJ(3) = RJ(3) - RI(3)
-        ! Minimum Image Convention
+        ! Minimum image convention
         CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
         S12 = S12 - ANINT(S12)
         CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
@@ -1013,7 +1086,7 @@ DO CI = 1, COMPONENTS - 1
         CUTOFF_D = CUTOFF_D * CUTOFF_D
         ! Preliminary test (circumscribing spheres)
         IF( RIJSQ <= CUTOFF_D ) THEN
-          ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+          ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
           IF( GEOM_SELEC(1) ) THEN
             CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
             ! Overlap criterion
@@ -1025,10 +1098,10 @@ DO CI = 1, COMPONENTS - 1
               ELSE IF( COMPONENTS == 1 ) THEN
                 WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
               END IF
-              CALL SLEEP( 2 )
+              CALL SLEEP( 1 )
               CALL EXIT(  )
             END IF
-          ! Overlap test for spherocylinders (Vega-Lago Method)
+          ! Overlap test for spherocylinders (Vega-Lago method)
           ELSE IF( GEOM_SELEC(2) ) THEN
             CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
             ! Overlap criterion
@@ -1040,20 +1113,45 @@ DO CI = 1, COMPONENTS - 1
               ELSE IF( COMPONENTS == 1 ) THEN
                 WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
               END IF
-              CALL SLEEP( 2 )
+              CALL SLEEP( 1 )
               CALL EXIT(  )
             END IF
-          ! Overlap test for cylinders (Lopes et al. Method)
+          ! Overlap test for cylinders and/or spheres
           ELSE IF( GEOM_SELEC(3) ) THEN
-            ! Preliminary test (circumscribing spherocylinders)
-            OVERLAP_PRELIMINAR = .FALSE.
-            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-            ! Overlap criterion
-            IF( OVERLAP_PRELIMINAR ) THEN
+            IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+              ! Initialization
+              OVERLAP_PRELIMINAR = .FALSE.
+              ! Preliminary test (circumscribing spherocylinders)
+              CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+              ! Overlap criterion
+              IF( OVERLAP_PRELIMINAR ) THEN
+                ! Retrive position of the particle j after applying the PBC
+                RJ(1) = RI(1) + RIJ(1)
+                RJ(2) = RI(2) + RIJ(2)
+                RJ(3) = RI(3) + RIJ(3)
+                ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                ! Overlap criterion
+                IF( OVERLAP ) THEN
+                  ! Overlap detected
+                  IF( COMPONENTS > 1 ) THEN
+                    WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
+                    &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
+                  ELSE IF( COMPONENTS == 1 ) THEN
+                    WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
+                    &                   ". Exiting..."
+                  END IF
+                  CALL SLEEP( 1 )
+                  CALL EXIT(  )
+                END IF
+              END IF
+            ! Overlap test for cylinders and spheres
+            ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+              ! Retrive position of the particle j after applying the PBC
               RJ(1) = RI(1) + RIJ(1)
               RJ(2) = RI(2) + RIJ(2)
               RJ(3) = RI(3) + RIJ(3)
-              CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+              CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
               ! Overlap criterion
               IF( OVERLAP ) THEN
                 ! Overlap detected
@@ -1061,11 +1159,43 @@ DO CI = 1, COMPONENTS - 1
                   WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
                   &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
                 ELSE IF( COMPONENTS == 1 ) THEN
-                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
+                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
+                  &                   ". Exiting..."
                 END IF
-                CALL SLEEP( 2 )
+                CALL SLEEP( 1 )
                 CALL EXIT(  )
               END IF
+            ! Overlap test for cylinders and spheres
+            ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+              ! Retrive position of the particle j after applying the PBC
+              RJ(1) = RI(1) + RIJ(1)
+              RJ(2) = RI(2) + RIJ(2)
+              RJ(3) = RI(3) + RIJ(3)
+              CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+              ! Overlap criterion
+              IF( OVERLAP ) THEN
+                ! Overlap detected
+                IF( COMPONENTS > 1 ) THEN
+                  WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
+                  &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
+                ELSE IF( COMPONENTS == 1 ) THEN
+                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
+                  &                   ". Exiting..."
+                END IF
+                CALL SLEEP( 1 )
+                CALL EXIT(  )
+              END IF
+            ! Overlap test for spheres
+            ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+              ! Overlap detected
+              IF( COMPONENTS > 1 ) THEN
+                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
+                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
+              ELSE IF( COMPONENTS == 1 ) THEN
+                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
+              END IF
+              CALL SLEEP( 1 )
+              CALL EXIT(  )
             END IF
           END IF
         END IF
@@ -1110,7 +1240,7 @@ DO CI = 1, COMPONENTS
       RIJ(1) = RJ(1) - RI(1)
       RIJ(2) = RJ(2) - RI(2)
       RIJ(3) = RJ(3) - RI(3)
-      ! Minimum Image Convention
+      ! Minimum image convention
       CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
       S12 = S12 - ANINT(S12)
       CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
@@ -1133,7 +1263,7 @@ DO CI = 1, COMPONENTS
             ELSE IF( COMPONENTS == 1 ) THEN
               WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
             END IF
-            CALL SLEEP( 2 )
+            CALL SLEEP( 1 )
             CALL EXIT(  )
           END IF
         ! Overlap test for spherocylinders (Vega-Lago Method)
@@ -1148,20 +1278,44 @@ DO CI = 1, COMPONENTS
             ELSE IF( COMPONENTS == 1 ) THEN
               WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
             END IF
-            CALL SLEEP( 2 )
+            CALL SLEEP( 1 )
             CALL EXIT(  )
           END IF
-        ! Overlap test for cylinders (Lopes et al. Method)
+        ! Overlap test for cylinders and/or spheres
         ELSE IF( GEOM_SELEC(3) ) THEN
-          ! Preliminary test (circumscribing spherocylinders)
-          OVERLAP_PRELIMINAR = .FALSE.
-          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-          ! Overlap criterion
-          IF( OVERLAP_PRELIMINAR ) THEN
+          IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+            ! Initialization
+            OVERLAP_PRELIMINAR = .FALSE.
+            ! Preliminary test (circumscribing spherocylinders)
+            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+            ! Overlap criterion
+            IF( OVERLAP_PRELIMINAR ) THEN
+              ! Retrive position of the particle j after applying the PBC
+              RJ(1) = RI(1) + RIJ(1)
+              RJ(2) = RI(2) + RIJ(2)
+              RJ(3) = RI(3) + RIJ(3)
+              ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+              CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+              ! Overlap criterion
+              IF( OVERLAP ) THEN
+                ! Overlap detected
+                IF( COMPONENTS > 1 ) THEN
+                  WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
+                  &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
+                ELSE IF( COMPONENTS == 1 ) THEN
+                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
+                END IF
+                CALL SLEEP( 1 )
+                CALL EXIT(  )
+              END IF
+            END IF
+            ! Overlap test for cylinders and spheres
+          ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+            ! Retrive position of the particle j after applying the PBC
             RJ(1) = RI(1) + RIJ(1)
             RJ(2) = RI(2) + RIJ(2)
             RJ(3) = RI(3) + RIJ(3)
-            CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+            CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
             ! Overlap criterion
             IF( OVERLAP ) THEN
               ! Overlap detected
@@ -1169,11 +1323,43 @@ DO CI = 1, COMPONENTS
                 WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
                 &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
               ELSE IF( COMPONENTS == 1 ) THEN
-                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
+                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
+                &                   ". Exiting..."
               END IF
-              CALL SLEEP( 2 )
+              CALL SLEEP( 1 )
               CALL EXIT(  )
             END IF
+          ! Overlap test for cylinders and spheres
+          ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+            ! Retrive position of the particle j after applying the PBC
+            RJ(1) = RI(1) + RIJ(1)
+            RJ(2) = RI(2) + RIJ(2)
+            RJ(3) = RI(3) + RIJ(3)
+            CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+            ! Overlap criterion
+            IF( OVERLAP ) THEN
+              ! Overlap detected
+              IF( COMPONENTS > 1 ) THEN
+                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
+                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
+              ELSE IF( COMPONENTS == 1 ) THEN
+                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
+                &                   ". Exiting..."
+              END IF
+              CALL SLEEP( 1 )
+              CALL EXIT(  )
+            END IF
+          ! Overlap test for spheres
+          ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+            ! Overlap detected
+            IF( COMPONENTS > 1 ) THEN
+              WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
+              &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
+            ELSE IF( COMPONENTS == 1 ) THEN
+              WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
+            END IF
+            CALL SLEEP( 1 )
+            CALL EXIT(  )
           END IF
         END IF
       END IF
@@ -1183,20 +1369,13 @@ END DO
 
 ! Status
 WRITE( *, "(G0)" ) "No overlaps found in the initial configuration. Resuming..."
-CALL SLEEP( 2 )
+CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Start simulation timer                                                                          !
-! *********************************************************************************************** !
+! Start simulation timer
 CALL CPU_TIME( START_TIMER )
 
-! *********************************************************************************************** !
-! Active transformation                                                                           !
-! *********************************************************************************************** !
-!  Converts the unit quaternion into an active rotation/transformation in the 3D Euclidean space  !
-!  See 'SUBROUTINES' code for more details.                                                       !
-! *********************************************************************************************** !
+! Active transformation
 DO I = 1, N_PARTICLES
   CALL ACTIVE_TRANSFORMATION( AXISZ, Q(:,I), E(:,I) )
 END DO
@@ -1210,6 +1389,7 @@ WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating files..."
 ! *********************************************************************************************** !
 ! Output file units                                                                               !
 ! *********************************************************************************************** !
+
 ! Trajectory file (depends on user's choice)
 IF( TRAJ_CHECK ) THEN
   IF( MC_ENSEMBLE == "NVT" ) THEN
@@ -1225,21 +1405,50 @@ IF( TRAJ_CHECK ) THEN
   WRITE( 20, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   FLUSH( 20 )
 END IF
+
 ! Ratio file (translation)
 IF( MC_ENSEMBLE == "NVT" ) THEN
   OPEN( UNIT= 30, FILE= "Ratio/Translation/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
@@ -1256,6 +1465,7 @@ ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
   &                    '"'//"Acceptance Ratio Threshold"//'"'
   FLUSH( 30 )
 END IF
+
 ! Ratio file (rotation)
 IF( MC_ENSEMBLE == "NVT" ) THEN
   OPEN( UNIT= 40, FILE= "Ratio/Rotation/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
@@ -1272,6 +1482,7 @@ ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
   &                    '"'//"Acceptance Ratio Threshold"//'"'
   FLUSH( 40 )
 END IF
+
 ! Ratio file (volume change)
 IF( MC_ENSEMBLE == "NPT" ) THEN
   OPEN( UNIT= 50, FILE= "Ratio/Volume/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
@@ -1282,6 +1493,7 @@ IF( MC_ENSEMBLE == "NPT" ) THEN
   &                     '"'//"Type of Volume Change"//'"'
   FLUSH( 50 )
 END IF
+
 ! Ratio file (box properties)
 IF( MC_ENSEMBLE == "NPT" ) THEN
   OPEN( UNIT= 55, FILE= "Ratio/Box/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
@@ -1294,6 +1506,7 @@ IF( MC_ENSEMBLE == "NPT" ) THEN
   &                     '"'//"Box Length 8 [Å]"//'"', ",", '"'//"Box Length 9 [Å]"//'"'
   FLUSH( 55 )
 END IF
+
 ! Order parameter file
 IF( MC_ENSEMBLE == "NVT" ) THEN
   OPEN( UNIT= 60, FILE= "Order_Parameter/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
@@ -1308,6 +1521,7 @@ ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
   WRITE( 60, "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"'
   FLUSH( 60 )
 END IF
+
 ! Results file
 IF( MC_ENSEMBLE == "NPT" ) THEN
   OPEN( UNIT= 70, FILE= "Results/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
@@ -1317,6 +1531,7 @@ IF( MC_ENSEMBLE == "NPT" ) THEN
   &                    '"'//"Box Volume"//'"', ",", '"'//"Reduced Pressure"//'"'
   FLUSH( 70 )
 END IF
+
 ! Potential file
 IF( POTENTIAL_SELEC(2) ) THEN
   DO C_LAMB = 1, N_LAMBDA
@@ -1331,7 +1546,7 @@ IF( POTENTIAL_SELEC(2) ) THEN
 END IF
 
 ! Status
-CALL SLEEP( 2 )
+CALL SLEEP( 1 )
 WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
 WRITE( *, "(G0)" ) " "
 
@@ -1347,21 +1562,17 @@ END IF
 CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Computation of total potential energy (initial configuration)                                   !
-! *********************************************************************************************** !
+! Computation of total potential energy (initial configuration)
 IF( POTENTIAL_SELEC(2) ) THEN
   WRITE( *, "(G0)", ADVANCE= "NO" ) "Computing total potential energy of the initial configuration..."
   CALL COMPUTE_TOTAL_ENERGY(  )
   ! Status
-  CALL SLEEP( 2 )
+  CALL SLEEP( 1 )
   WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Pseudorandom number generator seed                                                              !
-! *********************************************************************************************** !
+! Pseudorandom number generator seed
 IF( FSEED ) THEN
   SEED = 123456789
 ELSE IF( .NOT. FSEED ) THEN
@@ -1373,35 +1584,32 @@ END IF
 ! *********************************************************************************************** !
 ! Monte Carlo parameters                                                                          !
 ! *********************************************************************************************** !
-MOV_TRANS   = .FALSE.         ! Translational move selector                       (initial value)
-MOV_ROT     = .FALSE.         ! Rotational move selector                          (initial value)
-MOV_VOL_I   = .FALSE.         ! Volume move selector (Isotropic)                  (initial value)
-MOV_VOL_A   = .FALSE.         ! Volume move selector (Anisotropic)                (initial value)
-DRMAX       = MAX_TRANS       ! Maximum translational displacement                (initial value)
-ANGMAX      = MAX_ROT         ! Maximum rotational displacement                   (initial value)
-DVMAXISO    = MAX_VOLI        ! Maximum isovolumetric displacement                (initial value)
-DVMAXANI    = MAX_VOLA        ! Maximum anisovolumetric displacement              (initial value)
-NACCT       = 0               ! Translational move acceptance counter             (initial value)
-NACCR       = 0               ! Rotational move acceptance counter                (initial value)
-NACCVI      = 0               ! Volumetric move acceptance counter (Isotropic)    (initial value)
-NACCVA      = 0               ! Volumetric move acceptance counter (Anisotropic)  (initial value)
-MOVT        = 0               ! Translational move counter                        (initial value)
-MOVR        = 0               ! Rotational move counter                           (initial value)
-MOVVI       = 0               ! Volume change counter (Isotropic)                 (initial value)
-MOVVA       = 0               ! Volume change counter (Anisotropic)               (initial value)
-QMC(:,:)    = Q(:,:)          ! Rotation quaternions                              (initial value)
-RMC(:,:)    = R(:,:)          ! Position of particles                             (initial value)
-EMC(:,:)    = E(:,:)          ! Orientation of particles                          (initial value)
-VMC(:)      = V(:)            ! Total potential energy                            (initial value)
-BOXLMC(:)   = BOX_LENGTH(:)   ! Box length                                        (initial value)
-BOXLMC_I(:) = BOX_LENGTH_I(:) ! Box length (inverse)                              (initial value)
-BOXVMC      = BOX_VOLUME      ! Box volume                                        (initial value)
+MOV_TRANS    = .FALSE.         ! Translational move selector                       (initial value)
+MOV_ROT      = .FALSE.         ! Rotational move selector                          (initial value)
+MOV_VOL_I    = .FALSE.         ! Volume move selector (Isotropic)                  (initial value)
+MOV_VOL_A    = .FALSE.         ! Volume move selector (Anisotropic)                (initial value)
+DRMAX        = MAX_TRANS       ! Maximum translational displacement                (initial value)
+ANGMAX       = MAX_ROT         ! Maximum rotational displacement                   (initial value)
+DVMAXISO     = MAX_VOLI        ! Maximum isovolumetric displacement                (initial value)
+DVMAXANI     = MAX_VOLA        ! Maximum anisovolumetric displacement              (initial value)
+NACCT        = 0               ! Translational move acceptance counter             (initial value)
+NACCR        = 0               ! Rotational move acceptance counter                (initial value)
+NACCVI       = 0               ! Volumetric move acceptance counter (Isotropic)    (initial value)
+NACCVA       = 0               ! Volumetric move acceptance counter (Anisotropic)  (initial value)
+MOVT         = 0               ! Translational move counter                        (initial value)
+MOVR         = 0               ! Rotational move counter                           (initial value)
+MOVVI        = 0               ! Volume change counter (Isotropic)                 (initial value)
+MOVVA        = 0               ! Volume change counter (Anisotropic)               (initial value)
+QMC(:,:)     = Q(:,:)          ! Rotation quaternions                              (initial value)
+RMC(:,:)     = R(:,:)          ! Position of particles                             (initial value)
+EMC(:,:)     = E(:,:)          ! Orientation of particles                          (initial value)
+VMC(:)       = V(:)            ! Total potential energy                            (initial value)
+BOXLMC(:)    = BOX_LENGTH(:)   ! Box length                                        (initial value)
+BOXLMC_I(:)  = BOX_LENGTH_I(:) ! Box length (inverse)                              (initial value)
+BOXVMC       = BOX_VOLUME      ! Box volume                                        (initial value)
+SCALE_FACTOR = 1.D0            ! Scaling factor                                    (initial value)
 
-! *********************************************************************************************** !
-! Metropolis Algorithm - Importance Sampling                                                      !
-! *********************************************************************************************** !
-!  See Metropolis et al., J. Chem. Phys. 21, 1087 (1953), for more information                    !
-! *********************************************************************************************** !
+! Metropolis Algorithm - Importance Sampling
 WRITE( *, "(G0)" ) "Running Metropolis algorithm..."
 CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
@@ -1478,11 +1686,7 @@ DO CYCLES = 1, MAX_CYCLES
       END DO
 
       ! Forbid rotation if component is spherical
-      IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
-        MOV_TRANS = .TRUE.   ! Enable translation
-        MOV_ROT   = .FALSE.  ! Disable rotation
-        MOVT      = MOVT + 1 ! Increment move counter
-      ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+      IF( SPHERCOMP(CI) ) THEN
         MOV_TRANS = .TRUE.   ! Enable translation
         MOV_ROT   = .FALSE.  ! Disable rotation
         MOVT      = MOVT + 1 ! Increment move counter
@@ -1513,7 +1717,7 @@ DO CYCLES = 1, MAX_CYCLES
       QM(:) = QMC(:,I) ! Quaternion
       EM(:) = EMC(:,I) ! Orientation
 
-      ! Translation Movement
+      ! Translational movement
       IF( MOV_TRANS ) THEN
         ! Random translation along x-axis
         CALL RANF(  )
@@ -1528,27 +1732,27 @@ DO CYCLES = 1, MAX_CYCLES
         CALL MULTI_MATRIX( BOXLMC_I, RN, S12 )
         S12 = S12 - ANINT( S12 )
         CALL MULTI_MATRIX( BOXLMC, S12, RN )
-      ! No Translation
+      ! No translation
       ELSE IF( .NOT. MOV_TRANS ) THEN
         RN(:) = RM(:)
       END IF
 
-      ! Rotation Movement
+      ! Rotational movement
       IF( MOV_ROT ) THEN
         ! Random Composed Unit Quaternion
         CALL COMPOSED_QUATERNION( QM, QN, ANGMAX )
         ! Active transformation
         CALL ACTIVE_TRANSFORMATION( AXISZ, QN, EN )
-      ! No Rotation
+      ! No rotation
       ELSE IF( .NOT. MOV_ROT ) THEN
         QN(:) = QM(:)
         EN(:) = EM(:)
       END IF
 
-      ! Overlap Check
+      ! Overlap check
       CALL CHECK_OVERLAP( CI, I, QN, EN, RN, CD, BOXLMC, BOXLMC_I, OVERLAP )
 
-      ! Acceptance Criterion
+      ! Acceptance criterion
       IF( .NOT. OVERLAP ) THEN
         ! System configuration update
         RMC(:,I) = RN(:) ! Update position
@@ -1556,9 +1760,9 @@ DO CYCLES = 1, MAX_CYCLES
         EMC(:,I) = EN(:) ! Update orientation
         ! Update total potential energy
         IF( POTENTIAL_SELEC(2) ) THEN
-          ! Computation of potential energy of particle i (Microstate m)
+          ! Computation of potential energy of particle i (microstate m)
           CALL COMPUTE_PARTICLE_ENERGY( CI, I, RM, VM, BOXLMC, BOXLMC_I )
-          ! Computation of potential energy of particle i (Microstate n)
+          ! Computation of potential energy of particle i (microstate n)
           CALL COMPUTE_PARTICLE_ENERGY( CI, I, RN, VN, BOXLMC, BOXLMC_I )
           ! Computation of energy difference of microstates n and m
           DV(:)  = VN(:) - VM(:)
@@ -1616,17 +1820,17 @@ DO CYCLES = 1, MAX_CYCLES
       CALL RANF(  )
       COMPONENT = INT( RANDOM_N * 6.D0 ) + 1
       IF( COMPONENT == 1 ) THEN
-        COMPONENT = 1 ! x vector
+        COMPONENT = 1 ! xx component
       ELSE IF( COMPONENT == 2 ) THEN
-        COMPONENT = 4 ! y vector
+        COMPONENT = 4 ! xy component
       ELSE IF( COMPONENT == 3 ) THEN
-        COMPONENT = 5 ! y vector
+        COMPONENT = 5 ! yy component
       ELSE IF( COMPONENT == 4 ) THEN
-        COMPONENT = 7 ! z vector
+        COMPONENT = 7 ! xz component
       ELSE IF( COMPONENT == 5 ) THEN
-        COMPONENT = 8 ! z vector
+        COMPONENT = 8 ! yz component
       ELSE IF( COMPONENT == 6 ) THEN
-        COMPONENT = 9 ! z vector
+        COMPONENT = 9 ! zz component
       END IF
       BOXLN(:) = BOXLM(:)
       ! Random stretching/shortening of the box length component
@@ -1643,7 +1847,7 @@ DO CYCLES = 1, MAX_CYCLES
     END IF
 
     ! Reset condition of anisotropic volume change
-    IGNORE = .FALSE.
+    IGNORE_VOL_ATTEMPT = .FALSE.
 
     ! Condition of anisotropic volume change (box distortion)
     IF( MOV_VOL_A ) THEN
@@ -1662,12 +1866,11 @@ DO CYCLES = 1, MAX_CYCLES
       ! Avoid big distortions of the simulation box
       DO L = 1, 3
         ! Angle distortion
-        IF( COSANGLE_VEC(L) < DCOS( (PI / 2.D0) + MAX_ANGLE ) .OR. &
-        &   COSANGLE_VEC(L) > DCOS( (PI / 2.D0) - MAX_ANGLE ) ) THEN
+        IF( COSANGLE_VEC(L) < DCOS( (PI / 2.D0) + MAX_ANGLE ) .OR. COSANGLE_VEC(L) > DCOS( (PI / 2.D0) - MAX_ANGLE ) ) THEN
           BOXVMC      = BOXVM
           BOXLMC(:)   = BOXLM(:)
           BOXLMC_I(:) = BOXLM_I(:)
-          IGNORE = .TRUE.
+          IGNORE_VOL_ATTEMPT = .TRUE.
           EXIT
         END IF
         ! Length distortion
@@ -1675,14 +1878,14 @@ DO CYCLES = 1, MAX_CYCLES
           BOXVMC      = BOXVM
           BOXLMC(:)   = BOXLM(:)
           BOXLMC_I(:) = BOXLM_I(:)
-          IGNORE = .TRUE.
+          IGNORE_VOL_ATTEMPT = .TRUE.
           EXIT
         END IF
       END DO
     END IF
 
     ! Box not too distorted
-    IF( .NOT. IGNORE ) THEN
+    IF( .NOT. IGNORE_VOL_ATTEMPT ) THEN
 
       ! Enthalpy (weighing function)
       HNM = ( PRESS * ( BOXVN - BOXVM ) ) - ( DBLE( N_PARTICLES ) * DLOG( BOXVN / BOXVM ) )
@@ -1766,7 +1969,7 @@ DO CYCLES = 1, MAX_CYCLES
                   CUTOFF_D = CUTOFF_D * CUTOFF_D
                   ! Preliminary test (circumscribing spheres)
                   IF( RIJSQ <= CUTOFF_D ) THEN
-                    ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
+                    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
                     IF( GEOM_SELEC(1) ) THEN
                       CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
                       ! Overlap criterion
@@ -1774,7 +1977,7 @@ DO CYCLES = 1, MAX_CYCLES
                         ! Overlap detected
                         EXIT LOOP_ALLOVERLAP_NPT
                       END IF
-                    ! Overlap test for spherocylinders (Vega-Lago Method)
+                    ! Overlap test for spherocylinders (Vega-Lago method)
                     ELSE IF( GEOM_SELEC(2) ) THEN
                       CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
                       ! Overlap criterion
@@ -1782,22 +1985,54 @@ DO CYCLES = 1, MAX_CYCLES
                         ! Overlap detected
                         EXIT LOOP_ALLOVERLAP_NPT
                       END IF
-                    ! Overlap test for cylinders (Lopes et al. Method)
+                    ! Overlap test for cylinders and/or spheres
                     ELSE IF( GEOM_SELEC(3) ) THEN
-                      ! Preliminary test (circumscribing spherocylinders)
-                      OVERLAP_PRELIMINAR = .FALSE.
-                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                      ! Overlap criterion
-                      IF( OVERLAP_PRELIMINAR ) THEN
+                      IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                        ! Initialization
+                        OVERLAP_PRELIMINAR = .FALSE.
+                        ! Preliminary test (circumscribing spherocylinders)
+                        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                        ! Overlap criterion
+                        IF( OVERLAP_PRELIMINAR ) THEN
+                          ! Retrive position of the particle j after applying the PBC
+                          RJ(1) = RI(1) + RIJ(1)
+                          RJ(2) = RI(2) + RIJ(2)
+                          RJ(3) = RI(3) + RIJ(3)
+                          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                          ! Overlap criterion
+                          IF( OVERLAP ) THEN
+                            ! Overlap detected
+                            EXIT LOOP_ALLOVERLAP_NPT
+                          END IF
+                        END IF
+                      ! Overlap test for cylinders and spheres
+                      ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                        ! Retrive position of the particle j after applying the PBC
                         RJ(1) = RI(1) + RIJ(1)
                         RJ(2) = RI(2) + RIJ(2)
                         RJ(3) = RI(3) + RIJ(3)
-                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                        ! Overlap criterion
+                        CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
                         IF( OVERLAP ) THEN
                           ! Overlap detected
                           EXIT LOOP_ALLOVERLAP_NPT
                         END IF
+                      ! Overlap test for cylinders and spheres
+                      ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                        ! Retrive position of the particle j after applying the PBC
+                        RJ(1) = RI(1) + RIJ(1)
+                        RJ(2) = RI(2) + RIJ(2)
+                        RJ(3) = RI(3) + RIJ(3)
+                        CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+                        IF( OVERLAP ) THEN
+                          ! Overlap detected
+                          EXIT LOOP_ALLOVERLAP_NPT
+                        END IF
+                      ! Overlap test for spheres
+                      ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                        ! Overlap detected
+                        OVERLAP = .TRUE.
+                        EXIT LOOP_ALLOVERLAP_NPT
                       END IF
                     END IF
                   END IF
@@ -1872,20 +2107,52 @@ DO CYCLES = 1, MAX_CYCLES
                     END IF
                   ! Overlap test for cylinders (Lopes et al. Method)
                   ELSE IF( GEOM_SELEC(3) ) THEN
-                    ! Preliminary test (circumscribing spherocylinders)
-                    OVERLAP_PRELIMINAR = .FALSE.
-                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                    ! Overlap criterion
-                    IF( OVERLAP_PRELIMINAR ) THEN
+                    IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                      ! Initialization
+                      OVERLAP_PRELIMINAR = .FALSE.
+                      ! Preliminary test (circumscribing spherocylinders)
+                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                      ! Overlap criterion
+                      IF( OVERLAP_PRELIMINAR ) THEN
+                        ! Retrive position of the particle j after applying the PBC
+                        RJ(1) = RI(1) + RIJ(1)
+                        RJ(2) = RI(2) + RIJ(2)
+                        RJ(3) = RI(3) + RIJ(3)
+                        ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                        ! Overlap criterion
+                        IF( OVERLAP ) THEN
+                          ! Overlap detected
+                          EXIT LOOP_ALLOVERLAP_NPT
+                        END IF
+                      END IF
+                    ! Overlap test for cylinders and spheres
+                    ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                      ! Retrive position of the particle j after applying the PBC
                       RJ(1) = RI(1) + RIJ(1)
                       RJ(2) = RI(2) + RIJ(2)
                       RJ(3) = RI(3) + RIJ(3)
-                      CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                      ! Overlap criterion
+                      CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
                       IF( OVERLAP ) THEN
                         ! Overlap detected
                         EXIT LOOP_ALLOVERLAP_NPT
                       END IF
+                    ! Overlap test for cylinders and spheres
+                    ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                      ! Retrive position of the particle j after applying the PBC
+                      RJ(1) = RI(1) + RIJ(1)
+                      RJ(2) = RI(2) + RIJ(2)
+                      RJ(3) = RI(3) + RIJ(3)
+                      CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+                      IF( OVERLAP ) THEN
+                        ! Overlap detected
+                        EXIT LOOP_ALLOVERLAP_NPT
+                      END IF
+                    ! Overlap test for spheres
+                    ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                      ! Overlap detected
+                      OVERLAP = .TRUE.
+                      EXIT LOOP_ALLOVERLAP_NPT
                     END IF
                   END IF
                 END IF
@@ -1898,7 +2165,7 @@ DO CYCLES = 1, MAX_CYCLES
 
         END DO LOOP_ALLOVERLAP_NPT
 
-        ! Acceptance Criterion
+        ! Acceptance criterion
         IF( .NOT. OVERLAP ) THEN
           ! System configuration update
           BOXVMC      = BOXVN      ! Update volume
@@ -1914,7 +2181,7 @@ DO CYCLES = 1, MAX_CYCLES
           PACKING_F = ( TOTAL_VP / BOXVN )
           TOTAL_RHO = ( DBLE( N_PARTICLES ) / BOXVN )
           ! Re-initialization
-          IGNORE = .FALSE.
+          IGNORE_VOL_ATTEMPT = .FALSE.
           ! Lattice reduction
           LATTICER = .FALSE.
           CALL LATTICE_REDUCTION( BOXLMC, DISTORTION, LATTICER )
@@ -1922,7 +2189,7 @@ DO CYCLES = 1, MAX_CYCLES
             ! Calculate the new reciprocal box basis vectors
             CALL INVERSE_COF( BOXLMC, BOXLMC_I, BOXVMC )
             DO K = 1, N_PARTICLES
-              ! Minimum Image Convention
+              ! Minimum image convention
               CALL MULTI_MATRIX( BOXLMC_I, RMC(:,K), S12 )
               S12 = S12 - ANINT( S12 )
               CALL MULTI_MATRIX( BOXLMC, S12, RMC(:,K) )
@@ -2098,7 +2365,7 @@ DO CYCLES = 1, MAX_CYCLES
   ! Adjustment of maximum displacements
   IF( CYCLES <= N_EQUIL ) THEN  ! During equilibration only
 
-    ! Adjustment of maximum displacement (Translation)
+    ! Adjustment of maximum displacement (translation)
     IF( DBLE( MOVT ) >= DBLE( N_ADJUST * N_PARTICLES ) * R_ACC_T ) THEN
 
       ! Acceptance ratio (translation)
@@ -2125,7 +2392,7 @@ DO CYCLES = 1, MAX_CYCLES
 
     END IF
 
-    ! Adjustment of maximum displacement (Rotation)
+    ! Adjustment of maximum displacement (rotation)
     IF( DBLE( MOVR ) >= DBLE( N_ADJUST * N_PARTICLES ) * R_ACC_R ) THEN
 
       ! Acceptance ratio (rotation)
@@ -2152,7 +2419,7 @@ DO CYCLES = 1, MAX_CYCLES
 
     END IF
 
-    ! Adjustment of maximum displacement (Isotropic Volume Change)
+    ! Adjustment of maximum displacement (isotropic volume change)
     IF( DBLE( MOVVI ) >= DBLE( N_ADJUST ) * R_ACC_VI ) THEN
 
       IF( MOVVI > 0 ) THEN
@@ -2183,7 +2450,7 @@ DO CYCLES = 1, MAX_CYCLES
 
     END IF
 
-    ! Adjustment of maximum displacement (Anisotropic Volume Change)
+    ! Adjustment of maximum displacement (anisotropic volume change)
     IF( DBLE( MOVVA ) >= DBLE( N_ADJUST ) * R_ACC_VA ) THEN
 
       IF( MOVVA > 0 ) THEN
@@ -2232,17 +2499,45 @@ DO CYCLES = 1, MAX_CYCLES
       WRITE( 20, * ) " "
       IF( GEOM_SELEC(1) ) THEN
         DO C = 1, COMPONENTS
-          DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-            WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-            &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-          END DO
+          IF( .NOT. SPHERCOMP(C) ) THEN
+            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+            END DO
+          ELSE
+            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+            END DO
+          END IF
         END DO
-      ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+      ELSE IF( GEOM_SELEC(2) ) THEN
         DO C = 1, COMPONENTS
-          DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-            WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-            &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
-          END DO
+          IF( .NOT. SPHERCOMP(C) ) THEN
+            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+            END DO
+          ELSE
+            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+            END DO
+          END IF
+        END DO
+      ELSE IF( GEOM_SELEC(3) ) THEN
+        DO C = 1, COMPONENTS
+          IF( .NOT. SPHERCOMP(C) ) THEN
+            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+            END DO
+          ELSE
+            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+            END DO
+          END IF
         END DO
       END IF
       FLUSH( 20 )
@@ -2257,18 +2552,14 @@ DO CYCLES = 1, MAX_CYCLES
 
 END DO
 
-! *********************************************************************************************** !
-! End of Metropolis algorithm                                                                     !
-! *********************************************************************************************** !
+! End of Metropolis algorithm
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0)" ) "Monte Carlo simulation finished successfully! See directories for results."
-CALL SLEEP( 2 )
+CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Output units                                                                                    !
-! *********************************************************************************************** !
+! Output unit
 IF( TRAJ_CHECK ) THEN
   CLOSE( 20 )
 END IF
@@ -2291,26 +2582,20 @@ WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"SIMULATION LENGTH"//REPEAT( " ", 19 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
 
-! *********************************************************************************************** !
-! End simulation timer                                                                            !
-! *********************************************************************************************** !
+! End simulation timer
 CALL CPU_TIME( STOP_TIMER )
 WRITE( *, "(G0,G0.5,G0)" ) "Elapsed Time: ", (STOP_TIMER - START_TIMER), "s."
 CALL SLEEP( 1 )
 WRITE( *, "(G0)" ) " "
 
-! *********************************************************************************************** !
-! Deallocation of arrays                                                                          !
-! *********************************************************************************************** !
+! Deallocation of arrays
 DEALLOCATE( QMC, RMC, EMC, RMCV )
 DEALLOCATE( V, VMC, VN, VM, DV )
 DEALLOCATE( SWRANGE )
 DEALLOCATE( Q, R, E )
 DEALLOCATE( QPROT, RPROT, EPROT )
 
-! *********************************************************************************************** !
-! Calculation of the first- and second-order TPT coefficients                                     !
-! *********************************************************************************************** !
+! Calculation of the first- and second-order TPT coefficients
 IF( COEF_CHECK .AND. MC_ENSEMBLE == "NVT" .AND. POTENTIAL_SELEC(2) ) THEN
   ! Status
   WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
@@ -2371,19 +2656,15 @@ IF( COEF_CHECK .AND. MC_ENSEMBLE == "NVT" .AND. POTENTIAL_SELEC(2) ) THEN
   END IF
 END IF
 
-! *********************************************************************************************** !
-! Write down results                                                                              !
-! *********************************************************************************************** !
+! Write down results
 WRITE( *, "(G0)", ADVANCE= "NO" ) "Writing simulation log..."
 CALL SLEEP( 1 )
 
 ! Allocation
-ALLOCATE( CHAR_LABEL(70,COMPONENTS) )
+ALLOCATE( CHAR_LABEL(71,COMPONENTS) )
 ALLOCATE( CHAR_LABEL_L(1,N_LAMBDA ) )
 
-! *********************************************************************************************** !
-! Simulation log descriptors                                                                      !
-! *********************************************************************************************** !
+! Simulation log descriptors
 WRITE( CHAR_LABEL(1,1), "(G0)"    ) COMPONENTS
 WRITE( CHAR_LABEL(2,1), "(G0.5)"  ) PACKING_F
 DO C = 1, COMPONENTS
@@ -2513,13 +2794,14 @@ IF( POTENTIAL_SELEC(2) ) THEN
   WRITE( CHAR_LABEL(69,1), "(G0)"   ) MIN_BLOCKS
   WRITE( CHAR_LABEL(70,1), "(G0)"   ) MAX_BLOCKS
 END IF
+DO C = 1, COMPONENTS
+  WRITE( CHAR_LABEL(71,C), "(G0)"   ) SPHERCOMP(C)
+END DO
 
-! *********************************************************************************************** !
-! Log strings                                                                                     !
-! *********************************************************************************************** !
-ALLOCATE( LOG_STRINGS_H(6), LOG_STRINGS_T(76,COMPONENTS), LOG_STRINGS_S(6) )
+! Log strings
+ALLOCATE( LOG_STRINGS_H(6), LOG_STRINGS_T(77,COMPONENTS), LOG_STRINGS_S(6) )
 ALLOCATE( LOG_STRINGS_L( 1,( INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1 ) ) )
-ALLOCATE( STRSH(6), STRST(76,COMPONENTS), STRSS(6) )
+ALLOCATE( STRSH(6), STRST(77,COMPONENTS), STRSS(6) )
 
 ! String name (header)
 LOG_STRINGS_H(1)  = "MONTE CARLO SIMULATION LOG"
@@ -2536,7 +2818,12 @@ LOG_STRINGS_T(3,1) = "Molecular Shape: "//TRIM( GEOMETRY )
 LOG_STRINGS_T(4,1) = "Number of Components: "//TRIM( CHAR_LABEL(1,1) )
 LOG_STRINGS_T(5,1) = "Packing Fraction: "//TRIM( CHAR_LABEL(2,1) )
 DO C = 1, COMPONENTS
-  LOG_STRINGS_T(6,C)  = "●COMPONENT #"//TRIM( CHAR_LABEL(39,C) )
+  LOG_STRINGS_T(6,C)  = "● COMPONENT #"//TRIM( CHAR_LABEL(39,C) )
+  IF( SPHERCOMP(C) ) THEN
+    LOG_STRINGS_T(77,C) = "Spherical Component"
+  ELSE
+    LOG_STRINGS_T(77,C) = "Non-Spherical Component"
+  END IF
   LOG_STRINGS_T(7,C)  = "Diameter: "//TRIM( CHAR_LABEL(3,C) )//"Å"
   LOG_STRINGS_T(8,C)  = "Length: "//TRIM( CHAR_LABEL(4,C) )//"Å"
   LOG_STRINGS_T(9,C)  = "Elongation: "//TRIM( CHAR_LABEL(5,C) )
@@ -2580,7 +2867,7 @@ LOG_STRINGS_T(67,1) = "Maximum Box Angle Distortion: "//TRIM( CHAR_LABEL(62,1) )
 LOG_STRINGS_T(68,1) = "Lattice Reduction Algorithm: "//TRIM( CHAR_LABEL(63,1) )
 LOG_STRINGS_T(39,1) = "Unrotated Axis (Initial Configuration): "//TRIM( CHAR_LABEL(34,1) )
 LOG_STRINGS_T(40,1) = "Quaternion Angle (Initial Configuration): "//TRIM( CHAR_LABEL(35,1) )
-LOG_STRINGS_T(41,1) = "●Configuration: "//TRIM( CHAR_LABEL(36,1) )//" Structure"
+LOG_STRINGS_T(41,1) = "● Configuration: "//TRIM( CHAR_LABEL(36,1) )//" Structure"
 LOG_STRINGS_T(42,1) = "Initial Packing Fraction (Random Configuration): "//TRIM( CHAR_LABEL(40,1) )
 LOG_STRINGS_T(44,1) = "Target Reduced Pressure (Random Configuration): "//TRIM( CHAR_LABEL(42,1) )
 LOG_STRINGS_T(45,1) = "Adjustment Frequency (Random Configuration): Every "//TRIM( CHAR_LABEL(43,1) )//" Cycle(s)"
@@ -2603,7 +2890,7 @@ ELSE IF( .NOT. TRAJ_CHECK ) THEN
 END IF
 LOG_STRINGS_T(56,1) = "Fixed seed: "//TRIM( CHAR_LABEL(53,1) )
 LOG_STRINGS_T(57,1) = "Simulation length: "//TRIM( CHAR_LABEL(37,1) )
-LOG_STRINGS_T(69,1) = "●Potential Type: "//TRIM( CHAR_LABEL(64,1) )//" Potential"
+LOG_STRINGS_T(69,1) = "● Potential Type: "//TRIM( CHAR_LABEL(64,1) )//" Potential"
 LOG_STRINGS_T(70,1) = "Number of Attractive Range Points: "//TRIM( CHAR_LABEL(65,1) )
 IF( N_LAMBDA >= 4 ) THEN
   REMAINDER = MOD( N_LAMBDA, 4 )
@@ -2663,7 +2950,7 @@ LOG_STRINGS_S(6) = "PARAMETERS OF THE POTENTIAL"
 DO I = 1, 6
   STRSH(I) = ( 70.D0 - DBLE( LEN( TRIM( LOG_STRINGS_H(I) ) ) ) ) * 0.5D0
 END DO
-DO I = 1, 76
+DO I = 1, 77
   DO C = 1, COMPONENTS
     STRST(I,C) = ( 69 - LEN( TRIM( LOG_STRINGS_T(I,C) ) ) )
   END DO
@@ -2675,13 +2962,13 @@ END DO
 ! *********************************************************************************************** !
 ! File inquiry                                                                                    !
 ! *********************************************************************************************** !
-INQUIRE( FILE= "simulation_log.txt", EXIST= FILE_EXIST )
+INQUIRE( FILE= "Simulation_Log.txt", EXIST= FILE_EXIST )
 
 ! *********************************************************************************************** !
 ! Simulation log                                                                                  !
 ! *********************************************************************************************** !
 IF( .NOT. FILE_EXIST ) THEN
-  OPEN( UNIT= 95, FILE= "simulation_log.txt" )
+  OPEN( UNIT= 95, FILE= "Simulation_Log.txt" )
   WRITE( 95, "(G0)" ) CH_UL//REPEAT( CH_HS, 70 )//CH_UR
   WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(1) ) )//TRIM( LOG_STRINGS_H(1) )//REPEAT( " ", CEILING( STRSH(1) ) )//CH_VS
   WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
@@ -2711,6 +2998,7 @@ IF( .NOT. FILE_EXIST ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
     DO C = 1, COMPONENTS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(6,C) )//REPEAT( " ", NINT( STRST(6,C) ) + 2 )//CH_VS
+      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(7,C) )//REPEAT( " ", NINT( STRST(7,C) ) + 1 - 1 )//CH_VS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(8,C) )//REPEAT( " ", NINT( STRST(8,C) ) + 1 - 1 )//CH_VS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(9,C) )//REPEAT( " ", NINT( STRST(9,C) ) - 1 )//CH_VS
@@ -2726,6 +3014,7 @@ IF( .NOT. FILE_EXIST ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
     &                   SS_BR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
+    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(7,1) )//REPEAT( " ", NINT( STRST(7,1) ) + 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(8,1) )//REPEAT( " ", NINT( STRST(8,1) ) + 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(9,1) )//REPEAT( " ", NINT( STRST(9,1) ) )//CH_VS
@@ -2880,7 +3169,7 @@ IF( .NOT. FILE_EXIST ) THEN
 ! Simulation log (appending)                                                                      !
 ! *********************************************************************************************** !
 ELSE IF( FILE_EXIST ) THEN
-  OPEN( UNIT= 95, FILE= "simulation_log.txt", POSITION= "APPEND" )
+  OPEN( UNIT= 95, FILE= "Simulation_Log.txt", POSITION= "APPEND" )
   WRITE( 95, "(G0)" ) REPEAT( " ", 1 )//REPEAT( C_FUL, 70 )//REPEAT( " ", 1 )
   WRITE( 95, "(G0)" ) CH_UL//REPEAT( CH_HS, 70 )//CH_UR
   WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
@@ -2901,6 +3190,7 @@ ELSE IF( FILE_EXIST ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
     DO C = 1, COMPONENTS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(6,C) )//REPEAT( " ", NINT( STRST(6,C) ) + 2 )//CH_VS
+      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(7,C) )//REPEAT( " ", NINT( STRST(7,C) ) + 1 - 1 )//CH_VS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(8,C) )//REPEAT( " ", NINT( STRST(8,C) ) + 1 - 1 )//CH_VS
       WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(9,C) )//REPEAT( " ", NINT( STRST(9,C) ) - 1 )//CH_VS
@@ -2916,6 +3206,7 @@ ELSE IF( FILE_EXIST ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
     &                   SS_BR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
+    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(7,1) )//REPEAT( " ", NINT( STRST(7,1) ) + 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(8,1) )//REPEAT( " ", NINT( STRST(8,1) ) + 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(9,1) )//REPEAT( " ", NINT( STRST(9,1) ) )//CH_VS

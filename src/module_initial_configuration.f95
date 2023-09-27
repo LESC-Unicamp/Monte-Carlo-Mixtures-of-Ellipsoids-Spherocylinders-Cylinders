@@ -531,21 +531,38 @@ ALLOCATE( EPROT(3,N_PARTICLES) )
 ALLOCATE( OVCOUNTLOG(N_PARTICLES) )
 
 ! Initialization
-OVCOUNTLOG = .TRUE.
-OVCOUNTER  = COUNT( OVCOUNTLOG, DIM= 1 ) - 1
+OVCOUNTLOG   = .TRUE.
+OVCOUNTER    = COUNT( OVCOUNTLOG, DIM= 1 ) - 1
+SCALE_FACTOR = 1.D0
 
 ! Diameter of circumscribing sphere
 IF( GEOM_SELEC(1) ) THEN
   DO C = 1, COMPONENTS
-    IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) <= 1.D0 ) THEN
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) < 1.D0 ) THEN
+        CUTOFF(C) = DIAMETER(C)
+      ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
+        CUTOFF(C) = LENGTH(C)
+      END IF
+    ELSE
       CUTOFF(C) = DIAMETER(C)
-    ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
-      CUTOFF(C) = LENGTH(C)
     END IF
   END DO
-ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+ELSE IF( GEOM_SELEC(2) ) THEN
   DO C = 1, COMPONENTS
-    CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C)
+    END IF
+  END DO
+ELSE IF( GEOM_SELEC(3) ) THEN
+  DO C = 1, COMPONENTS
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C)
+    END IF
   END DO
 END IF
 
@@ -616,12 +633,14 @@ MOV_ROT           = .FALSE. ! Rotational move selector              (initial val
 ! Maximum translational displacement                                (initial value)
 IF( GEOM_SELEC(1) ) THEN
   IF( MAXVAL( DIAMETER ) <= MAXVAL( LENGTH ) ) THEN
-    DRMAX         = 1.05D0 * MAXVAL( LENGTH )   
+    DRMAX = 1.05D0 * MAXVAL( LENGTH )   
   ELSE
-    DRMAX         = 1.05D0 * MAXVAL( DIAMETER )
+    DRMAX = 1.05D0 * MAXVAL( DIAMETER )
   END IF
-ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
-  DRMAX           = 1.05D0 * ( MAXVAL( LENGTH ) + MAXVAL( DIAMETER ) )
+ELSE IF( GEOM_SELEC(2) ) THEN
+  DRMAX = 1.05D0 * ( MAXVAL( LENGTH ) + MAXVAL( DIAMETER ) )
+ELSE IF( GEOM_SELEC(3) ) THEN
+  DRMAX = 1.05D0 * ( MAXVAL( LENGTH ) + MAXVAL( DIAMETER ) )
 END IF
 ANGMAX            = 0.1D0   ! Maximum rotational displacement       (initial value)
 NACCT             = 0       ! Translational move acceptance counter (initial value)
@@ -671,11 +690,7 @@ HIT_AND_MISS_NVT: DO
     END DO
 
     ! Forbid rotation if component is spherical
-    IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
-      MOV_TRANS = .TRUE.   ! Enable translation
-      MOV_ROT   = .FALSE.  ! Disable rotation
-      MOVT      = MOVT + 1 ! Increment move counter
-    ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+    IF( SPHERCOMP(CI) ) THEN
       MOV_TRANS = .TRUE.   ! Enable translation
       MOV_ROT   = .FALSE.  ! Disable rotation
       MOVT      = MOVT + 1 ! Increment move counter
@@ -816,17 +831,45 @@ HIT_AND_MISS_NVT: DO
   WRITE( 55, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-        &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-        &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   FLUSH( 55 )
@@ -846,10 +889,6 @@ HIT_AND_MISS_NVT: DO
         OVC_1: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
           ! Initialization
           OVERLAP_VALIDATION = .FALSE.
-          ! Checks if the current particle i is not overlapping any other particles in the system
-          IF( .NOT. OVCOUNTLOG(I) ) THEN
-            CYCLE OVC_1
-          END IF
           ! Second loop represents all particles with indexes j of component Cj
           DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
             ! Position of particle i
@@ -899,6 +938,7 @@ HIT_AND_MISS_NVT: DO
                 ! Overlap criterion
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
+                  OVCOUNTLOG(I) = .TRUE.
                   CYCLE OVC_1
                 END IF
               ! Overlap test for spherocylinders (Vega-Lago method)
@@ -907,25 +947,60 @@ HIT_AND_MISS_NVT: DO
                 ! Overlap criterion
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
+                  OVCOUNTLOG(I) = .TRUE.
                   CYCLE OVC_1
                 END IF
-              ! Overlap test for cylinders (modified Lopes et al. method)
+              ! Overlap test for cylinders and/or spheres
               ELSE IF( GEOM_SELEC(3) ) THEN
-                ! Preliminary test (circumscribing spherocylinders)
-                OVERLAP_PRELIMINAR = .FALSE.
-                CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                ! Overlap criterion
-                IF( OVERLAP_PRELIMINAR ) THEN
+                IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                  ! Initialization
+                  OVERLAP_PRELIMINAR = .FALSE.
+                  ! Preliminary test (circumscribing spherocylinders)
+                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                  ! Overlap criterion
+                  IF( OVERLAP_PRELIMINAR ) THEN
+                    ! Retrive position of the particle j after applying the PBC
+                    RJ(1) = RI(1) + RIJ(1)
+                    RJ(2) = RI(2) + RIJ(2)
+                    RJ(3) = RI(3) + RIJ(3)
+                    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                    CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
+                    ! Overlap criterion
+                    IF( OVERLAP_VALIDATION ) THEN
+                      ! Overlap detected
+                      OVCOUNTLOG(I) = .TRUE.
+                      CYCLE OVC_1
+                    END IF
+                  END IF
+                ! Overlap test for cylinders and spheres
+                ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
                   ! Retrive position of the particle j after applying the PBC
                   RJ(1) = RI(1) + RIJ(1)
                   RJ(2) = RI(2) + RIJ(2)
                   RJ(3) = RI(3) + RIJ(3)
-                  CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
-                  ! Overlap criterion
+                  CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_VALIDATION )
                   IF( OVERLAP_VALIDATION ) THEN
                     ! Overlap detected
+                    OVCOUNTLOG(I) = .TRUE.
                     CYCLE OVC_1
                   END IF
+                ! Overlap test for cylinders and spheres
+                ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                  ! Retrive position of the particle j after applying the PBC
+                  RJ(1) = RI(1) + RIJ(1)
+                  RJ(2) = RI(2) + RIJ(2)
+                  RJ(3) = RI(3) + RIJ(3)
+                  CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_VALIDATION )
+                  IF( OVERLAP_VALIDATION ) THEN
+                    ! Overlap detected
+                    OVCOUNTLOG(I) = .TRUE.
+                    CYCLE OVC_1
+                  END IF
+                ! Overlap test for spheres
+                ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                  ! Overlap detected
+                  OVCOUNTLOG(I) = .TRUE.
+                  CYCLE OVC_1
                 END IF
               END IF
             END IF
@@ -943,10 +1018,6 @@ HIT_AND_MISS_NVT: DO
       OVC_2: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
         ! Initialization
         OVERLAP_VALIDATION = .FALSE.
-        ! Checks if the current particle i is not overlapping any other particles in the system
-        IF( .NOT. OVCOUNTLOG(I) ) THEN
-          CYCLE OVC_2
-        END IF
         ! Second loop represents all other particles with indexes j > i of component Cj = Ci
         DO J = I + 1, SUM( N_COMPONENT(0:CI) )
           ! Position of particle i
@@ -996,6 +1067,7 @@ HIT_AND_MISS_NVT: DO
               ! Overlap criterion
               IF( OVERLAP_VALIDATION ) THEN
                 ! Overlap detected
+                OVCOUNTLOG(I) = .TRUE.
                 CYCLE OVC_2
               END IF
             ! Overlap test for spherocylinders (Vega-Lago method)
@@ -1004,25 +1076,60 @@ HIT_AND_MISS_NVT: DO
               ! Overlap criterion
               IF( OVERLAP_VALIDATION ) THEN
                 ! Overlap detected
+                OVCOUNTLOG(I) = .TRUE.
                 CYCLE OVC_2
               END IF
-            ! Overlap test for cylinders (modified Lopes et al. method)
+            ! Overlap test for cylinders and/or spheres
             ELSE IF( GEOM_SELEC(3) ) THEN
-              ! Preliminary test (circumscribing spherocylinders)
-              OVERLAP_PRELIMINAR = .FALSE.
-              CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-              ! Overlap criterion
-              IF( OVERLAP_PRELIMINAR ) THEN
+              IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                ! Initialization
+                OVERLAP_PRELIMINAR = .FALSE.
+                ! Preliminary test (circumscribing spherocylinders)
+                CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                ! Overlap criterion
+                IF( OVERLAP_PRELIMINAR ) THEN
+                  ! Retrive position of the particle j after applying the PBC
+                  RJ(1) = RI(1) + RIJ(1)
+                  RJ(2) = RI(2) + RIJ(2)
+                  RJ(3) = RI(3) + RIJ(3)
+                  ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                  CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
+                  ! Overlap criterion
+                  IF( OVERLAP_VALIDATION ) THEN
+                    ! Overlap detected
+                    OVCOUNTLOG(I) = .TRUE.
+                    CYCLE OVC_2
+                  END IF
+                END IF
+              ! Overlap test for cylinders and spheres
+              ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
                 ! Retrive position of the particle j after applying the PBC
                 RJ(1) = RI(1) + RIJ(1)
                 RJ(2) = RI(2) + RIJ(2)
                 RJ(3) = RI(3) + RIJ(3)
-                CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
-                ! Overlap criterion
+                CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_VALIDATION )
                 IF( OVERLAP_VALIDATION ) THEN
                   ! Overlap detected
+                  OVCOUNTLOG(I) = .TRUE.
                   CYCLE OVC_2
                 END IF
+              ! Overlap test for cylinders and spheres
+              ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                ! Retrive position of the particle j after applying the PBC
+                RJ(1) = RI(1) + RIJ(1)
+                RJ(2) = RI(2) + RIJ(2)
+                RJ(3) = RI(3) + RIJ(3)
+                CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_VALIDATION )
+                IF( OVERLAP_VALIDATION ) THEN
+                  ! Overlap detected
+                  OVCOUNTLOG(I) = .TRUE.
+                  CYCLE OVC_2
+                END IF
+              ! Overlap test for spheres
+              ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                ! Overlap detected
+                OVCOUNTLOG(I) = .TRUE.
+                CYCLE OVC_2
               END IF
             END IF
           END IF
@@ -1148,11 +1255,7 @@ NPT_SIMULATION: DO
       END DO
 
       ! Forbid rotation if component is spherical
-      IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
-        MOV_TRANS = .TRUE.   ! Enable translation
-        MOV_ROT   = .FALSE.  ! Disable rotation
-        MOVT      = MOVT + 1 ! Increment move counter
-      ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+      IF( SPHERCOMP(CI) ) THEN
         MOV_TRANS = .TRUE.   ! Enable translation
         MOV_ROT   = .FALSE.  ! Disable rotation
         MOVT      = MOVT + 1 ! Increment move counter
@@ -1187,13 +1290,13 @@ NPT_SIMULATION: DO
       IF( MOV_TRANS ) THEN
         ! Random translation along x-axis
         CALL RANF(  )
-        RN(1) = RM(1) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
+        RN(1) = RM(1) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX ! Range [-drmax,drmax]
         ! Random translation along y-axis
         CALL RANF(  )
-        RN(2) = RM(2) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
+        RN(2) = RM(2) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX ! Range [-drmax,drmax]
         ! Random translation along z-axis
         CALL RANF(  )
-        RN(3) = RM(3) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
+        RN(3) = RM(3) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX ! Range [-drmax,drmax]
         ! Minimum image convention
         CALL MULTI_MATRIX( BOXLMC_I, RN, S12 )
         S12 = S12 - ANINT( S12 )
@@ -1435,22 +1538,54 @@ NPT_SIMULATION: DO
                         ! Overlap detected
                         EXIT LOOP_OVERLAP_NPT
                       END IF
-                    ! Overlap test for cylinders (modified Lopes et al. Method)
+                    ! Overlap test for cylinders and/or spheres
                     ELSE IF( GEOM_SELEC(3) ) THEN
-                      ! Preliminary test (circumscribing spherocylinders)
-                      OVERLAP_PRELIMINAR = .FALSE.
-                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                      ! Overlap criterion
-                      IF( OVERLAP_PRELIMINAR ) THEN
+                      IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                        ! Initialization
+                        OVERLAP_PRELIMINAR = .FALSE.
+                        ! Preliminary test (circumscribing spherocylinders)
+                        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                        ! Overlap criterion
+                        IF( OVERLAP_PRELIMINAR ) THEN
+                          ! Retrive position of the particle j after applying the PBC
+                          RJ(1) = RI(1) + RIJ(1)
+                          RJ(2) = RI(2) + RIJ(2)
+                          RJ(3) = RI(3) + RIJ(3)
+                          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                          ! Overlap criterion
+                          IF( OVERLAP ) THEN
+                            ! Overlap detected
+                            EXIT LOOP_OVERLAP_NPT
+                          END IF
+                        END IF
+                      ! Overlap test for cylinders and spheres
+                      ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                        ! Retrive position of the particle j after applying the PBC
                         RJ(1) = RI(1) + RIJ(1)
                         RJ(2) = RI(2) + RIJ(2)
                         RJ(3) = RI(3) + RIJ(3)
-                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                        ! Overlap criterion
+                        CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
                         IF( OVERLAP ) THEN
                           ! Overlap detected
                           EXIT LOOP_OVERLAP_NPT
                         END IF
+                      ! Overlap test for cylinders and spheres
+                      ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                        ! Retrive position of the particle j after applying the PBC
+                        RJ(1) = RI(1) + RIJ(1)
+                        RJ(2) = RI(2) + RIJ(2)
+                        RJ(3) = RI(3) + RIJ(3)
+                        CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+                        IF( OVERLAP ) THEN
+                          ! Overlap detected
+                          EXIT LOOP_OVERLAP_NPT
+                        END IF
+                      ! Overlap test for spheres
+                      ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                        ! Overlap detected
+                        OVERLAP = .TRUE.
+                        EXIT LOOP_OVERLAP_NPT
                       END IF
                     END IF
                   END IF
@@ -1523,22 +1658,54 @@ NPT_SIMULATION: DO
                       ! Overlap detected
                       EXIT LOOP_OVERLAP_NPT
                     END IF
-                  ! Overlap test for cylinders (modified Lopes et al. Method)
+                  ! Overlap test for cylinders and/or spheres
                   ELSE IF( GEOM_SELEC(3) ) THEN
-                    ! Preliminary test (circumscribing spherocylinders)
-                    OVERLAP_PRELIMINAR = .FALSE.
-                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                    ! Overlap criterion
-                    IF( OVERLAP_PRELIMINAR ) THEN
+                    IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                      ! Initialization
+                      OVERLAP_PRELIMINAR = .FALSE.
+                      ! Preliminary test (circumscribing spherocylinders)
+                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                      ! Overlap criterion
+                      IF( OVERLAP_PRELIMINAR ) THEN
+                        ! Retrive position of the particle j after applying the PBC
+                        RJ(1) = RI(1) + RIJ(1)
+                        RJ(2) = RI(2) + RIJ(2)
+                        RJ(3) = RI(3) + RIJ(3)
+                        ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                        ! Overlap criterion
+                        IF( OVERLAP ) THEN
+                          ! Overlap detected
+                          EXIT LOOP_OVERLAP_NPT
+                        END IF
+                      END IF
+                    ! Overlap test for cylinders and spheres
+                    ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                      ! Retrive position of the particle j after applying the PBC
                       RJ(1) = RI(1) + RIJ(1)
                       RJ(2) = RI(2) + RIJ(2)
                       RJ(3) = RI(3) + RIJ(3)
-                      CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                      ! Overlap criterion
+                      CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
                       IF( OVERLAP ) THEN
                         ! Overlap detected
                         EXIT LOOP_OVERLAP_NPT
                       END IF
+                    ! Overlap test for cylinders and spheres
+                    ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                      ! Retrive position of the particle j after applying the PBC
+                      RJ(1) = RI(1) + RIJ(1)
+                      RJ(2) = RI(2) + RIJ(2)
+                      RJ(3) = RI(3) + RIJ(3)
+                      CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+                      IF( OVERLAP ) THEN
+                        ! Overlap detected
+                        EXIT LOOP_OVERLAP_NPT
+                      END IF
+                    ! Overlap test for spheres
+                    ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                      ! Overlap detected
+                      OVERLAP = .TRUE.
+                      EXIT LOOP_OVERLAP_NPT
                     END IF
                   END IF
                 END IF
@@ -1864,12 +2031,26 @@ NPT_SIMULATION: DO
         &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
       END DO
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
       DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
         WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
         &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
       END DO
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 55, * ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
+          &              0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   CLOSE( 55 )
@@ -1997,22 +2178,54 @@ IF( ETA_NPT > PACKING_F ) THEN
                     ! Overlap detected
                     EXIT LOOP_OVERLAP_NPT_FIX
                   END IF
-                ! Overlap test for cylinders (modified Lopes et al. method)
+                ! Overlap test for cylinders and/or spheres
                 ELSE IF( GEOM_SELEC(3) ) THEN
-                  ! Preliminary test (circumscribing spherocylinders)
-                  OVERLAP_PRELIMINAR = .FALSE.
-                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                  ! Overlap criterion
-                  IF( OVERLAP_PRELIMINAR ) THEN
+                  IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                    ! Initialization
+                    OVERLAP_PRELIMINAR = .FALSE.
+                    ! Preliminary test (circumscribing spherocylinders)
+                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                    ! Overlap criterion
+                    IF( OVERLAP_PRELIMINAR ) THEN
+                      ! Retrive position of the particle j after applying the PBC
+                      RJ(1) = RI(1) + RIJ(1)
+                      RJ(2) = RI(2) + RIJ(2)
+                      RJ(3) = RI(3) + RIJ(3)
+                      ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                      CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                      ! Overlap criterion
+                      IF( OVERLAP ) THEN
+                        ! Overlap detected
+                        EXIT LOOP_OVERLAP_NPT_FIX
+                      END IF
+                    END IF
+                  ! Overlap test for cylinders and spheres
+                  ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                    ! Retrive position of the particle j after applying the PBC
                     RJ(1) = RI(1) + RIJ(1)
                     RJ(2) = RI(2) + RIJ(2)
                     RJ(3) = RI(3) + RIJ(3)
-                    CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                    ! Overlap criterion
+                    CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
                     IF( OVERLAP ) THEN
                       ! Overlap detected
                       EXIT LOOP_OVERLAP_NPT_FIX
                     END IF
+                  ! Overlap test for cylinders and spheres
+                  ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                    ! Retrive position of the particle j after applying the PBC
+                    RJ(1) = RI(1) + RIJ(1)
+                    RJ(2) = RI(2) + RIJ(2)
+                    RJ(3) = RI(3) + RIJ(3)
+                    CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+                    IF( OVERLAP ) THEN
+                      ! Overlap detected
+                      EXIT LOOP_OVERLAP_NPT_FIX
+                    END IF
+                  ! Overlap test for spheres
+                  ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                    ! Overlap detected
+                    OVERLAP = .TRUE.
+                    EXIT LOOP_OVERLAP_NPT_FIX
                   END IF
                 END IF
               END IF
@@ -2085,22 +2298,54 @@ IF( ETA_NPT > PACKING_F ) THEN
                   ! Overlap detected
                   EXIT LOOP_OVERLAP_NPT_FIX
                 END IF
-              ! Overlap test for cylinders (modified Lopes et al. method)
+              ! Overlap test for cylinders and/or spheres
               ELSE IF( GEOM_SELEC(3) ) THEN
-                ! Preliminary test (circumscribing spherocylinders)
-                OVERLAP_PRELIMINAR = .FALSE.
-                CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                ! Overlap criterion
-                IF( OVERLAP_PRELIMINAR ) THEN
+                IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                  ! Initialization
+                  OVERLAP_PRELIMINAR = .FALSE.
+                  ! Preliminary test (circumscribing spherocylinders)
+                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
+                  ! Overlap criterion
+                  IF( OVERLAP_PRELIMINAR ) THEN
+                    ! Retrive position of the particle j after applying the PBC
+                    RJ(1) = RI(1) + RIJ(1)
+                    RJ(2) = RI(2) + RIJ(2)
+                    RJ(3) = RI(3) + RIJ(3)
+                    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                    CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
+                    ! Overlap criterion
+                    IF( OVERLAP ) THEN
+                      ! Overlap detected
+                      EXIT LOOP_OVERLAP_NPT_FIX
+                    END IF
+                  END IF
+                ! Overlap test for cylinders and spheres
+                ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                  ! Retrive position of the particle j after applying the PBC
                   RJ(1) = RI(1) + RIJ(1)
                   RJ(2) = RI(2) + RIJ(2)
                   RJ(3) = RI(3) + RIJ(3)
-                  CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                  ! Overlap criterion
+                  CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
                   IF( OVERLAP ) THEN
                     ! Overlap detected
                     EXIT LOOP_OVERLAP_NPT_FIX
                   END IF
+                ! Overlap test for cylinders and spheres
+                ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+                  ! Retrive position of the particle j after applying the PBC
+                  RJ(1) = RI(1) + RIJ(1)
+                  RJ(2) = RI(2) + RIJ(2)
+                  RJ(3) = RI(3) + RIJ(3)
+                  CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
+                  IF( OVERLAP ) THEN
+                    ! Overlap detected
+                    EXIT LOOP_OVERLAP_NPT_FIX
+                  END IF
+                ! Overlap test for spheres
+                ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+                  ! Overlap detected
+                  OVERLAP = .TRUE.
+                  EXIT LOOP_OVERLAP_NPT_FIX
                 END IF
               END IF
             END IF
@@ -2154,11 +2399,7 @@ IF( ETA_NPT > PACKING_F ) THEN
         END DO
 
         ! Forbid rotation if component is spherical
-        IF( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(CI) - 1.D0 ) < EPSILON( 1.D0 ) ) THEN
-          MOV_TRANS = .TRUE.   ! Enable translation
-          MOV_ROT   = .FALSE.  ! Disable rotation
-          MOVT      = MOVT + 1 ! Increment move counter
-        ELSE IF( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(CI) - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
+        IF( SPHERCOMP(CI) ) THEN
           MOV_TRANS = .TRUE.   ! Enable translation
           MOV_ROT   = .FALSE.  ! Disable rotation
           MOVT      = MOVT + 1 ! Increment move counter
@@ -2334,9 +2575,17 @@ IF( GEOM_SELEC(1) ) THEN
       CUTOFF(C) = LENGTH(C)
     END IF
   END DO
-ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+ELSE IF( GEOM_SELEC(2) ) THEN
   DO C = 1, COMPONENTS
     CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+  END DO
+ELSE IF( GEOM_SELEC(3) ) THEN
+  DO C = 1, COMPONENTS
+    IF( SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    END IF
   END DO
 END IF
 
@@ -2689,17 +2938,45 @@ IF( CONFIG_SELEC(1) ) THEN
   WRITE( 10, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   CLOSE( 10 )
@@ -2713,13 +2990,16 @@ IF( CONFIG_SELEC(1) ) THEN
     WRITE( 10, "(G0,G0.5)" ) "Packing_fraction: ", PACKING_F
     WRITE( 10, "(G0,G0)" ) "Number_of_Components: ", COMPONENTS
     DO C = 1, COMPONENTS
+      WRITE( 10, "(G0,3G0)" ) "Spherical_Component_#", C, ": ", SPHCOMP_INQ(C)
+    END DO
+    DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Diameter_of_Component_#", C, ": ", DIAMETER(C), " Å"
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Length_of_Component_#", C, ": ", LENGTH(C), " Å"
     END DO
     DO C = 1, COMPONENTS
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Elongation_of_Component_#", C, ": ", ASPECT_RATIO(C)
+      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Aspect_Ratio_of_Component_#", C, ": ", ASPECT_RATIO(C)
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5)" ) "Molar_Fraction_of_Component_#", C, ": ", MOLAR_F(C)
@@ -2772,17 +3052,45 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
   WRITE( 10, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   CLOSE( 10 )
@@ -2796,13 +3104,16 @@ ELSE IF( CONFIG_SELEC(2) ) THEN
     WRITE( 10, "(G0,G0.5)" ) "Packing_fraction: ", PACKING_F
     WRITE( 10, "(G0,G0)" ) "Number_of_Components: ", COMPONENTS
     DO C = 1, COMPONENTS
+      WRITE( 10, "(G0,3G0)" ) "Spherical_Component_#", C, ": ", SPHCOMP_INQ(C)
+    END DO
+    DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Diameter_of_Component_#", C, ": ", DIAMETER(C), " Å"
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Length_of_Component_#", C, ": ", LENGTH(C), " Å"
     END DO
     DO C = 1, COMPONENTS
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Elongation_of_Component_#", C, ": ", ASPECT_RATIO(C)
+      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Aspect_Ratio_of_Component_#", C, ": ", ASPECT_RATIO(C)
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5)" ) "Molar_Fraction_of_Component_#", C, ": ", MOLAR_F(C)
@@ -2855,17 +3166,45 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
   WRITE( 10, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   CLOSE( 10 )
@@ -2879,13 +3218,16 @@ ELSE IF( CONFIG_SELEC(3) ) THEN
     WRITE( 10, "(G0,G0.5)" ) "Packing_fraction: ", PACKING_F
     WRITE( 10, "(G0,G0)" ) "Number_of_Components: ", COMPONENTS
     DO C = 1, COMPONENTS
+      WRITE( 10, "(G0,3G0)" ) "Spherical_Component_#", C, ": ", SPHCOMP_INQ(C)
+    END DO
+    DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Diameter_of_Component_#", C, ": ", DIAMETER(C), " Å"
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Length_of_Component_#", C, ": ", LENGTH(C), " Å"
     END DO
     DO C = 1, COMPONENTS
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Elongation_of_Component_#", C, ": ", ASPECT_RATIO(C)
+      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Aspect_Ratio_of_Component_#", C, ": ", ASPECT_RATIO(C)
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5)" ) "Molar_Fraction_of_Component_#", C, ": ", MOLAR_F(C)
@@ -2938,17 +3280,45 @@ ELSE IF( CONFIG_SELEC(4) ) THEN
   WRITE( 10, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   CLOSE( 10 )
@@ -2962,13 +3332,16 @@ ELSE IF( CONFIG_SELEC(4) ) THEN
     WRITE( 10, "(G0,G0.5)" ) "Packing_fraction: ", PACKING_F
     WRITE( 10, "(G0,G0)" ) "Number_of_Components: ", COMPONENTS
     DO C = 1, COMPONENTS
+      WRITE( 10, "(G0,3G0)" ) "Spherical_Component_#", C, ": ", SPHCOMP_INQ(C)
+    END DO
+    DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Diameter_of_Component_#", C, ": ", DIAMETER(C), " Å"
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Length_of_Component_#", C, ": ", LENGTH(C), " Å"
     END DO
     DO C = 1, COMPONENTS
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Elongation_of_Component_#", C, ": ", ASPECT_RATIO(C)
+      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Aspect_Ratio_of_Component_#", C, ": ", ASPECT_RATIO(C)
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5)" ) "Molar_Fraction_of_Component_#", C, ": ", MOLAR_F(C)
@@ -3021,17 +3394,45 @@ ELSE IF( CONFIG_SELEC(5) ) THEN
   WRITE( 10, * ) " "
   IF( GEOM_SELEC(1) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
-  ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN
+  ELSE IF( GEOM_SELEC(2) ) THEN
     DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), 0.5D0 * DIAMETER(C), &
-        &                          0.5D0 * DIAMETER(C), LENGTH(C)
-      END DO
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
+    END DO
+  ELSE IF( GEOM_SELEC(3) ) THEN
+    DO C = 1, COMPONENTS
+      IF( .NOT. SPHERCOMP(C) ) THEN
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+        END DO
+      ELSE
+        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
+          WRITE( 10, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
+          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+        END DO
+      END IF
     END DO
   END IF
   CLOSE( 10 )
@@ -3045,13 +3446,16 @@ ELSE IF( CONFIG_SELEC(5) ) THEN
     WRITE( 10, "(G0,G0.5)" ) "Packing_fraction: ", PACKING_F
     WRITE( 10, "(G0,G0)" ) "Number_of_Components: ", COMPONENTS
     DO C = 1, COMPONENTS
+      WRITE( 10, "(G0,3G0)" ) "Spherical_Component_#", C, ": ", SPHCOMP_INQ(C)
+    END DO
+    DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Diameter_of_Component_#", C, ": ", DIAMETER(C), " Å"
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Length_of_Component_#", C, ": ", LENGTH(C), " Å"
     END DO
     DO C = 1, COMPONENTS
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Elongation_of_Component_#", C, ": ", ASPECT_RATIO(C)
+      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Aspect_Ratio_of_Component_#", C, ": ", ASPECT_RATIO(C)
     END DO
     DO C = 1, COMPONENTS
       WRITE( 10, "(G0,G0,G0,G0.5)" ) "Molar_Fraction_of_Component_#", C, ": ", MOLAR_F(C)

@@ -3,7 +3,7 @@
 !           This module defines the variables used by the main program and most of the            !
 !         subroutines and functions. A brief description is presented for each variable.          !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 11th, 2023                                        !
+!                                        August 25th, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -189,6 +189,11 @@ CHARACTER( LEN= 01 ) :: SEED_INQ         ! Fixed/random seed inquiry
 CHARACTER( LEN= 01 ) :: DUMMY            ! Dummy (character)
 
 ! *********************************************************************************************** !
+! CHARACTER STRINGS (ALLOCATABLE)                                                                 !
+! *********************************************************************************************** !
+CHARACTER( LEN= 01 ), DIMENSION( : ), ALLOCATABLE :: SPHCOMP_INQ ! Spherical component inquiry
+
+! *********************************************************************************************** !
 ! CHARACTER PARAMETERS                                                                            !
 ! *********************************************************************************************** !
 CHARACTER( LEN= 3 ), PARAMETER :: CH_HS = "═" ! Box drawing symbol
@@ -229,6 +234,7 @@ LOGICAL, DIMENSION( 5 ) :: POTENTIAL_SELEC ! Checks the selected potential type
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES (ALLOCATABLE)                                                                 !
 ! *********************************************************************************************** !
-LOGICAL, DIMENSION( : ), ALLOCATABLE :: LFEXIST ! Checks whether the attractive parameter subfolders exist or not
+LOGICAL, DIMENSION( : ), ALLOCATABLE :: LFEXIST   ! Checks whether the attractive parameter subfolders exist or not
+LOGICAL, DIMENSION( : ), ALLOCATABLE :: SPHERCOMP ! Checks whether the component is spherical or not
 
 END MODULE GLOBALVAR

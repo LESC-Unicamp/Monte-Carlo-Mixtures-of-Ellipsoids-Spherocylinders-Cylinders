@@ -332,20 +332,34 @@ OVERLAP_HER = .FALSE.
 OVERLAP_CYL = .FALSE.
 PARALLEL    = .FALSE.
 
-! Diameter of the circumscribing sphere
-IF( GEOM_SELEC(1) ) THEN ! Ellipsoids of revolution
+! Diameter of circumscribing sphere
+IF( GEOM_SELEC(1) ) THEN
   DO C = 1, COMPONENTS
-    ! Oblate ellipsoids of revolution or spheres
-    IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) <= 1.D0 ) THEN
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) < 1.D0 ) THEN
+        CUTOFF(C) = DIAMETER(C)
+      ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
+        CUTOFF(C) = LENGTH(C)
+      END IF
+    ELSE
       CUTOFF(C) = DIAMETER(C)
-    ! Prolate ellipsoids of revolution
-    ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
-      CUTOFF(C) = LENGTH(C)
     END IF
   END DO
-ELSE IF( GEOM_SELEC(2) .OR. GEOM_SELEC(3) ) THEN ! Spherocylinders and cylinders
+ELSE IF( GEOM_SELEC(2) ) THEN
   DO C = 1, COMPONENTS
-    CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C)
+    END IF
+  END DO
+ELSE IF( GEOM_SELEC(3) ) THEN
+  DO C = 1, COMPONENTS
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
+    ELSE
+      CUTOFF(C) = DIAMETER(C)
+    END IF
   END DO
 END IF
 
@@ -401,25 +415,57 @@ DO CJ = 1, CI - 1
           OVERLAP = .TRUE.
           RETURN
         END IF
-      ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+      ! Overlap test for cylinders and/or spheres
       ELSE IF( GEOM_SELEC(3) ) THEN
-        ! Initialization
-        OVERLAP_SPC = .FALSE.
-        ! Preliminary test (circumscribing spherocylinders)
-        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
-        ! Overlap criterion
-        IF( OVERLAP_SPC ) THEN
-          ! Apply periodic boundary conditions on the position of particle j
+        IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+          ! Initialization
+          OVERLAP_SPC = .FALSE.
+          ! Preliminary test (circumscribing spherocylinders)
+          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
+          ! Overlap criterion
+          IF( OVERLAP_SPC ) THEN
+            ! Apply periodic boundary conditions on the position of particle j
+            RJ(1) = RI(1) + RIJ(1)
+            RJ(2) = RI(2) + RIJ(2)
+            RJ(3) = RI(3) + RIJ(3)
+            ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+            CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
+            ! Overlap criterion
+            IF( OVERLAP_CYL ) THEN
+              ! Overlap detected
+              OVERLAP = .TRUE.
+              RETURN
+            END IF
+          END IF
+        ! Overlap test for cylinders and spheres
+        ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+          ! Retrive position of the particle j after applying the PBC
           RJ(1) = RI(1) + RIJ(1)
           RJ(2) = RI(2) + RIJ(2)
           RJ(3) = RI(3) + RIJ(3)
-          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
-          ! Overlap criterion
+          CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_CYL )
           IF( OVERLAP_CYL ) THEN
             ! Overlap detected
             OVERLAP = .TRUE.
             RETURN
           END IF
+        ! Overlap test for cylinders and spheres
+        ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+          ! Retrive position of the particle j after applying the PBC
+          RJ(1) = RI(1) + RIJ(1)
+          RJ(2) = RI(2) + RIJ(2)
+          RJ(3) = RI(3) + RIJ(3)
+          CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_CYL )
+          IF( OVERLAP_CYL ) THEN
+            ! Overlap detected
+            OVERLAP = .TRUE.
+            RETURN
+          END IF
+        ! Overlap test for spheres
+        ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+          ! Overlap detected
+          OVERLAP = .TRUE.
+          RETURN
         END IF
       END IF
     END IF
@@ -478,25 +524,57 @@ DO CJ = CI + 1, COMPONENTS
           OVERLAP = .TRUE.
           RETURN
         END IF
-      ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+      ! Overlap test for cylinders and/or spheres
       ELSE IF( GEOM_SELEC(3) ) THEN
-        ! Initialization
-        OVERLAP_SPC = .FALSE.
-        ! Preliminary test (circumscribing spherocylinders)
-        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
-        ! Overlap criterion
-        IF( OVERLAP_SPC ) THEN
-          ! Apply periodic boundary conditions on the position of particle j
+        IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+          ! Initialization
+          OVERLAP_SPC = .FALSE.
+          ! Preliminary test (circumscribing spherocylinders)
+          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
+          ! Overlap criterion
+          IF( OVERLAP_SPC ) THEN
+            ! Apply periodic boundary conditions on the position of particle j
+            RJ(1) = RI(1) + RIJ(1)
+            RJ(2) = RI(2) + RIJ(2)
+            RJ(3) = RI(3) + RIJ(3)
+            ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+            CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
+            ! Overlap criterion
+            IF( OVERLAP_CYL ) THEN
+              ! Overlap detected
+              OVERLAP = .TRUE.
+              RETURN
+            END IF
+          END IF
+        ! Overlap test for cylinders and spheres
+        ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+          ! Retrive position of the particle j after applying the PBC
           RJ(1) = RI(1) + RIJ(1)
           RJ(2) = RI(2) + RIJ(2)
           RJ(3) = RI(3) + RIJ(3)
-          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
-          ! Overlap criterion
+          CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_CYL )
           IF( OVERLAP_CYL ) THEN
             ! Overlap detected
             OVERLAP = .TRUE.
             RETURN
           END IF
+        ! Overlap test for cylinders and spheres
+        ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+          ! Retrive position of the particle j after applying the PBC
+          RJ(1) = RI(1) + RIJ(1)
+          RJ(2) = RI(2) + RIJ(2)
+          RJ(3) = RI(3) + RIJ(3)
+          CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_CYL )
+          IF( OVERLAP_CYL ) THEN
+            ! Overlap detected
+            OVERLAP = .TRUE.
+            RETURN
+          END IF
+        ! Overlap test for spheres
+        ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+          ! Overlap detected
+          OVERLAP = .TRUE.
+          RETURN
         END IF
       END IF
     END IF
@@ -555,25 +633,57 @@ DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, I - 1
         OVERLAP = .TRUE.
         RETURN
       END IF
-    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+    ! Overlap test for cylinders and/or spheres
     ELSE IF( GEOM_SELEC(3) ) THEN
-      ! Initialization
-      OVERLAP_SPC = .FALSE.
-      ! Preliminary test (circumscribing spherocylinders)
-      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
-      ! Overlap criterion
-      IF( OVERLAP_SPC ) THEN
-        ! Apply periodic boundary conditions on the position of particle j
+      IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+        ! Initialization
+        OVERLAP_SPC = .FALSE.
+        ! Preliminary test (circumscribing spherocylinders)
+        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
+        ! Overlap criterion
+        IF( OVERLAP_SPC ) THEN
+          ! Apply periodic boundary conditions on the position of particle j
+          RJ(1) = RI(1) + RIJ(1)
+          RJ(2) = RI(2) + RIJ(2)
+          RJ(3) = RI(3) + RIJ(3)
+          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
+          ! Overlap criterion
+          IF( OVERLAP_CYL ) THEN
+            ! Overlap detected
+            OVERLAP = .TRUE.
+            RETURN
+          END IF
+        END IF
+      ! Overlap test for cylinders and spheres
+      ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+        ! Retrive position of the particle j after applying the PBC
         RJ(1) = RI(1) + RIJ(1)
         RJ(2) = RI(2) + RIJ(2)
         RJ(3) = RI(3) + RIJ(3)
-        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
-        ! Overlap criterion
+        CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_CYL )
         IF( OVERLAP_CYL ) THEN
           ! Overlap detected
           OVERLAP = .TRUE.
           RETURN
         END IF
+      ! Overlap test for cylinders and spheres
+      ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+        ! Retrive position of the particle j after applying the PBC
+        RJ(1) = RI(1) + RIJ(1)
+        RJ(2) = RI(2) + RIJ(2)
+        RJ(3) = RI(3) + RIJ(3)
+        CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_CYL )
+        IF( OVERLAP_CYL ) THEN
+          ! Overlap detected
+          OVERLAP = .TRUE.
+          RETURN
+        END IF
+      ! Overlap test for spheres
+      ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+        ! Overlap detected
+        OVERLAP = .TRUE.
+        RETURN
       END IF
     END IF
   END IF
@@ -626,25 +736,57 @@ DO J = I + 1, SUM( N_COMPONENT(0:CJ) )
         OVERLAP = .TRUE.
         RETURN
       END IF
-    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+    ! Overlap test for cylinders and/or spheres
     ELSE IF( GEOM_SELEC(3) ) THEN
-      ! Initialization
-      OVERLAP_SPC = .FALSE.
-      ! Preliminary test (circumscribing spherocylinders)
-      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
-      ! Overlap criterion
-      IF( OVERLAP_SPC ) THEN
-        ! Apply periodic boundary conditions on the position of particle j
+      IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+        ! Initialization
+        OVERLAP_SPC = .FALSE.
+        ! Preliminary test (circumscribing spherocylinders)
+        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CONTACT_D, PARALLEL, OVERLAP_SPC )
+        ! Overlap criterion
+        IF( OVERLAP_SPC ) THEN
+          ! Apply periodic boundary conditions on the position of particle j
+          RJ(1) = RI(1) + RIJ(1)
+          RJ(2) = RI(2) + RIJ(2)
+          RJ(3) = RI(3) + RIJ(3)
+          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
+          ! Overlap criterion
+          IF( OVERLAP_CYL ) THEN
+            ! Overlap detected
+            OVERLAP = .TRUE.
+            RETURN
+          END IF
+        END IF
+      ! Overlap test for cylinders and spheres
+      ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+        ! Retrive position of the particle j after applying the PBC
         RJ(1) = RI(1) + RIJ(1)
         RJ(2) = RI(2) + RIJ(2)
         RJ(3) = RI(3) + RIJ(3)
-        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_CYL )
-        ! Overlap criterion
+        CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_CYL )
         IF( OVERLAP_CYL ) THEN
           ! Overlap detected
           OVERLAP = .TRUE.
           RETURN
         END IF
+      ! Overlap test for cylinders and spheres
+      ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
+        ! Retrive position of the particle j after applying the PBC
+        RJ(1) = RI(1) + RIJ(1)
+        RJ(2) = RI(2) + RIJ(2)
+        RJ(3) = RI(3) + RIJ(3)
+        CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_CYL )
+        IF( OVERLAP_CYL ) THEN
+          ! Overlap detected
+          OVERLAP = .TRUE.
+          RETURN
+        END IF
+      ! Overlap test for spheres
+      ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
+        ! Overlap detected
+        OVERLAP = .TRUE.
+        RETURN
       END IF
     END IF
   END IF
@@ -990,8 +1132,7 @@ QABI(:,:) = 0.D0
 N_S = 0
 DO C = 1, COMPONENTS
   ! Skip if component is spherical
-  IF( ( GEOM_SELEC(1) .AND. DABS( ASPECT_RATIO(C) - 1.D0 ) < EPSILON( 1.D0 ) ) .OR. &
-  &   ( GEOM_SELEC(2) .AND. DABS( ASPECT_RATIO(C) - 0.D0 ) < EPSILON( 1.D0 ) ) ) THEN
+  IF( SPHERCOMP(C) ) THEN
     CYCLE
   END IF
   DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
@@ -1816,7 +1957,7 @@ LOVASZ_LOOP: DO
       XYZ(K)     = XYZ(K-1)
       XYZ(K-1)   = TEMPXYZ(K)
       ! Return one iteration of K until K = 2
-      K = MAX( K-1, 2 )
+      K = MAX( K - 1, 2 )
     END IF
   END DO
 
@@ -1853,50 +1994,6 @@ RETURN
 END SUBROUTINE LLL
 
 ! *********************************************************************************************** !
-!             This subroutine generates a progress bar for the initial configuration.             !
-! *********************************************************************************************** !
-SUBROUTINE PROGRESS_BAR( J, TOTAL )
-
-USE ISO_FORTRAN_ENV
-
-IMPLICIT NONE
-
-! *********************************************************************************************** !
-! INTEGER VARIABLES                                                                               !
-! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: J     ! Counter
-INTEGER( KIND= INT64 ) :: TOTAL ! Total/Maximum number of cycles
-
-! *********************************************************************************************** !
-! CHARACTER STRINGS                                                                               !
-! *********************************************************************************************** !
-CHARACTER( LEN= 16 ) :: BAR ! Progress bar
-
-! *********************************************************************************************** !
-! Progress bar (FORMAT)                                                                           !
-! *********************************************************************************************** !
-BAR = "Progress: ?????%"
-
-! *********************************************************************************************** !
-! Progress bar (replace character positions)                                                      !
-! *********************************************************************************************** !
-WRITE( UNIT= BAR(11:15), FMT= "(F5.1)" ) ( DBLE(J) / DBLE(TOTAL) ) * 100.D0
-
-! *********************************************************************************************** !
-! Print progress bar                                                                              !
-! *********************************************************************************************** !
-WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A16)" , ADVANCE= "NO" ) CHAR(13), BAR
-
-! *********************************************************************************************** !
-! Flush standard output unit                                                                      !
-! *********************************************************************************************** !
-FLUSH( UNIT= OUTPUT_UNIT )
-
-RETURN
-
-END SUBROUTINE PROGRESS_BAR
-
-! *********************************************************************************************** !
 !            This subroutine generates a progress bar for the Monte Carlo simulation.             !
 ! *********************************************************************************************** !
 SUBROUTINE PROGRESS_BAR_MC( J, TOTAL, ENS )
@@ -1910,49 +2007,41 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 INTEGER( KIND= INT64 ) :: J     ! Counter
 INTEGER( KIND= INT64 ) :: TOTAL ! Total/Maximum number of cycles
+INTEGER( KIND= INT64 ) :: AUX   ! Auxiliar
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 21 ) :: BAR  ! Progress bar
+CHARACTER( LEN= 23 ) :: BAR  ! Progress bar
 CHARACTER( LEN= 03 ) :: ENS  ! Ensemble type
+CHARACTER( LEN= 02 ) :: STR1 ! String size
+CHARACTER( LEN= 08 ) :: STR2 ! String size
 
-! *********************************************************************************************** !
-! Progress bar (FORMAT)                                                                           !
-! *********************************************************************************************** !
-IF( ( DBLE(J) / DBLE(TOTAL) ) * 100.D0 < 10.D0 ) THEN
-  BAR = "Progress("//TRIM( ENS )//"): ???%"
-ELSE IF( ( DBLE(J) / DBLE(TOTAL) ) * 100.D0 < 100.D0 ) THEN
-  BAR = "Progress("//TRIM( ENS )//"): ????%"
+! Initialization
+AUX = 0
+
+! Progress bar (FORMAT)
+IF( ( DBLE( J ) / DBLE( TOTAL ) ) * 100.D0 < 10.D0 ) THEN
+  AUX = 0
+  BAR(1:(20+AUX)) = "Progress("//TRIM( ENS )//"): ????%"
+  WRITE( UNIT= BAR(16:(19+AUX)), FMT= "(RD,F4.2)" ) ( DBLE( J ) / DBLE( TOTAL ) ) * 100.D0
+ELSE IF( ( DBLE( J ) / DBLE( TOTAL ) ) * 100.D0 < 100.D0 ) THEN
+  AUX = 1
+  BAR(1:(20+AUX)) = "Progress("//TRIM( ENS )//"): ?????%"
+  WRITE( UNIT= BAR(16:(19+AUX)), FMT= "(RD,F5.2)" ) ( DBLE( J ) / DBLE( TOTAL ) ) * 100.D0
 ELSE
-  BAR = "Progress("//TRIM( ENS )//"): ?????%"
+  AUX = 2
+  BAR(1:(20+AUX)) = "Progress("//TRIM( ENS )//"): ??????%"
+  WRITE( UNIT= BAR(16:(19+AUX)), FMT= "(RD,F6.2)" ) ( DBLE( J ) / DBLE( TOTAL ) ) * 100.D0
 END IF
+BAR((21+AUX):23) = REPEAT( " ", ( (2 - AUX) + 1 ) )
 
-! *********************************************************************************************** !
-! Progress bar (replace character positions)                                                      !
-! *********************************************************************************************** !
-IF( ( DBLE(J) / DBLE(TOTAL) ) * 100.D0 < 10.D0 ) THEN
-  WRITE( UNIT= BAR(16:18), FMT= "(F3.1)" ) ( DBLE(J) / DBLE(TOTAL) ) * 100.D0
-ELSE IF( ( DBLE(J) / DBLE(TOTAL) ) * 100.D0 < 100.D0 ) THEN
-  WRITE( UNIT= BAR(16:19), FMT= "(F4.1)" ) ( DBLE(J) / DBLE(TOTAL) ) * 100.D0
-ELSE
-  WRITE( UNIT= BAR(16:20), FMT= "(F5.1)" ) ( DBLE(J) / DBLE(TOTAL) ) * 100.D0
-END IF
+! Print progress bar
+WRITE( STR1, "(I0.2)" ) 20 + AUX + 1
+STR2 = "(A1,A"//TRIM( STR1 )//")"
+WRITE( UNIT= OUTPUT_UNIT, FMT= STR2, ADVANCE= "NO" ) CHAR(13), BAR(1:(20+AUX+1))
 
-! *********************************************************************************************** !
-! Print progress bar                                                                              !
-! *********************************************************************************************** !
-IF( ( DBLE(J) / DBLE(TOTAL) ) * 100.D0 < 10.D0 ) THEN
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A19)" , ADVANCE= "NO" ) CHAR(13), BAR
-ELSE IF( ( DBLE(J) / DBLE(TOTAL) ) * 100.D0 < 100.D0 ) THEN
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A20)" , ADVANCE= "NO" ) CHAR(13), BAR
-ELSE
-  WRITE( UNIT= OUTPUT_UNIT, FMT= "(A1,A21)" , ADVANCE= "NO" ) CHAR(13), BAR
-END IF
-
-! *********************************************************************************************** !
-! Flush standard output unit                                                                      !
-! *********************************************************************************************** !
+! Flush standard output unit
 FLUSH( UNIT= OUTPUT_UNIT )
 
 RETURN

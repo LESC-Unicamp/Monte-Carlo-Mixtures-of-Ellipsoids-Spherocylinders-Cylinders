@@ -8,7 +8,7 @@
 !                  The code below is meant for Ubuntu 20.04 operational systems.                  !
 !                   We have not provided an alternative code for Windows users.                   !
 !                                                                                                 !
-! Version number: 1.0.0                                                                           !
+! Version number: 1.1.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -16,11 +16,10 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 11th, 2023                                        !
+!                                        August 25th, 2023                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
-
 MODULE FOLDERS
 
 ! Uses one module: global variables
@@ -196,7 +195,7 @@ IF( .NOT. FEXIST(6) ) THEN
 END IF
 
 ! *********************************************************************************************** !
-! Pertured coefficient folder (holds information on the perturbation coefficients)                !
+! Perturbed coefficient folder (holds information on the perturbation coefficients)               !
 ! *********************************************************************************************** !
 IF( .NOT. FEXIST(7) ) THEN
   WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating perturbed coefficient folder..."

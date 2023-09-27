@@ -76,10 +76,10 @@ REAL( KIND= REAL64 )                    :: FA, FB      ! Derivatives of the inte
 REAL( KIND= REAL64 )                    :: FC          ! Derivative of the interpolating function at the midpoint of the considered interval
 REAL( KIND= REAL64 )                    :: FS          ! Derivative of the interpolating function at the root of the considered interval
 REAL( KIND= REAL64 )                    :: AUX         ! Auxiliar
-REAL( KIND= REAL64 )                    :: INTFUNC     ! Interpolating function (Perram-Wertheim Method)
-REAL( KIND= REAL64 )                    :: DFUNC_DLAMB ! First derivative of the interpolating function with respect to λ (Perram-Wertheim Method)
+REAL( KIND= REAL64 )                    :: INTFUNC     ! Interpolating function (Perram-Wertheim method)
+REAL( KIND= REAL64 )                    :: DFUNC_DLAMB ! First derivative of the interpolating function with respect to λ (Perram-Wertheim method)
 REAL( KIND= REAL64 )                    :: RIJSQ       ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                    :: CONTACT_D   ! Contact distance (Perram-Wertheim Method)
+REAL( KIND= REAL64 )                    :: CONTACT_D   ! Contact distance (Perram-Wertheim method)
 REAL( KIND= REAL64 )                    :: TEMPT       ! Temporary variable
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ         ! Vector distance between particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EXI, EXJ    ! Orientation of particles i and j along x-direction
@@ -107,9 +107,9 @@ REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: IDMATRIX    ! Identity matrix
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
 LOGICAL :: OVERLAP_HER ! Detects overlap between two ellipsoids of revolution: TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: BISSECTION  ! Checks whether the root from the bisection method will be used or not
+LOGICAL :: BISECTION   ! Checks whether the root from the bisection method will be used or not
 
-! Ellipsoid centers of mass coincide (FA = FB = 0 | Bissection method cannot be used)
+! Ellipsoid centers of mass coincide (FA = FB = 0 | Bisection method cannot be used)
 IF( DABS( RIJSQ - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
   OVERLAP_HER = .TRUE.
   INTFUNC     = 0.D0
@@ -119,7 +119,7 @@ END IF
 
 ! Initialization
 OVERLAP_HER = .FALSE.
-BISSECTION  = .FALSE.
+BISECTION   = .FALSE.
 COUNTERB    = 0
 
 ! Identity matrix
@@ -167,7 +167,7 @@ EYIEYI(:,:) = EYIEYI(:,:) / ( SEMIAI(2) * SEMIAI(2) )
 EZIEZI(:,:) = EZIEZI(:,:) / ( SEMIAI(3) * SEMIAI(3) )
 AI(:,:)     = EXIEXI(:,:) + EYIEYI(:,:) + EZIEZI(:,:)
 ! Degenerate case (sphere)
-IF( DABS( SEMIAI(1) - SEMIAI(2) ) < EPSILON( 1.D0 ) .AND. DABS( SEMIAI(1) - SEMIAI(3) ) < EPSILON( 1.D0 ) ) THEN
+IF( SPHERCOMP(CI) ) THEN
   AI(:,:) = IDMATRIX(:,:) / ( SEMIAI(1) * SEMIAI(1) )
 END IF
 
@@ -177,7 +177,7 @@ EYJEYJ(:,:) = EYJEYJ(:,:) / ( SEMIBJ(2) * SEMIBJ(2) )
 EZJEZJ(:,:) = EZJEZJ(:,:) / ( SEMIBJ(3) * SEMIBJ(3) )
 BJ(:,:)     = EXJEXJ(:,:) + EYJEYJ(:,:) + EZJEZJ(:,:)
 ! Degenerate case (sphere)
-IF( DABS( SEMIBJ(1) - SEMIBJ(2) ) < EPSILON( 1.D0 ) .AND. DABS( SEMIBJ(1) - SEMIBJ(3) ) < EPSILON( 1.D0 ) ) THEN
+IF( SPHERCOMP(CJ) ) THEN
   BJ(:,:) = IDMATRIX(:,:) / ( SEMIBJ(1) * SEMIBJ(1) )
 END IF
 
@@ -268,7 +268,7 @@ FB          = DFUNC_DLAMB
 ! *********************************************************************************************** !
 ! BRENT'S METHOD                                                                                  !
 ! *********************************************************************************************** !
-!  The Brent's condition (which is also the bissection condition) will hardly fail since the      !
+!  The Brent's condition (which is also the bisection condition) will hardly fail since the       !
 !  interpolating function, S(λ), is concave down and has a single maximum in the interval         !
 !  λ ∈ [0,1], which means the derivative of S(λ) has opposite signs at the extrema of the         !
 !  interval.                                                                                      !
@@ -278,6 +278,7 @@ FB          = DFUNC_DLAMB
 
 ! Initialization
 LAMBDAD = 0.D0
+LAMBDAS = 0.D0
 
 ! Brent's condition
 IF( (FA * FB) < 0.D0 ) THEN
@@ -297,12 +298,12 @@ IF( (FA * FB) < 0.D0 ) THEN
   FC = FA
   ! Initialize value of objective function
   FS = - 1.D0
-  ! Initialize 'BISSECTION' flag as TRUE since the last iteration used was the bisection method
-  BISSECTION = .TRUE.
+  ! Initialize 'BISECTION' flag as TRUE since the last iteration used was the bisection method
+  BISECTION = .TRUE.
   ! Stop criterion
   DO WHILE( DABS( FB ) >= TOLERANCE .AND. DABS( FS ) >= TOLERANCE .AND. DABS( LAMBDAA - LAMBDAB ) >= TOLERANCE )
     ! Initialize root of the function
-    IF( FA /= FC .AND. FB /= FC ) THEN
+    IF( DABS( FA - FC ) >= EPSILON( 1.D0 ) .AND. DABS( FB - FC ) >= EPSILON( 1.D0 ) ) THEN
       ! Inverse quadratic interpolation root finding method
       LAMBDAS = (LAMBDAA * FB * FC) / ( (FA - FB) * (FA - FC) ) + (LAMBDAB * FA * FC) / ( (FB - FA) * (FB - FC) ) + &
       &         (LAMBDAC * FA * FB) / ( (FC - FA) * (FC - FB) )
@@ -310,18 +311,18 @@ IF( (FA * FB) < 0.D0 ) THEN
       ! False position formula
       LAMBDAS = LAMBDAB - FB * (LAMBDAB - LAMBDAA) / (FB - FA)
     END IF
-    ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
-    IF( ( (LAMBDAS - (3.D0 * LAMBDAA + LAMBDAB) / 4.D0) * (LAMBDAS - LAMBDAB) >= 0.D0) .OR. ( BISSECTION .AND. &
+    ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from the bisection method
+    IF( ( (LAMBDAS - (3.D0 * LAMBDAA + LAMBDAB) / 4.D0) * (LAMBDAS - LAMBDAB) >= 0.D0) .OR. ( BISECTION .AND. &
     &   ( DABS( LAMBDAS - LAMBDAB ) >= DABS( (LAMBDAB - LAMBDAC) / 2.D0 ) ) ) .OR. &
-    &   ( .NOT. BISSECTION .AND. ( DABS( LAMBDAS - LAMBDAB ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
-    &   ( BISSECTION .AND. ( DABS( LAMBDAS - LAMBDAC ) < TOLERANCE ) ) .OR. &
-    &   ( .NOT. BISSECTION .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE ) ) ) THEN
+    &   ( .NOT. BISECTION .AND. ( DABS( LAMBDAS - LAMBDAB ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. &
+    &   ( BISECTION .AND. ( DABS( LAMBDAS - LAMBDAC ) < TOLERANCE ) ) .OR. &
+    &   ( .NOT. BISECTION .AND. ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE ) ) ) THEN
       ! Root from bisection method
-      LAMBDAS = 0.5D0 * (LAMBDAA + LAMBDAB)
-      BISSECTION = .TRUE.
+      LAMBDAS   = 0.5D0 * (LAMBDAA + LAMBDAB)
+      BISECTION = .TRUE.
     ELSE
-      ! Root from interplation method or false position formula
-      BISSECTION = .FALSE.
+      ! Root from interpolation method or false position formula
+      BISECTION = .FALSE.
     END IF
     ! Matrix G
     G(:,:) = LAMBDAS * BJINV(:,:) + (1.D0 - LAMBDAS) * AIINV(:,:)
@@ -374,7 +375,7 @@ IF( (FA * FB) < 0.D0 ) THEN
     END IF
     COUNTERB = COUNTERB + 1
     IF( COUNTERB > 50 ) THEN
-      WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
+      WRITE( *, "(3G0)" ) "Brent's method failed to converge after ", COUNTERB, " iterations. Exiting..."
       CALL EXIT(  )
     END IF
   END DO
@@ -389,7 +390,7 @@ IF( (FA * FB) < 0.D0 ) THEN
   ! Interpolating function, S(λ)
   INTFUNC = LAMBDAS * (1.D0 - LAMBDAS) * AUX
 
-  ! Contact distance (Perram-Wertheim Method)
+  ! Contact distance (Perram-Wertheim method)
   CONTACT_D = INTFUNC * RIJSQ
 
   ! Non-overlapping criterion
@@ -402,7 +403,7 @@ IF( (FA * FB) < 0.D0 ) THEN
 ELSE
 
   ! Error
-  WRITE( *, "(G0)" ) "The Perram-Wertheim failed! Exiting..."
+  WRITE( *, "(G0)" ) "The Perram-Wertheim method failed! Exiting..."
   CALL EXIT(  )
 
 END IF
@@ -447,7 +448,7 @@ RETURN
 END SUBROUTINE OUTER_PRODUCT
 
 ! *********************************************************************************************** !
-!                                 Inverse Matrix using Cofactors                                  !
+!                                 Inverse Matrix Using Cofactors                                  !
 ! *********************************************************************************************** !
 SUBROUTINE INVERSE( A, B )
 
@@ -590,7 +591,7 @@ IF( DABS( CC ) < 1.D-10 ) THEN
       OVERLAP_SPC = .TRUE.
       RETURN
     END IF
-    ! Return immediately
+    ! No overlaps
     RETURN
   ! Parallel spherocylinders almost orthogonal to the intermolecular axis (avoid the indeterminate form 0/0)
   ELSE
@@ -657,6 +658,7 @@ END IF
 
 ! *********************************************************************************************** !
 ! STEP 8: Evaluate shortest distance (squared)                                                    !
+!  See Vega and Lago, Computers Chem. (1994) for more information                                 !
 ! *********************************************************************************************** !
 RVL = RIJSQ + ( DLAMBDA * DLAMBDA ) + ( DMU * DMU ) - ( 2.D0 * DLAMBDA * DMU * EIEJ ) + ( 2.D0 * DMU * RIJEJ ) - &
 &     ( 2.D0 * DLAMBDA * RIJEI )
@@ -698,10 +700,8 @@ REAL( KIND= REAL64 )                    :: LSQ            ! Cylinder geometrical
 REAL( KIND= REAL64 )                    :: DSQ            ! Cylinder geometrical diameter (squared)
 REAL( KIND= REAL64 )                    :: RIJEI          ! Dot product of vector distance and orientation of particle i
 REAL( KIND= REAL64 )                    :: RIJEJ          ! Dot product of vector distance and orientation of particle j
-REAL( KIND= REAL64 )                    :: EIEJ           ! Dot product of both orientations (particles i and j)
 REAL( KIND= REAL64 )                    :: RIJSQ_PARALLEL ! Squared vector distance between particles i and j (parallel)
 REAL( KIND= REAL64 )                    :: RIJSQ_ORTHO    ! Squared vector distance between particles i and j (orthogonal)
-REAL( KIND= REAL64 )                    :: CC             ! Auxiliary variable
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: DSQ_DISKRIM    ! Diameter of the disk for the disk-rim configuration
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFLENGTH     ! Half length of cylinders i and j
 REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFDIAMETER   ! Half diameter of cylinders i and j
@@ -751,8 +751,6 @@ OVERLAP_CYL  = .FALSE.
 ! Initial calculation
 RIJEI = ( RIJ(1) * EI(1) ) + ( RIJ(2) * EI(2) ) + ( RIJ(3) * EI(3) )
 RIJEJ = ( RIJ(1) * EJ(1) ) + ( RIJ(2) * EJ(2) ) + ( RIJ(3) * EJ(3) )
-EIEJ  = ( EI(1) * EJ(1) ) + ( EI(2) * EJ(2) ) + ( EI(3) * EJ(3) )
-CC    = 1.D0 - ( EIEJ * EIEJ )
 
 ! *********************************************************************************************** !
 ! CASE 1: Parallel cylinders                                                                      !
@@ -895,10 +893,6 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                 :: DSQ          ! Cylinder geometrical diameter (squared)
 REAL( KIND= REAL64 )                 :: DLAMBDA, DMU ! Values that minimize r² (∂r²/∂μ = 0 and ∂r²/∂λ = 0)
-REAL( KIND= REAL64 )                 :: RIJEI        ! Dot product of vector distance and orientation of particle i
-REAL( KIND= REAL64 )                 :: RIJEJ        ! Dot product of vector distance and orientation of particle j
-REAL( KIND= REAL64 )                 :: EIEJ         ! Dot product of both orientations (particles i and j)
-REAL( KIND= REAL64 )                 :: CC           ! Auxiliary variable
 REAL( KIND= REAL64 ), DIMENSION( 2 ) :: HALFL        ! Half length of cylinders i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DLAMBDAEI    ! Auxiliary vector (from spherocylinder overlap algorithm)
 REAL( KIND= REAL64 ), DIMENSION( 3 ) :: DMUEJ        ! Auxiliary vector (from spherocylinder overlap algorithm)
@@ -915,37 +909,11 @@ LOGICAL :: OVERLAPRIM ! Detects overlap between two particles (rim-rim configura
 ! Initialize logical variable
 OVERLAPRIM = .FALSE.
 
-! Initial calculation
-RIJEI = ( RIJ(1) * EI(1) ) + ( RIJ(2) * EI(2) ) + ( RIJ(3) * EI(3) )
-RIJEJ = ( RIJ(1) * EJ(1) ) + ( RIJ(2) * EJ(2) ) + ( RIJ(3) * EJ(3) )
-EIEJ  = ( EI(1) * EJ(1) ) + ( EI(2) * EJ(2) ) + ( EI(3) * EJ(3) )
-CC    = 1.D0 - ( EIEJ * EIEJ )
-
-! Checking whether the cylinders are parallel or not (should not happen since 'CASE 1' is decisive)
-IF( DABS( CC ) < 1.D-10 ) THEN
-  ! Checking whether the parallel cylinders are not perpendicular to the intermolecular axis (avoid the indeterminate form 0/0)
-  IF( DABS( RIJEI ) >= 1.D-10 .AND. DABS( RIJEJ ) >= 1.D-10 ) THEN
-    ! Take the extreme side of particle i
-    DLAMBDA = DSIGN( HALFL(1), RIJEI )
-    ! Closest point between particle i and particle j
-    DMU = ( DLAMBDA * EIEJ ) - RIJEJ
-    ! Take the extreme side of particle j if λ > L/2
-    IF( DABS( DMU ) > HALFL(2) ) THEN
-      DMU = DSIGN( HALFL(2), DMU )
-    END IF
-  ! Parallel cylinders almost orthogonal to the intermolecular axis (avoid the indeterminate form 0/0)
-  ELSE
-    DLAMBDA = 0.D0
-    DMU     = 0.D0
-  END IF
-! Cylinders are not parallel to each other
-ELSE
-  ! Values that minimize r² (from Vega-Lago algorithm)
-  DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
-  &         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
-  DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
-  &         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
-END IF
+! Values that minimize r² (from Vega-Lago algorithm)
+DLAMBDA = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+&         ( DOT_PRODUCT( RIJ, EI ) - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EJ ) )
+DMU     = 1.D0 / (1.D0 - DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( EI, EJ )  ) * &
+&         ( - DOT_PRODUCT( RIJ, EJ ) + DOT_PRODUCT( EI, EJ ) * DOT_PRODUCT( RIJ, EI ) )
 
 ! Position of λ and μ on the orientational axes of cylinders i and j
 DLAMBDAEI = DLAMBDA * EI
@@ -1123,69 +1091,76 @@ INTEGER( KIND= INT64 ) :: N_POINTS ! Maximum number of intervals
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                    :: DKRRIM_ERIM               ! Dot product of the vector distance between a disk (j or i) and a rim (i or j) and the orientation of the cylinder rim (i or j)
-REAL( KIND= REAL64 )                    :: DKRRIM_EXDISK             ! Dot product of the vector distance between a disk (j or i) and a rim (i or j) and the orientation of the cylinder disk along x-direction (j or i)
-REAL( KIND= REAL64 )                    :: DKRRIM_EYDISK             ! Dot product of the vector distance between a disk (j or i) and a rim (i or j) and the orientation of the cylinder disk along y-direction (j or i)
-REAL( KIND= REAL64 )                    :: EXDISK_ERIM               ! Dot product of the orientation of the cylinder disk (j or i) along x-direction and the orientation of the cylinder rim (i or j)
-REAL( KIND= REAL64 )                    :: EYDISK_ERIM               ! Dot product of the orientation of the cylinder disk (j or i) along y-direction and the orientation of the cylinder rim (i or j)
-REAL( KIND= REAL64 )                    :: DKURIMSQ                  ! Magnitude of the vector distance between the closest point on the cylinder rim (i or j) and the center of the cylinder disk (j or i)
-REAL( KIND= REAL64 )                    :: TOLERANCE_B               ! Numerical tolerance of the Brent's method
-REAL( KIND= REAL64 )                    :: COSPHI, SINPHI            ! Cossine and sine of the angle φ that defines a point in the circumference of the cylinder disk (j or i)
-REAL( KIND= REAL64 )                    :: OPPOSITE_CAT              ! Opposite cathetus
-REAL( KIND= REAL64 )                    :: ADJACENT_CAT              ! Adjacent cathetus
-REAL( KIND= REAL64 )                    :: HYP                       ! Hypothenuse
-REAL( KIND= REAL64 )                    :: TPARALSQ                  ! Magnitude of vector T parallel to the cylinder rim (i or j) (squared)
-REAL( KIND= REAL64 )                    :: TORTHOSQ                  ! Magnitude of vector T orthogonal to the cylinder rim (i or j) (squared)
-REAL( KIND= REAL64 )                    :: TSQ                       ! Magnitude of the vector T (squared)
-REAL( KIND= REAL64 )                    :: FI                        ! Objective function (root)
-REAL( KIND= REAL64 )                    :: LAMBDAI                   ! Minimization variable related to a point on the cylinder rim (i or j) (root)
-REAL( KIND= REAL64 )                    :: LAMBDAC                   ! Minimization variable related to a point on the cylinder rim (i or j) (root guess) [c]
-REAL( KIND= REAL64 )                    :: LAMBDAD                   ! Minimization variable related to a point on the cylinder rim (i or j) (root guess) [d]
-REAL( KIND= REAL64 )                    :: FC                        ! Objective function (midpoint)
-REAL( KIND= REAL64 )                    :: RSQ                       ! Radius of the cylinder (squared)
-REAL( KIND= REAL64 )                    :: DSQ                       ! Diameter of the combined cylinder disks (squared)
-REAL( KIND= REAL64 )                    :: HALFDDISK                 ! Half diameter of the cylinder disk
-REAL( KIND= REAL64 )                    :: HALFDRIM                  ! Half diameter of the cylinder rim
-REAL( KIND= REAL64 )                    :: HALFLRIM                  ! Half length of the cylinder rim
-REAL( KIND= REAL64 )                    :: PMINDISKSQ                ! Distance between the center of the cylinder disk and the intersection point (squared)
-REAL( KIND= REAL64 )                    :: PMINCYLSQ                 ! Distance between the center of the cylinder rim and the intersection point (squared)
-REAL( KIND= REAL64 )                    :: ALPHA, BETA, GAMMA        ! Coefficients
-REAL( KIND= REAL64 )                    :: CARDANO_Q, CARDANO_R      ! Cardano's coefficients
-REAL( KIND= REAL64 )                    :: CARDANO_S, CARDANO_T      ! Cardano's coefficients
-REAL( KIND= REAL64 )                    :: THETA, ARGUMENT           ! Cardano's coefficients
-REAL( KIND= REAL64 )                    :: DISCRIMINANT              ! Cardano's discriminant
-REAL( KIND= REAL64 )                    :: MAXCOEFF                  ! Largest coefficient (absolute value) of the quartic function
-REAL( KIND= REAL64 )                    :: TEMPT                     ! Temporary variable
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ROOTS                     ! Roots of the cubic equation
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: F                         ! Objective function
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: LAMBDA                    ! Minimization variable related to a point on the cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RRIM                      ! Position of the cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ERIM                      ! Orientation of the cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EXDISK, EYDISK, EZDISK    ! Orientation of the cylinder disks along x-, y-, and z-directions (j or i)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DK                        ! Position of cylinder disks (j or i)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DKRRIM                    ! Vector distance between a cylinder disk (j or i) and a cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DKURIM                    ! Vector distance between a cylinder disk (j or i) and the closest point on the cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: URIM                      ! Closest point on the cylinder rim (i or j) with respect to the center of the cylinder disk (j or i)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PC                        ! Closest point on the axis of the cylinder rim (i or j) with respect to the circumference of the cylinder disk (j or i)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PD                        ! Closest point on the circumference of the cylinder disk (j or i) with respect to the axis of the cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: T                         ! Vector distance between the closest point on the circumference of the cylinder disk (j or i) and the center of the cylinder rim (i or j)
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PK                        ! Point in a plane defined by the cylinder disk
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: LA, LB                    ! Points in a line defined by the cylinder rim
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: INTERSECTION              ! Intersection point between cylinder axis and cylinder disk
-REAL( KIND= REAL64 ), DIMENSION( 5 )    :: COEFF_QUARTIC             ! Coefficients of the quartic function
-REAL( KIND= REAL64 ), DIMENSION( 4 )    :: COEFF_CARDANO             ! Coefficients of the cubic function
-REAL( KIND= REAL64 ), DIMENSION( 3 )    :: CPOINTS                   ! Points where the derivative of the objective function with respect to λ are 0
-REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QDISK                     ! Quaternion of the cylinder disks (j or i)
+REAL( KIND= REAL64 )                    :: DKRRIM_ERIM            ! Dot product of the vector distance between a disk (j or i) and a rim (i or j) and the orientation of the cylinder rim (i or j)
+REAL( KIND= REAL64 )                    :: DKRRIM_EXDISK          ! Dot product of the vector distance between a disk (j or i) and a rim (i or j) and the orientation of the cylinder disk along x-direction (j or i)
+REAL( KIND= REAL64 )                    :: DKRRIM_EYDISK          ! Dot product of the vector distance between a disk (j or i) and a rim (i or j) and the orientation of the cylinder disk along y-direction (j or i)
+REAL( KIND= REAL64 )                    :: EXDISK_ERIM            ! Dot product of the orientation of the cylinder disk (j or i) along x-direction and the orientation of the cylinder rim (i or j)
+REAL( KIND= REAL64 )                    :: EYDISK_ERIM            ! Dot product of the orientation of the cylinder disk (j or i) along y-direction and the orientation of the cylinder rim (i or j)
+REAL( KIND= REAL64 )                    :: DKURIMSQ               ! Magnitude of the vector distance between the closest point on the cylinder rim (i or j) and the center of the cylinder disk (j or i)
+REAL( KIND= REAL64 )                    :: TOLERANCE_B            ! Numerical tolerance of the Brent's method
+REAL( KIND= REAL64 )                    :: COSPHI, SINPHI         ! Cossine and sine of the angle φ that defines a point in the circumference of the cylinder disk (j or i)
+REAL( KIND= REAL64 )                    :: OPPOSITE_CAT           ! Opposite cathetus
+REAL( KIND= REAL64 )                    :: ADJACENT_CAT           ! Adjacent cathetus
+REAL( KIND= REAL64 )                    :: HYP                    ! Hypothenuse
+REAL( KIND= REAL64 )                    :: TPARALSQ               ! Magnitude of vector T parallel to the cylinder rim (i or j) (squared)
+REAL( KIND= REAL64 )                    :: TORTHOSQ               ! Magnitude of vector T orthogonal to the cylinder rim (i or j) (squared)
+REAL( KIND= REAL64 )                    :: TSQ                    ! Magnitude of the vector T (squared)
+REAL( KIND= REAL64 )                    :: FI                     ! Objective function (root)
+REAL( KIND= REAL64 )                    :: LAMBDAI                ! Minimization variable related to a point on the cylinder rim (i or j) (root)
+REAL( KIND= REAL64 )                    :: LAMBDAC                ! Minimization variable related to a point on the cylinder rim (i or j) (root guess) [c]
+REAL( KIND= REAL64 )                    :: LAMBDAD                ! Minimization variable related to a point on the cylinder rim (i or j) (root guess) [d]
+REAL( KIND= REAL64 )                    :: FC                     ! Objective function (midpoint)
+REAL( KIND= REAL64 )                    :: RSQ                    ! Radius of the cylinder (squared)
+REAL( KIND= REAL64 )                    :: DSQ                    ! Diameter of the combined cylinder disks (squared)
+REAL( KIND= REAL64 )                    :: HALFDDISK              ! Half diameter of the cylinder disk
+REAL( KIND= REAL64 )                    :: HALFDRIM               ! Half diameter of the cylinder rim
+REAL( KIND= REAL64 )                    :: HALFLRIM               ! Half length of the cylinder rim
+REAL( KIND= REAL64 )                    :: PMINDISKSQ             ! Distance between the center of the cylinder disk and the intersection point (squared)
+REAL( KIND= REAL64 )                    :: PMINCYLSQ              ! Distance between the center of the cylinder rim and the intersection point (squared)
+REAL( KIND= REAL64 )                    :: ALPHA, BETA, GAMMA     ! Coefficients
+REAL( KIND= REAL64 )                    :: CARDANO_Q, CARDANO_R   ! Cardano's coefficients
+REAL( KIND= REAL64 )                    :: CARDANO_S, CARDANO_T   ! Cardano's coefficients
+REAL( KIND= REAL64 )                    :: THETA, ARGUMENT        ! Cardano's coefficients
+REAL( KIND= REAL64 )                    :: DISCRIMINANT           ! Cardano's discriminant
+REAL( KIND= REAL64 )                    :: MAXCOEFF               ! Largest coefficient (absolute value) of the quartic function
+REAL( KIND= REAL64 )                    :: TEMPT                  ! Temporary variable
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ROOTS                  ! Roots of the cubic equation
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: F                      ! Objective function
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: LAMBDA                 ! Minimization variable related to a point on the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RRIM                   ! Position of the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: ERIM                   ! Orientation of the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EXDISK, EYDISK, EZDISK ! Orientation of the cylinder disks along x-, y-, and z-directions (j or i)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DK                     ! Position of cylinder disks (j or i)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DKRRIM                 ! Vector distance between a cylinder disk (j or i) and a cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DKURIM                 ! Vector distance between a cylinder disk (j or i) and the closest point on the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: URIM                   ! Closest point on the cylinder rim (i or j) with respect to the center of the cylinder disk (j or i)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PC                     ! Closest point on the axis of the cylinder rim (i or j) with respect to the circumference of the cylinder disk (j or i)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PD                     ! Closest point on the circumference of the cylinder disk (j or i) with respect to the axis of the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: T                      ! Vector distance between the closest point on the circumference of the cylinder disk (j or i) and the center of the cylinder rim (i or j)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PK                     ! Point in a plane defined by the cylinder disk
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: LA, LB                 ! Points in a line defined by the cylinder rim
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: INTERSECTION           ! Intersection point between cylinder axis and cylinder disk
+REAL( KIND= REAL64 ), DIMENSION( 5 )    :: COEFF_QUARTIC          ! Coefficients of the quartic function
+REAL( KIND= REAL64 ), DIMENSION( 4 )    :: COEFF_CARDANO          ! Coefficients of the cubic function
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: CPOINTS                ! Points where the derivative of the objective function with respect to λ are 0
+REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QDISK                  ! Quaternion of the cylinder disks (j or i)
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL :: OVERLAPDRIM   ! Detects overlap between two particles (disk-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: BISECT_METHOD ! Checks whether the root from the bisection method will be used or not (Brent's method)
+LOGICAL :: OVERLAPDRIM ! Detects overlap between two particles (disk-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: BISECTION   ! Checks whether the root from the bisection method will be used or not (Brent's method)
 
 ! Initialize logical variable
-OVERLAPDRIM   = .FALSE.
-BISECT_METHOD = .FALSE.
+OVERLAPDRIM = .FALSE.
+BISECTION   = .FALSE.
+
+! Initialize arrays and variables
+N_POINTS = 0
+CPOINTS  = 0.D0
+F        = 0.D0
+LAMBDA   = 0.D0
+LAMBDAI  = 0.D0
 
 ! Radius of the cylinder rim (squared)
 RSQ = ( HALFDRIM * HALFDRIM )
@@ -1218,7 +1193,7 @@ DKURIMSQ = ( DKURIM(1) * DKURIM(1) ) + ( DKURIM(2) * DKURIM(2) ) + ( DKURIM(3) *
 ! *********************************************************************************************** !
 ! Preliminary conditions                                                                          !
 ! *********************************************************************************************** !
-! Sphere circumscribing the cylinder disks
+! Spheres circumscribing the cylindrical disk and the cross-sectional area of the cylinder rim
 IF( DKURIMSQ > DSQ ) THEN
   ! No overlap
   RETURN
@@ -1253,13 +1228,13 @@ DKRRIM_EYDISK = ( DKRRIM(1) * EYDISK(1) ) + ( DKRRIM(2) * EYDISK(2) ) + ( DKRRIM
 ! *********************************************************************************************** !
 ! New special case (mainly for anisomorphic cylinders)                                            !
 ! *********************************************************************************************** !
-! Any single point in the plane defined by the cylindrical disk
+! Any single point in the plane defined by the cylindrical disk (φ = 0)
 PK = DK + HALFDDISK * EXDISK
-! Any two points in the line defined by the cylindrical axis
+! Any two points in the line defined by the cylindrical axis (λ = L/2 and λ = -L/2)
 LA = RRIM + HALFLRIM * ERIM
 LB = RRIM - HALFLRIM * ERIM
 ! Checking whether the cylindrical axis is orthogonal to the normal vector of the plane (avoid the indeterminate form 0/0)
-IF( DABS( 1.D0 - DOT_PRODUCT( EZDISK, ERIM ) * DOT_PRODUCT( EZDISK, ERIM ) ) >= 1.D-10 ) THEN
+IF( DABS( DOT_PRODUCT( EZDISK, ERIM ) * DOT_PRODUCT( EZDISK, ERIM ) - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
   ! Scale parameter of the line equation that demarks the intersection point between the line and the disk
   LAMBDA(1) = ( DOT_PRODUCT( EZDISK, PK ) - DOT_PRODUCT( EZDISK, LA ) ) / DOT_PRODUCT( EZDISK, (LB - LA) )
   ! Coordinates of the intersection point
@@ -1278,8 +1253,8 @@ END IF
 ! *********************************************************************************************** !
 ! More complex configurations                                                                     !
 ! *********************************************************************************************** !
-!  Calculate a point on the circumference of the cylinder disk and a point on the axial axis of   !
-!  the cylinder rim that minimizes the objective function.                                        !
+!  Calculates a point on the circumference of the cylinder disk and a point on the axial axis of  !
+!  the cylinder rim such that the distance between them is a minimum.                             !
 ! *********************************************************************************************** !
 
 ! Constants
@@ -1381,7 +1356,7 @@ IF( ALPHA > 0.D0 ) THEN
   END IF
 
   ! ********************************************************************************************* !
-  ! Number of intervals                                                                           !
+  ! Number of root-finding intervals                                                              !
   ! ********************************************************************************************* !
   IF( DISCRIMINANT < 0.D0 ) THEN
     N_POINTS = 4
@@ -1545,10 +1520,10 @@ IF( ALPHA > 0.D0 ) THEN
     ! ******************************************************************************************* !
     
     ! Initialization
-    COUNTERB      = 0       ! Iteration counter
-    TOLERANCE_B   = 1.D-10  ! Numerical tolerance
-    LAMBDAD       = 0.D0    ! Third-to-last root guess
-    BISECT_METHOD = .FALSE. ! Bissection root
+    COUNTERB    = 0       ! Iteration counter
+    TOLERANCE_B = 1.D-10  ! Numerical tolerance
+    LAMBDAD     = 0.D0    ! Third-to-last root guess
+    BISECTION   = .FALSE. ! Bisection root
 
     ! Brent's condition
     IF( ( F(2) * F(3) ) < 0.D0 ) THEN
@@ -1568,8 +1543,8 @@ IF( ALPHA > 0.D0 ) THEN
       FC = F(2)
       ! Initialize value of objective function
       FI = - 1.D0
-      ! Initialize 'BISSECTION' flag as TRUE since the last iteration used was the bisection method
-      BISECT_METHOD = .TRUE.
+      ! Initialize 'BISECTION' flag as TRUE since the last iteration used was the bisection method
+      BISECTION = .TRUE.
       ! Stop criterion
       DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( LAMBDA(2) - LAMBDA(3) ) >= TOLERANCE_B )
         ! Initialize root of the function
@@ -1582,17 +1557,17 @@ IF( ALPHA > 0.D0 ) THEN
           LAMBDAI = LAMBDA(3) - F(3) * ( LAMBDA(3) - LAMBDA(2) ) / ( F(3) - F(2) )
         END IF
         ! Check whether the root obtained from the interpolation method or false position formula will be used; otherwise, use the midpoint from bisection method
-        IF( ( (LAMBDAI - ( 3.D0 * LAMBDA(2) + LAMBDA(3) ) / 4.D0) * ( LAMBDAI - LAMBDA(3) ) >= 0.D0 ) .OR. ( BISECT_METHOD .AND. &
-        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. ( .NOT. BISECT_METHOD .AND. &
-        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. ( BISECT_METHOD .AND. &
-        &   ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. ( .NOT. BISECT_METHOD .AND. &
+        IF( ( (LAMBDAI - ( 3.D0 * LAMBDA(2) + LAMBDA(3) ) / 4.D0) * ( LAMBDAI - LAMBDA(3) ) >= 0.D0 ) .OR. ( BISECTION .AND. &
+        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDA(3) - LAMBDAC) / 2.D0 ) ) ) .OR. ( .NOT. BISECTION .AND. &
+        &   ( DABS( LAMBDAI - LAMBDA(3) ) >= DABS( (LAMBDAC - LAMBDAD) / 2.D0 ) ) ) .OR. ( BISECTION .AND. &
+        &   ( DABS( LAMBDAI - LAMBDAC ) < TOLERANCE_B ) ) .OR. ( .NOT. BISECTION .AND. &
         &   ( DABS( LAMBDAC - LAMBDAD ) < TOLERANCE_B ) ) ) THEN
           ! Root from bisection method
-          LAMBDAI = 0.5D0 * ( LAMBDA(2) + LAMBDA(3) )
-          BISECT_METHOD = .TRUE.
+          LAMBDAI   = 0.5D0 * ( LAMBDA(2) + LAMBDA(3) )
+          BISECTION = .TRUE.
         ELSE
           ! Root from inverse quadratic interpolation or false position formula
-          BISECT_METHOD = .FALSE.
+          BISECTION = .FALSE.
         END IF
         ! Calculate function at the midpoint
         FI  = ( COEFF_QUARTIC(1) * LAMBDAI * LAMBDAI * LAMBDAI * LAMBDAI ) + ( COEFF_QUARTIC(2) * LAMBDAI * LAMBDAI * LAMBDAI ) &
@@ -1624,7 +1599,7 @@ IF( ALPHA > 0.D0 ) THEN
         ! Iteration
         COUNTERB = COUNTERB + 1
         IF( COUNTERB > 50 ) THEN
-          WRITE( *, "(3G0)" ) "Brent's method will not converge after ", COUNTERB, " iterations. Exiting..."
+          WRITE( *, "(3G0)" ) "Brent's method failed to converge after ", COUNTERB, " iterations. Exiting..."
           CALL EXIT(  )
         END IF
       END DO
@@ -1690,15 +1665,15 @@ END IF ! The end-to-end configuration have already been tested by other methods
 ! *********************************************************************************************** !
 ! IF THE ALGORITHM REACHES THIS POINT,                                                            !
 !                                                                                                 !
-! (1) it is because the root obtained from the numerical methods returns a point in the           !
+! (1) it is because the root obtained from the numerical method returns a point in the            !
 ! circumference of the cylindrical disk (j or i) that is outside the cylindrical rim (i or j) but !
-! within the extension of its length. RESULT = NO OVERLAP                                         !
+! within the radial extension of its length. RESULT = NO OVERLAP                                  !
 !                                                                                                 !
-! (2) it is because the root obtained from the numerical methods returns a point in the           !
-! circumference of the cylindrical disk (j or i) that is inside the cylindrical rim (i or j) but  !
-! beyond the extension of its length. RESULT = NO OVERLAP                                         !
+! (2) it is because the root obtained from the numerical method returns a point in the            !
+! circumference of the cylindrical disk (j or i) that is outside the cylindrical rim (i or j) but !
+! within the axial extension of its length. RESULT = NO OVERLAP                                   !
 !                                                                                                 !
-! (3) it is because there are no real roots root within the current analyzed interval.            !
+! (3) it is because there are no real roots for the analyzed intervals.                           !
 ! RESULT = NO OVERLAP                                                                             !
 !                                                                                                 !
 ! (4) it is because no root was found in the considered intervals (-L/2 <= λ0 <= L/2), which      !
@@ -1717,3 +1692,206 @@ OVERLAPDRIM = .FALSE.
 RETURN
 
 END SUBROUTINE DISK_RIM
+
+! *********************************************************************************************** !
+! This subroutine takes the position and orientation of the center of mass of a cylinder and the  !
+!  position of the center of mass of a sphere as well as the relative distance between them and   !
+!                       calculates whether they overlap each other or not.                        !
+! *********************************************************************************************** !
+SUBROUTINE CYLINDERSPHERE_OVERLAP( CCYL, CSPH, QCYL, RCYL, RSPH, OVERLAP_CYLSPH )
+
+! Uses one module: global variables
+USE GLOBALVAR
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( KIND= INT64 ) :: DISK        ! Counter
+INTEGER( KIND= INT64 ) :: CCYL, CSPH  ! Counters (component)
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( KIND= REAL64 )                    :: LSQ            ! Combined length (squared)
+REAL( KIND= REAL64 )                    :: DSQ            ! Combined diameter (squared)
+REAL( KIND= REAL64 )                    :: RIJECYL        ! Dot product of vector distance and orientation of the cylinder
+REAL( KIND= REAL64 )                    :: RIJSQ_PARALLEL ! Squared distance between particles i and j (parallel)
+REAL( KIND= REAL64 )                    :: RIJSQ_ORTHO    ! Squared distance between particles i and j (orthogonal)
+REAL( KIND= REAL64 )                    :: DCYLSPHSQ      ! Squared distance between a cylindrical disk and a sphere
+REAL( KIND= REAL64 )                    :: TSQ            ! Minimum distance between a point in the circumference of a cylindrical disk and the center of a sphere (squared)
+REAL( KIND= REAL64 )                    :: PHI            ! Angle (circumference)
+REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFLENGTH     ! Half-length of cylinder/sphere i and j
+REAL( KIND= REAL64 ), DIMENSION( 2 )    :: HALFDIAMETER   ! Half-diameter of cylinder/sphere i and j
+REAL( KIND= REAL64 ), DIMENSION( 0:3 )  :: QCYL           ! Quaternion of the cylinder
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RCYL           ! Position of center of mass of the cylinder
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: PD             ! Position of the point in the circumference of a cylindrical disk
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: T              ! Minimum vector distance between a point in the circumference of a cylindrical disk and the center of a sphere
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RSPH           ! Position of the center of mass of a sphere
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EXCYL          ! Orientation of the cylinder along x-direction
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EYCYL          ! Orientation of the cylinder along y-direction
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: EZCYL          ! Orientation of the cylinder along z-direction
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RCYLSPH        ! Vector distance between a cylinder and a sphere
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: DCYLSPH        ! Vector distance between the center of a cylindrical disk and the center of a sphere 
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ_PARALLEL   ! Vector distance between particles i and j (parallel)
+REAL( KIND= REAL64 ), DIMENSION( 3 )    :: RIJ_ORTHO      ! Vector distance between particles i and j (orthogonal)
+REAL( KIND= REAL64 ), DIMENSION( 2, 3 ) :: DCYL           ! Position of both disks of a cylinder
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES                                                                               !
+! *********************************************************************************************** !
+LOGICAL :: OVERLAP_CYLSPH ! Detects overlap between a cylindrical and a spherical particle : TRUE = overlap detected; FALSE = overlap not detected
+
+! Half length of cylinder
+HALFLENGTH(1)   = 0.5D0 * LENGTH(CCYL)
+! Half length of sphere
+HALFLENGTH(2)   = 0.5D0 * LENGTH(CSPH)
+! Half diameter of cylinder
+HALFDIAMETER(1) = 0.5D0 * DIAMETER(CCYL)
+! Half diameter of sphere
+HALFDIAMETER(2) = 0.5D0 * DIAMETER(CSPH)
+
+! Combined length (squared)
+LSQ = 0.5D0 * ( LENGTH(CCYL) + LENGTH(CSPH) )
+LSQ = LSQ * LSQ
+! Combined diameter (squared)
+DSQ = 0.5D0 * ( DIAMETER(CCYL) + DIAMETER(CSPH) )
+DSQ = DSQ * DSQ
+
+! Initialize logical variables
+OVERLAP_CYLSPH  = .FALSE.
+
+! Orientation of the cylindrical disk along the x-direction
+CALL ACTIVE_TRANSFORMATION( AXISX, QCYL, EXCYL )
+! Orientation of the cylindrical disk along the y-direction
+CALL ACTIVE_TRANSFORMATION( AXISY, QCYL, EYCYL )
+! Orientation of the cylindrical disk along the z-direction
+CALL ACTIVE_TRANSFORMATION( AXISZ, QCYL, EZCYL )
+
+! Vector distance between cylinder and sphere
+RCYLSPH(1) = RSPH(1) - RCYL(1)
+RCYLSPH(2) = RSPH(2) - RCYL(2)
+RCYLSPH(3) = RSPH(3) - RCYL(3)
+
+! Projection of the vector distance between a cylinder and a sphere along the axial orientation of the cylinder
+RIJECYL = ( RCYLSPH(1) * EZCYL(1) ) + ( RCYLSPH(2) * EZCYL(2) ) + ( RCYLSPH(3) * EZCYL(3) )
+
+! Disk 1 of the cylinder
+DCYL(1,1) = RCYL(1) + ( EZCYL(1) * HALFLENGTH(1) )
+DCYL(1,2) = RCYL(2) + ( EZCYL(2) * HALFLENGTH(1) )
+DCYL(1,3) = RCYL(3) + ( EZCYL(3) * HALFLENGTH(1) )
+! Disk 2 of the cylinder
+DCYL(2,1) = RCYL(1) - ( EZCYL(1) * HALFLENGTH(1) )
+DCYL(2,2) = RCYL(2) - ( EZCYL(2) * HALFLENGTH(1) )
+DCYL(2,3) = RCYL(3) - ( EZCYL(3) * HALFLENGTH(1) )
+
+! Vector distance between particles i and j (parallel)
+RIJ_PARALLEL(1) = EZCYL(1) * RIJECYL
+RIJ_PARALLEL(2) = EZCYL(2) * RIJECYL
+RIJ_PARALLEL(3) = EZCYL(3) * RIJECYL
+! Magnitude of vector distance between particles i and j (parallel)
+RIJSQ_PARALLEL = ( RIJ_PARALLEL(1) * RIJ_PARALLEL(1) ) + ( RIJ_PARALLEL(2) * RIJ_PARALLEL(2) ) + ( RIJ_PARALLEL(3) * &
+&                RIJ_PARALLEL(3) )
+
+! Vector distance between particles i and j (orthogonal)
+RIJ_ORTHO(1) = RCYLSPH(1) - RIJ_PARALLEL(1)
+RIJ_ORTHO(2) = RCYLSPH(2) - RIJ_PARALLEL(2)
+RIJ_ORTHO(3) = RCYLSPH(3) - RIJ_PARALLEL(3)
+! Magnitude of vector distance between particles i and j (orthogonal)
+RIJSQ_ORTHO  = ( RIJ_ORTHO(1) * RIJ_ORTHO(1) ) + ( RIJ_ORTHO(2) * RIJ_ORTHO(2) ) + ( RIJ_ORTHO(3) * RIJ_ORTHO(3) )
+
+! *********************************************************************************************** !
+! CASE 1: Rim-Sphere                                                                              !
+! *********************************************************************************************** !
+! Center of the sphere is located within the zone that corresponds to the radial extension        !
+! of the cylindrical rim                                                                          ! 
+! *********************************************************************************************** !
+IF( RIJSQ_PARALLEL <= HALFLENGTH(1) * HALFLENGTH(1) ) THEN
+  ! Overlap criterion
+  IF( RIJSQ_ORTHO <= DSQ ) THEN
+    OVERLAP_CYLSPH = .TRUE.
+    RETURN
+  END IF
+! *********************************************************************************************** !
+! CASE 2: Disk-Sphere                                                                             !
+! *********************************************************************************************** !
+! Center of the sphere is located within the zone that corresponds to the axial extension         !
+! of the cylindrical rim                                                                          !
+! *********************************************************************************************** !
+ELSE IF( RIJSQ_ORTHO <= HALFDIAMETER(1) * HALFDIAMETER(1) ) THEN
+  ! Overlap criterion
+  IF( RIJSQ_PARALLEL <= LSQ ) THEN
+    OVERLAP_CYLSPH = .TRUE.
+    RETURN
+  END IF
+! *********************************************************************************************** !
+! CASE 3: Circumference-Sphere                                                                    !
+! *********************************************************************************************** !
+! Center of the sphere is located outside the zones that correspond to both the axial and         !
+! radial extensions of the cylindrical rim                                                        ! 
+! *********************************************************************************************** !
+ELSE
+  DO DISK = 1, 2
+    ! Vector distance between a disk of the cylinders and the center of mass of the sphere
+    DCYLSPH(1) = DCYL(DISK,1) - RSPH(1)
+    DCYLSPH(2) = DCYL(DISK,2) - RSPH(2)
+    DCYLSPH(3) = DCYL(DISK,3) - RSPH(3)
+    ! Magnitude of the vector distance between the centers of mass of a disk and a sphere
+    DCYLSPHSQ  = ( DCYLSPH(1) * DCYLSPH(1) ) + ( DCYLSPH(2) * DCYLSPH(2) ) + ( DCYLSPH(3) * DCYLSPH(3) )
+    ! Non-overlapping condition (circumscribing spheres)
+    IF( DCYLSPHSQ > DSQ ) THEN
+      CYCLE
+    ELSE
+      ! Angle (derivative of the distance function with respect to φ)
+      PHI = DATAN2( DOT_PRODUCT( DCYLSPH, EYCYL ), DOT_PRODUCT( DCYLSPH, EXCYL ) )
+      ! Point on the circumference of the disk that is closest to the center of the sphere
+      PD(1) = DCYL(DISK,1) + HALFDIAMETER(1) * DCOS( PHI ) * EXCYL(1) + HALFDIAMETER(1) * DSIN( PHI ) * EYCYL(1)
+      PD(2) = DCYL(DISK,2) + HALFDIAMETER(1) * DCOS( PHI ) * EXCYL(2) + HALFDIAMETER(1) * DSIN( PHI ) * EYCYL(2)
+      PD(3) = DCYL(DISK,3) + HALFDIAMETER(1) * DCOS( PHI ) * EXCYL(3) + HALFDIAMETER(1) * DSIN( PHI ) * EYCYL(3)
+      ! Distance between point of closest approach in the circumference of the disk and center of sphere
+      T(1)  = PD(1) - RSPH(1)
+      T(2)  = PD(2) - RSPH(2)
+      T(3)  = PD(3) - RSPH(3)
+      ! Distance between point of closest approach in the circumference of the disk and center of sphere (squared)
+      TSQ = DOT_PRODUCT( T, T )
+      ! Overlap condition (point on the circumference of the disk inside the sphere)
+      IF( TSQ <= HALFDIAMETER(2) * HALFDIAMETER(2) ) THEN
+        OVERLAP_CYLSPH = .TRUE.
+        RETURN
+      END IF
+      ! Angle (derivative of the distance function with respect to φ)
+      PHI = PHI + PI
+      ! Point on the circumference of the disk that is closest to the center of the sphere
+      PD(1) = DCYL(DISK,1) + HALFDIAMETER(1) * DCOS( PHI ) * EXCYL(1) + HALFDIAMETER(1) * DSIN( PHI ) * EYCYL(1)
+      PD(2) = DCYL(DISK,2) + HALFDIAMETER(1) * DCOS( PHI ) * EXCYL(2) + HALFDIAMETER(1) * DSIN( PHI ) * EYCYL(2)
+      PD(3) = DCYL(DISK,3) + HALFDIAMETER(1) * DCOS( PHI ) * EXCYL(3) + HALFDIAMETER(1) * DSIN( PHI ) * EYCYL(3)
+      ! Distance between point of closest approach in the circumference of the disk and center of sphere
+      T(1)  = PD(1) - RSPH(1)
+      T(2)  = PD(2) - RSPH(2)
+      T(3)  = PD(3) - RSPH(3)
+      ! Distance between point of closest approach in the circumference of the disk and center of sphere (squared)
+      TSQ = DOT_PRODUCT( T, T )
+      ! Overlap condition (point on the circumference of the disk inside the sphere)
+      IF( TSQ <= HALFDIAMETER(2) * HALFDIAMETER(2) ) THEN
+        OVERLAP_CYLSPH = .TRUE.
+        RETURN
+      END IF
+    END IF
+  END DO
+END IF
+
+! *********************************************************************************************** !
+! -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*  IMPORTANT NOTES  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* !
+! *********************************************************************************************** !
+! The roots of the derivative of the distance function allow you to calculate the critical points !
+! of the distance function, including minimum and maximum points. The root found by taking the    !
+! arctangent of the derivative will not necessarily be the minimum we want to find. However, we   !
+! know that the minima and maxima of a periodic function (distance function) whose argument is φ  !
+! will be out of phase by π radians. Therefore, we must test both points: φ and φ + π (or φ - π). !
+! *********************************************************************************************** !
+
+! No overlaps
+RETURN
+
+END SUBROUTINE

@@ -338,6 +338,19 @@ ALLOCATE( DIAMETER(COMPONENTS), LENGTH(COMPONENTS), MOLAR_F(COMPONENTS) )
 ALLOCATE( N_COMPONENT(0:COMPONENTS), PARTICLE_VOL(COMPONENTS), RHO_PARTICLE(COMPONENTS) )
 ALLOCATE( ASPECT_RATIO(COMPONENTS) )
 ALLOCATE( SIGSPHERE(COMPONENTS) )
+ALLOCATE( SPHERCOMP(COMPONENTS) )
+ALLOCATE( SPHCOMP_INQ(COMPONENTS) )
+
+! Component sphericity
+READ( 100, * ) GET, SPHCOMP_INQ
+DO C = 1, COMPONENTS
+  CALL TO_UPPER( SPHCOMP_INQ(C), LEN_TRIM( SPHCOMP_INQ(C) ), SPHCOMP_INQ(C) )
+  IF( SPHCOMP_INQ(C) == "T" ) THEN
+    SPHERCOMP(C) = .TRUE.
+  ELSE
+    SPHERCOMP(C) = .FALSE.
+  END IF
+END DO
 
 ! Diameter of component i
 READ( 100, * ) GET, DIAMETER
@@ -365,6 +378,35 @@ DO C = 1, COMPONENTS
       WRITE( *, "(3G0,G0.5,G0)" ) "The length of component #", C, " [", LENGTH(C), "] cannot be less than 0. Exiting... "
       CALL EXIT(  )
     END IF
+  END IF
+END DO
+
+! Check is component is spherical
+DO C = 1, COMPONENTS
+  IF( GEOM_SELEC(1) .AND. DABS( LENGTH(C) - DIAMETER(C) ) >= EPSILON( 1.D0 ) .AND. SPHERCOMP(C) ) THEN
+    WRITE( *, "(3G0,2(G0.5,2G0))" ) "The length of component #", C, " [", LENGTH(C), "] cannot be different from its diameter ", &
+    &                               "[", DIAMETER(C), "] when the component is considered spherical under the ellipsoidal ", &
+    &                               "framework. Exiting..."
+    CALL EXIT(  )
+  ELSE IF( GEOM_SELEC(2) .AND. DABS( LENGTH(C) - 0.D0 ) >= EPSILON( 1.D0 ) .AND. SPHERCOMP(C) ) THEN
+    WRITE( *, "(3G0,G0.5,2G0)" ) "The length of component #", C, " [", LENGTH(C), "] must be 0 when the component is ", &
+    &                            "considered spherical under the spherocylindrical framework. Exiting..."
+    CALL EXIT(  )
+  ELSE IF( GEOM_SELEC(3) .AND. DABS( LENGTH(C) - DIAMETER(C) ) >= EPSILON( 1.D0 ) .AND. SPHERCOMP(C) ) THEN
+    WRITE( *, "(3G0,2(G0.5,2G0))" ) "The length of component #", C, " [", LENGTH(C), "] cannot be different from its diameter ", &
+    &                               "[", DIAMETER(C), "] when the component is considered spherical under the cylindrical ", &
+    &                               "framework. Exiting..."
+    CALL EXIT(  )
+  END IF
+  IF( GEOM_SELEC(1) .AND. DABS( LENGTH(C) - DIAMETER(C) ) < EPSILON( 1.D0 ) .AND. .NOT. SPHERCOMP(C) ) THEN
+    WRITE( *, "(3G0,2(G0.5,2G0))" ) "The length of component #", C, " [", LENGTH(C), "] is equal to its diameter ", &
+    &                               "[", DIAMETER(C), "] even though the component is not considered spherical under the ", &
+    &                               "ellipsoidal framework. Exiting..."
+    CALL EXIT(  )
+  ELSE IF( GEOM_SELEC(2) .AND. DABS( LENGTH(C) - 0.D0 ) < EPSILON( 1.D0 ) .AND. .NOT. SPHERCOMP(C) ) THEN
+    WRITE( *, "(3G0,G0.5,2G0)" ) "The length of component #", C, " [", LENGTH(C), "] is equal to 0 even though the ", &
+    &                            "component is not considered spherical under the spherocylindrical framework. Exiting..."
+    CALL EXIT(  )
   END IF
 END DO
 
@@ -440,11 +482,23 @@ END DO
 ! Particle volume
 DO C = 1, COMPONENTS
   IF( GEOM_SELEC(1) ) THEN
-    PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * LENGTH(C)
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * LENGTH(C)
+    ELSE
+      PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * DIAMETER(C)
+    END IF
   ELSE IF( GEOM_SELEC(2) ) THEN
-    PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * DIAMETER(C) + (PI / 4.D0) * DIAMETER(C) * DIAMETER(C) * LENGTH(C)
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * DIAMETER(C) + (PI / 4.D0) * DIAMETER(C) * DIAMETER(C) * LENGTH(C)
+    ELSE
+      PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * DIAMETER(C)
+    END IF
   ELSE IF( GEOM_SELEC(3) ) THEN
-    PARTICLE_VOL(C) = (PI / 4.D0) * DIAMETER(C) * DIAMETER(C) * LENGTH(C)
+    IF( .NOT. SPHERCOMP(C) ) THEN
+      PARTICLE_VOL(C) = (PI / 4.D0) * DIAMETER(C) * DIAMETER(C) * LENGTH(C)
+    ELSE
+      PARTICLE_VOL(C) = (PI / 6.D0) * DIAMETER(C) * DIAMETER(C) * DIAMETER(C)
+    END IF
   END IF
 END DO
 
@@ -654,7 +708,6 @@ IF( CONFIG_SELEC(4) ) THEN
     CALL EXIT(  )
   END IF
 ELSE IF( .NOT. CONFIG_SELEC(4) ) THEN
-  READ( 100, * ) GET, DUMMY
   READ( 100, * ) GET, DUMMY
   READ( 100, * ) GET, DUMMY
 END IF
