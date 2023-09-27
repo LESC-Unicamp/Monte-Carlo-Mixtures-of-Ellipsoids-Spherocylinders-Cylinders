@@ -99,9 +99,9 @@ The following features are supported in the current version:
 </p>
 
 1. Initial Configurations
-    - Simple Cube (for pure components only)
-    - Body-Centered Cube (for pure components only)
-    - Face-Centered Cube (for pure components only)
+    - Simple Cube (for pure components and mixtures)
+    - Body-Centered Cube (for pure components and mixtures)
+    - Face-Centered Cube (for pure components and mixtures)
     - Random Structure (for pure components and mixtures)
 
 2. Ensembles
@@ -115,8 +115,12 @@ The following features are supported in the current version:
     - Cubic Expansions/Compressions (Isotropic)
     - Triclinic Expansions/Compressions (Anisotropic)
 
-4. Potentials
-    - None
+4. Lattice Reduction Algorithms
+    - Gottwald
+    - Lenstra-Lenstra-Lovász
+
+5. Potentials
+    - Spherical Square Well (perturbed system only)
 
 ## <a name="language"></a>Language
 <p align="justify">
