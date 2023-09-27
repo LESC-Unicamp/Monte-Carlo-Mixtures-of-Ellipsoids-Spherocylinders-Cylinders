@@ -83,7 +83,7 @@ The authors make no warranties about the use of this software. The authors hold 
 <sub>*The mLCYL algorithm also searches for overlapping configurations between cylinders and spheres (<b>Version 1.1.0</b>).</sub>
 
 <p align="justify">
-  This NVT/NPT-Monte Carlo algorithm can be used, <i>e. g.</i>, for mixtures of oblate and prolate ellipsoids of revolution, oblate/prolate ellipsoids of revolution and spheres (degenerate case), thin and thick spherocylinders, thin/thick spherocylinders and spheres (degenerate case), oblate (disk) and prolate (rod) cylinders, oblate/prolate cylinders and equilateral cylinders and cylinders and spheres. Some NVT-Monte Carlo simulations of these multicomponent mixtures are illustrated below.
+  This NVT/NPT-Monte Carlo algorithm can be used, <i>e. g.</i>, for mixtures of oblate and prolate ellipsoids of revolution, oblate/prolate ellipsoids of revolution and spheres (degenerate case), thin and thick spherocylinders, thin/thick spherocylinders and spheres (degenerate case), oblate (disk) and prolate (rod) cylinders, oblate/prolate cylinders and equilateral cylinders, and cylinders and spheres. Some NVT-Monte Carlo simulations of these multicomponent mixtures are illustrated below.
 </p>
 
 | | | |
