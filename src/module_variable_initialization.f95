@@ -172,9 +172,9 @@ END IF
 ! Minimum volumetric displacement (random configuration)
 READ( 10, * ) GET, DVMIN_INIT
 ! Condition
-IF( DVMIN_INIT >= DVMAXISO_INIT .OR. DVMIN_INIT >= DVMAXANISO_INIT ) THEN
-  WRITE( *, "(3(G0,G0.5),G0)" ) "The minimum volume change of the random configuration [", DVMIN_INIT, &
-  &                             "] cannot be greater than or equal to the maximum isotropic [", DVMAXISO_INIT, &
+IF( DABS( DVMIN_INIT ) >= DABS( DVMAXISO_INIT ) .OR. DABS( DVMIN_INIT ) >= DABS( DVMAXANISO_INIT ) ) THEN
+  WRITE( *, "(3(G0,G0.5),G0)" ) "The absolute minimum volume change of the random configuration [", DVMIN_INIT, &
+  &                             "] cannot be greater than or equal to the absolute maximum isotropic [", DVMAXISO_INIT, &
   &                             "] or anisotropic [", DVMAXANISO_INIT, "] volume change. Exiting... "
   CALL EXIT(  )
 END IF
