@@ -373,7 +373,7 @@ The following features are supported in the current version:
 ## <a name="filesandfolders"></a>Files and Folders
 
 <p align="justify">
-  The program organizes the output files and directories automatically. It creates <b>5</b> directories in total. To better organize the output files, all directories (or subdirectories) contains a date subfolder, corresponding to the starting date/hour of the simulation.
+  The program organizes the output files and directories automatically. It creates <b>7</b> directories in total. To better organize the output files, all directories (or subdirectories) contains a date subfolder, corresponding to the starting date/hour of the simulation.
 </p>
 
 <p align="justify">
@@ -385,7 +385,15 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  The <code>Ratio/</code> directory stores information on equilibration cycles (acceptance ratio, maximum displacements, etc.). This information is sorted out into four subfolders: the <code>Rotation/</code> subfolder holds information on rotational moves; the <code>Translation/</code> subfolder holds information on translational moves; the <code>Volume/</code> subfolder holds information on volumetric moves (only valid for <i>NPT</i>-simulations); and the <code>Box/</code> subfolder holds information on the box volume and box length (only valid for <i>NPT</i>-simulations). These properties are only written out every <code>adjustment_frequency</code> equilibration cycles.
+  The <code>Perturbed_Coefficient/</code> directory stores the calculated TPT coefficients and full Helmholtz free energy of the perturbed system. These properties are written out at the end of the simulation. If the square-well potential is selected, there will also be a subfolder for each attractive range point.
+</p>
+
+<p align="justify">
+  The <code>Potential/</code> directory stores information on the potential energy calculated through the selected force field. This property is written out every <code>saving_frequency</code> cycles. If the control variable <code>potential_production_only</code> is set to <code>Y</code>, then only production cycles will be accounted for. If the square-well potential is selected, there will also be a subfolder for each attractive range point.
+</p>
+
+<p align="justify">
+  The <code>Ratio/</code> directory stores information on equilibration cycles (acceptance ratio, maximum displacements, etc.). This information is sorted out into four subfolders: the <code>Rotation/</code> subfolder holds information on rotational moves; the <code>Translation/</code> subfolder holds information on translational moves; the <code>Volume/</code> subfolder holds information on volumetric moves (only valid for <i>NPT</i>-simulations); and the <code>Box/</code> subfolder holds information on the box volume and box length, including the current distortion of the simulation box (only valid for <i>NPT</i>-simulations). These properties are only written out every <code>adjustment_frequency</code> equilibration cycles.
 </p>
   
 <p align="justify">
@@ -397,7 +405,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  The aforementioned folders are created by executing a shell command via an intrinsic function called <code>SYSTEM</code> which works in Linux operating systems. Please note that which shell is used to invoke the command line is system-dependent and environment-dependent. Check this <a href="https://gcc.gnu.org/onlinedocs/gfortran/SYSTEM.html">link</a> for more information.
+  The aforementioned folders are created by executing a shell command via an intrinsic function called <code>SYSTEM</code> which works in Linux operating systems and Linux subsystems. Please note that which shell is used to invoke the command line is system-dependent and environment-dependent. Check this <a href="https://gcc.gnu.org/onlinedocs/gfortran/SYSTEM.html">link</a> for more information.
 </p>
 
 <p align="justify">
@@ -431,7 +439,7 @@ or
 </p>
 
 <p align="justify">
-  Next, the algorithm checks if the initial configuration has any overlapping configurations. This is more relevant when using a preset initial configuration. If the algorithm detects an overlapping configuration, it'll inform which particles are overlapping before exiting the program.
+  Next, the algorithm checks if the initial configuration has any overlapping configurations. This is more relevant when using a preset initial configuration or selecting an SC, BCC, or FCC structure as the initial configuration. If the algorithm detects an overlapping configuration, it'll inform which particles are overlapping before exiting the program.
 </p>
 
 <p align="justify">
@@ -440,7 +448,7 @@ or
 
 ## <a name="reporting"></a>Reporting Errors
 <p align="justify">
-  If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/issues">Issues</a> tab.
+  If you spot an error in the program files and all other documentation, please submit an issue report using the <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/issues">Issues</a> tab.
 </p>
 
 ## <a name="citation"></a>Citing Us
