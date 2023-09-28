@@ -119,7 +119,7 @@ The following features are supported in the current version:
     - <a href="https://doi.org/10.1063/1.1901585">Gottwald</a>
     - <a href="https://doi.org/10.1007/BF01457454">Lenstra-Lenstra-Lovász</a>
 
-5. Potentials
+5. Force Fields
     - Spherical Square Well (perturbed system only*)
 
 <sub>*This means that the potential does not affect the molecular configuration of the system, which is solely defined by the purely repulsive hard-core potential.</sub>
