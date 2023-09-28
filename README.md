@@ -453,7 +453,7 @@ or
 
 ## <a name="citation"></a>Citing Us
 
-N. B. de Souza, J. T. Lopes, L. F. M. Franco. Fluid Ph. Equilibria 2022, 561, 113543. DOI: <a ="https://doi.org/10.1016/j.fluid.2022.113543">10.1016/j.fluid.2022.113543</a>
+N. B. de Souza, J. T. Lopes, L. F. M. Franco. Fluid Ph. Equilibria 2022, 561, 113543. DOI: <a href="https://doi.org/10.1016/j.fluid.2022.113543">10.1016/j.fluid.2022.113543</a>
 
 ---
 
