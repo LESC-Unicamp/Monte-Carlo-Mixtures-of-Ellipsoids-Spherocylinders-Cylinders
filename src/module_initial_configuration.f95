@@ -509,7 +509,6 @@ REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: EPROT ! Orientation of t
 ! *********************************************************************************************** !
 LOGICAL :: OVERLAP            ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: OVERLAP_PRELIMINAR ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: OVERLAP_VALIDATION ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: PARALLEL           ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
 LOGICAL :: LATTICER           ! Detects if a lattice reduction is necessary : TRUE = lattice reduction; FALSE = box shape preserved
 LOGICAL :: MOV_ROT            ! Rotation move selection : TRUE = movement selected; FALSE = movement not selected
@@ -531,9 +530,9 @@ ALLOCATE( EPROT(3,N_PARTICLES) )
 ALLOCATE( OVCOUNTLOG(N_PARTICLES) )
 
 ! Initialization
+SCALE_FACTOR = 1.D0
 OVCOUNTLOG   = .TRUE.
 OVCOUNTER    = COUNT( OVCOUNTLOG, DIM= 1 ) - 1
-SCALE_FACTOR = 1.D0
 
 ! Diameter of circumscribing sphere
 IF( GEOM_SELEC(1) ) THEN
@@ -762,6 +761,12 @@ HIT_AND_MISS_NVT: DO
       RMC(:,I) = RN(:) ! Update position
       QMC(:,I) = QN(:) ! Update quaternion
       EMC(:,I) = EN(:) ! Update orientation
+      ! Update counter of overlapping configurations
+      IF( OVCOUNTLOG(I) ) THEN
+        OVCOUNTLOG(I) = .FALSE.
+        OVCOUNTER = OVCOUNTER - 1
+        IF( OVCOUNTER < 0 ) OVCOUNTER = 0
+      END IF
       ! Displacement counter update
       IF( MOV_TRANS ) THEN
         NACCT = NACCT + 1  ! Translational move counter
@@ -875,286 +880,17 @@ HIT_AND_MISS_NVT: DO
   FLUSH( 55 )
   CLOSE( 55 )
 
-  ! ********************************************************************************************* !
-  ! Overlap check for the proposed initial configuration                                          !
-  ! ********************************************************************************************* !
+  ! Progress bar
+  CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
 
-  ! Validation loop
-  LOOP_VALIDATION_INITIAL_CONF: DO
-
-    ! Anisomorphic molecules (unlike components)
-    DO CI = 1, COMPONENTS - 1
-      DO CJ = CI + 1, COMPONENTS
-        ! First loop represents all particles with indexes i of component Ci
-        OVC_1: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
-          ! Initialization
-          OVERLAP_VALIDATION = .FALSE.
-          ! Second loop represents all particles with indexes j of component Cj
-          DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
-            ! Position of particle i
-            RI(1)  = RMC(1,I)
-            RI(2)  = RMC(2,I)
-            RI(3)  = RMC(3,I)
-            ! Position of particle j
-            RJ(1)  = RMC(1,J)
-            RJ(2)  = RMC(2,J)
-            RJ(3)  = RMC(3,J)
-            ! Orientation of particle i
-            EI(1)  = EMC(1,I)
-            EI(2)  = EMC(2,I)
-            EI(3)  = EMC(3,I)
-            ! Orientation of particle j
-            EJ(1)  = EMC(1,J)
-            EJ(2)  = EMC(2,J)
-            EJ(3)  = EMC(3,J)
-            ! Quaternion of particle i
-            QI(0)  = QMC(0,I)
-            QI(1)  = QMC(1,I)
-            QI(2)  = QMC(2,I)
-            QI(3)  = QMC(3,I)
-            ! Quaternion of particle j
-            QJ(0)  = QMC(0,J)
-            QJ(1)  = QMC(1,J)
-            QJ(2)  = QMC(2,J)
-            QJ(3)  = QMC(3,J)
-            ! Vector distance between particles i and j
-            RIJ(1) = RJ(1) - RI(1)
-            RIJ(2) = RJ(2) - RI(2)
-            RIJ(3) = RJ(3) - RI(3)
-            ! Minimum image convention
-            CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RIJ, S12 )
-            S12 = S12 - ANINT( S12 )
-            CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RIJ )
-            ! Magnitude of the vector distance (squared)
-            RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-            ! Cutoff distance (squared)
-            CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-            CUTOFF_D = CUTOFF_D * CUTOFF_D
-            ! Preliminary test (circumscribing spheres)
-            IF( RIJSQ <= CUTOFF_D ) THEN
-              ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-              IF( GEOM_SELEC(1) ) THEN
-                CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP_VALIDATION )
-                ! Overlap criterion
-                IF( OVERLAP_VALIDATION ) THEN
-                  ! Overlap detected
-                  OVCOUNTLOG(I) = .TRUE.
-                  CYCLE OVC_1
-                END IF
-              ! Overlap test for spherocylinders (Vega-Lago method)
-              ELSE IF( GEOM_SELEC(2) ) THEN
-                CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_VALIDATION )
-                ! Overlap criterion
-                IF( OVERLAP_VALIDATION ) THEN
-                  ! Overlap detected
-                  OVCOUNTLOG(I) = .TRUE.
-                  CYCLE OVC_1
-                END IF
-              ! Overlap test for cylinders and/or spheres
-              ELSE IF( GEOM_SELEC(3) ) THEN
-                IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                  ! Initialization
-                  OVERLAP_PRELIMINAR = .FALSE.
-                  ! Preliminary test (circumscribing spherocylinders)
-                  CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                  ! Overlap criterion
-                  IF( OVERLAP_PRELIMINAR ) THEN
-                    ! Retrive position of the particle j after applying the PBC
-                    RJ(1) = RI(1) + RIJ(1)
-                    RJ(2) = RI(2) + RIJ(2)
-                    RJ(3) = RI(3) + RIJ(3)
-                    ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-                    CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
-                    ! Overlap criterion
-                    IF( OVERLAP_VALIDATION ) THEN
-                      ! Overlap detected
-                      OVCOUNTLOG(I) = .TRUE.
-                      CYCLE OVC_1
-                    END IF
-                  END IF
-                ! Overlap test for cylinders and spheres
-                ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                  ! Retrive position of the particle j after applying the PBC
-                  RJ(1) = RI(1) + RIJ(1)
-                  RJ(2) = RI(2) + RIJ(2)
-                  RJ(3) = RI(3) + RIJ(3)
-                  CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_VALIDATION )
-                  IF( OVERLAP_VALIDATION ) THEN
-                    ! Overlap detected
-                    OVCOUNTLOG(I) = .TRUE.
-                    CYCLE OVC_1
-                  END IF
-                ! Overlap test for cylinders and spheres
-                ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                  ! Retrive position of the particle j after applying the PBC
-                  RJ(1) = RI(1) + RIJ(1)
-                  RJ(2) = RI(2) + RIJ(2)
-                  RJ(3) = RI(3) + RIJ(3)
-                  CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_VALIDATION )
-                  IF( OVERLAP_VALIDATION ) THEN
-                    ! Overlap detected
-                    OVCOUNTLOG(I) = .TRUE.
-                    CYCLE OVC_1
-                  END IF
-                ! Overlap test for spheres
-                ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                  ! Overlap detected
-                  OVCOUNTLOG(I) = .TRUE.
-                  CYCLE OVC_1
-                END IF
-              END IF
-            END IF
-          END DO
-          ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
-          OVCOUNTLOG(I) = .FALSE.
-        END DO OVC_1
-      END DO
-    END DO
-
-    ! Isomorphic molecules (like components)
-    DO CI = 1, COMPONENTS
-      CJ = CI
-      ! First loop represents a particle with an index i of component Ci
-      OVC_2: DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
-        ! Initialization
-        OVERLAP_VALIDATION = .FALSE.
-        ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-        DO J = I + 1, SUM( N_COMPONENT(0:CI) )
-          ! Position of particle i
-          RI(1)  = RMC(1,I)
-          RI(2)  = RMC(2,I)
-          RI(3)  = RMC(3,I)
-          ! Position of particle j
-          RJ(1)  = RMC(1,J)
-          RJ(2)  = RMC(2,J)
-          RJ(3)  = RMC(3,J)
-          ! Orientation of particle i
-          EI(1)  = EMC(1,I)
-          EI(2)  = EMC(2,I)
-          EI(3)  = EMC(3,I)
-          ! Orientation of particle j
-          EJ(1)  = EMC(1,J)
-          EJ(2)  = EMC(2,J)
-          EJ(3)  = EMC(3,J)
-          ! Quaternion of particle i
-          QI(0)  = QMC(0,I)
-          QI(1)  = QMC(1,I)
-          QI(2)  = QMC(2,I)
-          QI(3)  = QMC(3,I)
-          ! Quaternion of particle j
-          QJ(0)  = QMC(0,J)
-          QJ(1)  = QMC(1,J)
-          QJ(2)  = QMC(2,J)
-          QJ(3)  = QMC(3,J)
-          ! Vector distance between particles i and j
-          RIJ(1) = RJ(1) - RI(1)
-          RIJ(2) = RJ(2) - RI(2)
-          RIJ(3) = RJ(3) - RI(3)
-          ! Minimum image convention
-          CALL MULTI_MATRIX( BOX_LENGTH_NVT_I, RIJ, S12 )
-          S12 = S12 - ANINT( S12 )
-          CALL MULTI_MATRIX( BOX_LENGTH_NVT, S12, RIJ )
-          ! Magnitude of the vector distance (squared)
-          RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-          ! Cutoff distance (squared)
-          CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-          CUTOFF_D = CUTOFF_D * CUTOFF_D
-          ! Preliminary test (circumscribing spheres)
-          IF( RIJSQ <= CUTOFF_D ) THEN
-            ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-            IF( GEOM_SELEC(1) ) THEN
-              CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP_VALIDATION )
-              ! Overlap criterion
-              IF( OVERLAP_VALIDATION ) THEN
-                ! Overlap detected
-                OVCOUNTLOG(I) = .TRUE.
-                CYCLE OVC_2
-              END IF
-            ! Overlap test for spherocylinders (Vega-Lago method)
-            ELSE IF( GEOM_SELEC(2) ) THEN
-              CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_VALIDATION )
-              ! Overlap criterion
-              IF( OVERLAP_VALIDATION ) THEN
-                ! Overlap detected
-                OVCOUNTLOG(I) = .TRUE.
-                CYCLE OVC_2
-              END IF
-            ! Overlap test for cylinders and/or spheres
-            ELSE IF( GEOM_SELEC(3) ) THEN
-              IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                ! Initialization
-                OVERLAP_PRELIMINAR = .FALSE.
-                ! Preliminary test (circumscribing spherocylinders)
-                CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                ! Overlap criterion
-                IF( OVERLAP_PRELIMINAR ) THEN
-                  ! Retrive position of the particle j after applying the PBC
-                  RJ(1) = RI(1) + RIJ(1)
-                  RJ(2) = RI(2) + RIJ(2)
-                  RJ(3) = RI(3) + RIJ(3)
-                  ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-                  CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP_VALIDATION )
-                  ! Overlap criterion
-                  IF( OVERLAP_VALIDATION ) THEN
-                    ! Overlap detected
-                    OVCOUNTLOG(I) = .TRUE.
-                    CYCLE OVC_2
-                  END IF
-                END IF
-              ! Overlap test for cylinders and spheres
-              ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                ! Retrive position of the particle j after applying the PBC
-                RJ(1) = RI(1) + RIJ(1)
-                RJ(2) = RI(2) + RIJ(2)
-                RJ(3) = RI(3) + RIJ(3)
-                CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP_VALIDATION )
-                IF( OVERLAP_VALIDATION ) THEN
-                  ! Overlap detected
-                  OVCOUNTLOG(I) = .TRUE.
-                  CYCLE OVC_2
-                END IF
-              ! Overlap test for cylinders and spheres
-              ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                ! Retrive position of the particle j after applying the PBC
-                RJ(1) = RI(1) + RIJ(1)
-                RJ(2) = RI(2) + RIJ(2)
-                RJ(3) = RI(3) + RIJ(3)
-                CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP_VALIDATION )
-                IF( OVERLAP_VALIDATION ) THEN
-                  ! Overlap detected
-                  OVCOUNTLOG(I) = .TRUE.
-                  CYCLE OVC_2
-                END IF
-              ! Overlap test for spheres
-              ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                ! Overlap detected
-                OVCOUNTLOG(I) = .TRUE.
-                CYCLE OVC_2
-              END IF
-            END IF
-          END IF
-        END DO
-        ! Rearrange logical array if a particle of index i is not overlapping any particles of indexes j
-        OVCOUNTLOG(I) = .FALSE.
-      END DO OVC_2
-    END DO
-
-    ! Count overlapping particles
-    OVCOUNTER = COUNT( OVCOUNTLOG, DIM= 1 ) - 1 ! There can only be at most N-1 particles in overlapping configurations
-
-    ! Progress bar
-    CALL PROGRESS_BAR_HITMISS( ATTEMPTS, OVCOUNTER )
-
-    ! Check number of overlapping particles
-    IF( OVCOUNTER == 0 ) THEN
-      ! Possible initial configuration
-      EXIT HIT_AND_MISS_NVT
-    ELSE
-      ! Attempt another configuration
-      CYCLE HIT_AND_MISS_NVT
-    END IF
-
-  END DO LOOP_VALIDATION_INITIAL_CONF
+  ! Check number of overlapping particles
+  IF( OVCOUNTER == 0 ) THEN
+    ! Possible initial configuration
+    EXIT HIT_AND_MISS_NVT
+  ELSE
+    ! Attempt another configuration
+    CYCLE HIT_AND_MISS_NVT
+  END IF
 
 END DO HIT_AND_MISS_NVT
 
