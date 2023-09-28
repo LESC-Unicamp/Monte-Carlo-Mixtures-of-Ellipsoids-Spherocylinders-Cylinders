@@ -187,6 +187,25 @@ IF( BOX_DIST < 1.D0 ) THEN
   CALL EXIT(  )
 END IF
 
+! Maximum length ratio (box distortion)
+READ( 10, * ) GET, MAX_LENGTH_RATIO
+! Condition
+IF( MAX_LENGTH_RATIO <= 0.D0 ) THEN
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum linear distortion of the box [", MAX_LENGTH_RATIO, "] cannot be less than ", &
+  &                           "or equal to 0. Exiting... "
+  CALL EXIT(  )
+END IF
+
+! Maximum angle (box distortion)
+READ( 10, * ) GET, MAX_ANGLE
+! Condition
+IF( MAX_ANGLE <= 0.D0 ) THEN
+  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum angular distortion of the box [", MAX_ANGLE, "] cannot be less than or equal to 0°. ", &
+  &                           "Exiting... "
+  CALL EXIT(  )
+END IF
+MAX_ANGLE = MAX_ANGLE * PI / 180.D0
+
 ! Lattice reduction method
 READ( 10 , * ) GET, LRTYPE
 CALL TO_UPPER( LRTYPE, LEN_TRIM( LRTYPE ), LRTYPE )
@@ -607,25 +626,6 @@ IF( PRESS <= 0.D0 ) THEN
   WRITE( *, "(G0,G0.5,G0)" ) "The reduced pressure [", PRESS, "] cannot be less than or equal to 0. Exiting... "
   CALL EXIT(  )
 END IF
-
-! Maximum length ratio (box distortion)
-READ( 100, * ) GET, MAX_LENGTH_RATIO
-! Condition
-IF( MAX_LENGTH_RATIO <= 0.D0 ) THEN
-  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum linear distortion of the box [", MAX_LENGTH_RATIO, "] cannot be less than ", &
-  &                           "or equal to 0. Exiting... "
-  CALL EXIT(  )
-END IF
-
-! Maximum angle (box distortion)
-READ( 100, * ) GET, MAX_ANGLE
-! Condition
-IF( MAX_ANGLE <= 0.D0 ) THEN
-  WRITE( *, "(G0,G0.5,2G0)" ) "The maximum angular distortion of the box [", MAX_ANGLE, "] cannot be less than or equal to 0°. ", &
-  &                           "Exiting... "
-  CALL EXIT(  )
-END IF
-MAX_ANGLE = MAX_ANGLE * PI / 180.D0
 
 CLOSE( 100 )
 
