@@ -116,8 +116,8 @@ The following features are supported in the current version:
     - Triclinic Expansions/Compressions (Anisotropic)
 
 4. Lattice Reduction Algorithms
-    - Gottwald
-    - Lenstra-Lenstra-Lovász
+    - <a href="https://doi.org/10.1063/1.1901585">Gottwald</a>
+    - <a href="https://doi.org/10.1007/BF01457454">Lenstra-Lenstra-Lovász</a>
 
 5. Potentials
     - Spherical Square Well (perturbed system only)
