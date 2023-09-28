@@ -247,7 +247,7 @@ The following features are supported in the current version:
 | Minimum volumetric displacement<br> (<code>RND</code> only) | <code>min_volumetric_displc_rnd</code> | Used to define the minimum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number such that its absolute value is less than the maximum isotropic and anisotropic volumetric displacements |
 | Maximum box distortion | <code>max_box_distortion</code> | Used to define the maximum box distortion before carrying out a lattice reduction technique | Any positive <code>FLOAT</code> number greater than 1 |
 | Maximum box length distortion | <code>max_box_length_ratio</code> | Used to define the maximum ratio between the lengths of the edges of the box. | Any positive, non-zero <code>FLOAT</code> number|
-| Maximum box angle distortion | <code>max_box_angle_degree</code> | Used to define the maximum angle (in degrees) between the edges of the cube. | Any positive, non-zero <code>FLOAT</code> number|
+| Maximum box angle distortion | <code>max_box_angle_degree</code> | Used to define the maximum deformation angle (in degrees) between the edges of the box in comparison to a perfect cube (90° + <i>x</i>). | Any positive, non-zero <code>FLOAT</code> number|
 | Lattice reduction algorithm | <code>lattice_reduction</code> | Used to define the algorithm that carries out the lattice reduction technique | <ul><li><code>GOTTWALD</code> for the algorithm used in the <a href="https://doi.org/10.1063/1.4767529">floppy-box Monte Carlo</a> method</li><li><code>LLL</code> for the <a href="https://doi.org/10.1007/BF01457454">Lenstra-Lenstra-Lovász</a> algorithm</li></ul> |
 | Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isothermal-isobaric (or isothermal-isostress) ensemble</li></ul> |
 
@@ -316,19 +316,20 @@ The following features are supported in the current version:
 |:---:|:---:| --- | --- |
 | Packing fraction | <code>packing_fraction</code> | Used to define the target packing fraction of an <b>NVT</b>-simulation or the initial packing fraction (initial volume) of an <b>NPT</b>-simulation | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
 | Number of components | <code>components</code> | Used to define the number of components in the mixture | Any positive, non-zero <code>INTEGER</code> number |
-| Molecular diameter | <code>diameter</code> | Use to define the molecular diameter in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
-| Molecular length | <code>length</code> | Use to define the molecular length in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
-| Mole fraction | <code>molar_fraction</code> | Use to define the mole fraction of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
+| Spherical components | <code>spherical_components</code> | Used to identify the spherical components in the mixture | <ul><li><code>T</code> if the component is spherical</li><li><code>F</code> if the component is nonspherical</li></ul> |
+| Molecular diameter | <code>diameter</code> | Used to define the molecular diameter in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
+| Molecular length | <code>length</code> | Used to define the molecular length in Å of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number |
+| Mole fraction | <code>molar_fraction</code> | Used to define the mole fraction of each component in the mixture | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
 | Number of particles | <code>number_of_particles</code> | Used to define the total number of particles | Any positive, non-zero <code>INTEGER</code> number |
 | Temperature | <code>absolute_temperature</code> | Used to define the temperature of the system in K | Any positive, non-zero <code>FLOAT</code> number |
-| Reduced pressure¹ | <code>reduced_pressure</code> | Used to define the reduced pressure (only valid for an <b>NPT</b>-simulation) | Any positive, non-zero <code>FLOAT</code> number |
+| Reduced pressure¹ | <code>reduced_pressure</code> | Used to define the reduced pressure (only used in an <b>NPT</b>-simulation) | Any positive, non-zero <code>FLOAT</code> number |
 
 <p align="justify">
   <sup>¹P<sup>*</sup> = P&sigma;<sub>0</sub>³/(k<sub>B</sub>T), where <i>P</i> is the real pressure, <i>k<sub>B</sub></i> is the Boltzmann constant, <i>T</i> is the absolute temperature, and <i>&sigma;<sub>0</sub></i> is a reference diameter, such that &sigma;<sub>0</sub> = 1Å.</sup>
 </p>
 
 <p align="justify">
-  <b>OBS. I</b>: If the number of components is greater than 1, the molecular diameters, molecular lengths, and mole fractions must be entered successively on the same respective line, separated by a single space, as shown in the provided *.ini file.
+  <b>OBS. I</b>: If the number of components is greater than 1, the identification of spherical components, the molecular diameters, molecular lengths, and mole fractions must be entered successively on the same respective line, separated by a single space, as shown in the provided *.ini file.
 </p>
 
 <p align="justify">
@@ -342,6 +343,16 @@ The following features are supported in the current version:
 <p align="justify">
   <b>OBS. IV</b>: The absolute temperature is only required to calculate the real pressure in MPa.
 </p>
+
+### The Potential File<br> <sub><code>ini_potential.ini</code></sub>
+
+<p align="justify">
+  This file is used to set up system-related variables, including geometric properties. The table below shows some options that can be used to define the system parameters:
+</p>
+
+| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
+|:---:|:---:| --- | --- |
+| Packing fraction | <code>packing_fraction</code> | Used to define the target packing fraction of an <b>NVT</b>-simulation or the initial packing fraction (initial volume) of an <b>NPT</b>-simulation | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
 
 ## <a name="filesandfolders"></a>Files and Folders
 
