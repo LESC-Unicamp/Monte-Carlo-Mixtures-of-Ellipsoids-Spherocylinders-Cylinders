@@ -1581,6 +1581,9 @@ ELSE IF( .NOT. FSEED ) THEN
   SEED = ABS( RANS(SEED_COMP) )
 END IF
 
+! Initialize box distortion parameter
+CALL LATTICE_REDUCTION( BOX_LENGTH, DISTORTION, LATTICER )
+
 ! *********************************************************************************************** !
 ! Monte Carlo parameters                                                                          !
 ! *********************************************************************************************** !
@@ -1608,6 +1611,7 @@ BOXLMC(:)    = BOX_LENGTH(:)   ! Box length                                     
 BOXLMC_I(:)  = BOX_LENGTH_I(:) ! Box length (inverse)                              (initial value)
 BOXVMC       = BOX_VOLUME      ! Box volume                                        (initial value)
 SCALE_FACTOR = 1.D0            ! Scaling factor                                    (initial value)
+LATTICER     = .FALSE.         ! Lattice reduction                                 (initial value)
 
 ! Metropolis Algorithm - Importance Sampling
 WRITE( *, "(G0)" ) "Running Metropolis algorithm..."
