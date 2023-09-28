@@ -1488,9 +1488,8 @@ IF( MC_ENSEMBLE == "NPT" ) THEN
   OPEN( UNIT= 50, FILE= "Ratio/Volume/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
   &                     "_ratio_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
   &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 50, "(11G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [Å³]"//'"', ",", &
-  &                     '"'//"Acceptance Ratio Threshold"//'"', ",", '"'//"Box Distortion"//'"', ",", &
-  &                     '"'//"Type of Volume Change"//'"'
+  WRITE( 50, "(9G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [Å³]"//'"', ",", &
+  &                    '"'//"Acceptance Ratio Threshold"//'"', ",", '"'//"Type of Volume Change"//'"'
   FLUSH( 50 )
 END IF
 
@@ -1499,7 +1498,8 @@ IF( MC_ENSEMBLE == "NPT" ) THEN
   OPEN( UNIT= 55, FILE= "Ratio/Box/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
   &                     "_ratio_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
   &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 55, "(21G0)" ) '"'//"Cycles"//'"', ",", '"'//"Box Volume [Å³]"//'"', ",", '"'//"Box Length 1 [Å]"//'"', ",", &
+  WRITE( 55, "(23G0)" ) '"'//"Cycles"//'"', ",", '"'//"Box Distortion"//'"', ",", &
+  &                     '"'//"Box Volume [Å³]"//'"', ",", '"'//"Box Length 1 [Å]"//'"', ",", &
   &                     '"'//"Box Length 2 [Å]"//'"', ",", '"'//"Box Length 3 [Å]"//'"', ",", &
   &                     '"'//"Box Length 4 [Å]"//'"', ",", '"'//"Box Length 5 [Å]"//'"', ",", &
   &                     '"'//"Box Length 6 [Å]"//'"', ",", '"'//"Box Length 7 [Å]"//'"', ",", &
@@ -2433,7 +2433,7 @@ DO CYCLES = 1, MAX_CYCLES
         END IF
         ! Ratio data (volume change)
         IF( MC_ENSEMBLE == "NPT" ) THEN
-          WRITE( 50, "(11G0)" ) CYCLES, ",", RATIO, ",", DVMAXISO, ",", R_ACC_VI, ",", DISTORTION, ",", VOL_TYPE
+          WRITE( 50, "(9G0)" ) CYCLES, ",", RATIO, ",", DVMAXISO, ",", R_ACC_VI, ",", VOL_TYPE
           FLUSH( 50 )
         END IF
         ! Reset counter
@@ -2443,8 +2443,8 @@ DO CYCLES = 1, MAX_CYCLES
 
       ! Ratio data (box properties)
       IF( MC_ENSEMBLE == "NPT" ) THEN
-        WRITE( 55, "(21G0)" ) CYCLES, ",", BOXVMC, ",", BOXLMC(1), ",", BOXLMC(2), ",", BOXLMC(3), ",", BOXLMC(4), ",", &
-        &                     BOXLMC(5), ",", BOXLMC(6), ",", BOXLMC(7), ",", BOXLMC(8), ",", BOXLMC(9)
+        WRITE( 55, "(23G0)" ) CYCLES, ",", DISTORTION, ",", BOXVMC, ",", BOXLMC(1), ",", BOXLMC(2), ",", BOXLMC(3), ",", &
+        &                     BOXLMC(4), ",", BOXLMC(5), ",", BOXLMC(6), ",", BOXLMC(7), ",", BOXLMC(8), ",", BOXLMC(9)
         FLUSH( 55 )
       END IF
 
@@ -2464,7 +2464,7 @@ DO CYCLES = 1, MAX_CYCLES
         END IF
         ! Ratio data (volume change)
         IF( MC_ENSEMBLE == "NPT" ) THEN
-          WRITE( 50, "(11G0)" ) CYCLES, ",", RATIO, ",", DVMAXANI, ",", R_ACC_VA, ",", DISTORTION, ",", VOL_TYPE
+          WRITE( 50, "(9G0)" ) CYCLES, ",", RATIO, ",", DVMAXANI, ",", R_ACC_VA, ",", VOL_TYPE
           FLUSH( 50 )
         END IF
         ! Reset counter
@@ -2474,8 +2474,8 @@ DO CYCLES = 1, MAX_CYCLES
 
       ! Ratio data (box properties)
       IF( MC_ENSEMBLE == "NPT" ) THEN
-        WRITE( 55, "(21G0)" ) CYCLES, ",", BOXVMC, ",", BOXLMC(1), ",", BOXLMC(2), ",", BOXLMC(3), ",", BOXLMC(4), ",", &
-        &                     BOXLMC(5), ",", BOXLMC(6), ",", BOXLMC(7), ",", BOXLMC(8), ",", BOXLMC(9)
+        WRITE( 55, "(23G0)" ) CYCLES, ",", DISTORTION, ",", BOXVMC, ",", BOXLMC(1), ",", BOXLMC(2), ",", BOXLMC(3), ",", &
+        &                     BOXLMC(4), ",", BOXLMC(5), ",", BOXLMC(6), ",", BOXLMC(7), ",", BOXLMC(8), ",", BOXLMC(9)
         FLUSH( 55 )
       END IF
 
