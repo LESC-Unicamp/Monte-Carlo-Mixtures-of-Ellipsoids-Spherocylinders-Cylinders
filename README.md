@@ -231,10 +231,10 @@ The following features are supported in the current version:
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
 |:---:|:---:| --- | --- |
-| Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as a single random move of all particles in the system | Any positive, non-zero <code>INTEGER</code> number |
+| Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as <i>N</i> attempts to displace a random particle in the system or a single attempt to change the volume of the box | Any positive, non-zero <code>INTEGER</code> number |
 | Number of equilibration cycles | <code>equilibration_cycles</code> | Used to define the number of equilibration cycles within the maximum number of cycles | Any positive, non-zero <code>INTEGER</code> number less than the maximum number of cycles |
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
-| Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
+| Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> See the observation note below for more information |
 | Adjustment frequency<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd</code> | Used to define how often displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
 | Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any non-zero <code>FLOAT</code> number |
 | Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any non-zero <code>FLOAT</code> number |
@@ -254,7 +254,14 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  <b>OBS. II</b>: The box distortion is defined as the product of the total surface area and perimeter of the box divided by its volume. We normalize the box distortion factor by dividing it by 72, which corresponds to minimum box distortion possible (perfect cube). In that case, 1 is a perfect cube and higher values represent triclinic or non-cubic orthorhombic structures.
+  <b>OBS. II</b>: <i>Adjustment frequency</i>: Let's call the number of trialed moves <b>n_trialed</b>, the acceptance ratio of that move <b>acc_ratio</b>, the number of particles <b>N</b>, and the adjustment frequency <b>n_adjust</b>.
+</p>
+
+- For translational and rotational movements, adjustments to the maximum displacements only take effect when <br><b>n_trialed</b> ≥ (<b>N</b> * <b>n_adjust</b>) * <b>acc_ratio</b>.
+- For isotropic and anisotropic volume changes, adjustments to the maximum displacements only take effect when <br><b>n_trialed</b> ≥ <b>n_adjust</b> * <b>acc_ratio</b>.
+
+<p align="justify">
+  <b>OBS. III</b>: The box distortion is defined as the product of the total surface area and perimeter of the box divided by its volume. We normalize the box distortion factor by dividing it by 72, which corresponds to minimum box distortion possible (perfect cube). In that case, 1 is a perfect cube and higher values represent triclinic or non-cubic orthorhombic structures.
 </p>
 
 ### The Probabilities File<br> <sub><code>ini_probabilities.ini</code></sub>
@@ -270,9 +277,14 @@ The following features are supported in the current version:
 | Probability of translation | <code>prob_translation</code> | Used to define the probability a translation will occur during a trial movement | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Probability of translation<br> (<code>RND</code> only) | <code>prob_translation_rnd</code> | Used to define the probability a translation will occur during a trial movement (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Probability of isotropic volume change | <code>prob_volume_change_isotropic</code> | Used to define the probability an isotropic change will occur during a trial volume change | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Probability of isotropic volume change (<code>RND</code> only) | <code>prob_volume_change_isotropic_rnd</code> | Used to define the probability an isotropic change will occur during a trial volume change (random configuration only) | Any positive <code>FLOAT</code> number between 0 and 1 |
 
 <p align="justify">
-  <b>OBS.</b>: The probability of a volume change is defined automatically by subtracting the probability of movement from 1. Similarly, the probability of rotation is defined by subtracting the probability of translation from 1. Finally, the probability of an anisotropic volume change is defined by subtracting the probability of the isotropic change from 1.
+  <b>OBS. I</b>: The probability of a volume change is defined automatically by subtracting the probability of movement from 1. Similarly, the probability of rotation is defined by subtracting the probability of translation from 1. Finally, the probability of an anisotropic volume change is defined by subtracting the probability of the isotropic change from 1.
+</p>
+
+<p align="justify">
+  <b>OBS. II</b>: If the <i>NVT</i> ensemble is selected, the probability of movement is replaced by 1. If the <i>NPT</i> ensemble is selected, the probability of movement cannot be 1, which means that the probability of volume change cannot be set to 0.
 </p>
 
 ### The Acceptance Ratios File<br> <sub><code>ini_ratio.ini</code></sub>
@@ -285,7 +297,8 @@ The following features are supported in the current version:
 |:---:|:---:| --- | --- |
 | Translational threshold | <code>ratio_translation</code> | Used to define the acceptance threshold of translational moves | Any positive <code>FLOAT</code> number between 0 and 1 |
 | Rotational threshold | <code>ratio_rotation</code> | Used to define the acceptance threshold of rotational moves | Any positive <code>FLOAT</code> number between 0 and 1 |
-| Volumetric threshold | <code>ratio_volume</code> | Used to define the acceptance threshold of volumetric moves | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Isovolumetric threshold | <code>ratio_volume_iso</code> | Used to define the acceptance threshold of isotropic volumetric moves | Any positive <code>FLOAT</code> number between 0 and 1 |
+| Anisovolumetric threshold | <code>ratio_volume_aniso</code> | Used to define the acceptance threshold of anisotropic volumetric moves | Any positive <code>FLOAT</code> number between 0 and 1 |
 
 <p align="justify">
   <b>OBS.</b>: Adjustments to maximum diplacements are only made during the equilibration phase for every <code>adjustment_frequency</code> cycles. Let's call the number of accepted moves <b>n_accepted</b> and the number of trialed moves <b>n_trialed</b>. If <b>n_accepted</b> / <b>n_trialed</b> > <b>threshold</b>, the corresponding maximum displacement is increased by 5% of its current value; otherwise, it is decreased by 5% of its current value.
