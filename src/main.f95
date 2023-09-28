@@ -85,6 +85,7 @@ INTEGER( KIND= INT64 ) :: MOVR       ! Move counter (Rotation)
 INTEGER( KIND= INT64 ) :: MOVVI      ! Move counter (Volume change)
 INTEGER( KIND= INT64 ) :: MOVVA      ! Move counter (Volume change)
 INTEGER( KIND= INT64 ) :: REMAINDER  ! Remainder of division
+INTEGER( KIND= INT64 ) :: ISEED      ! Initial seed
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -192,14 +193,16 @@ CALL POTENTIAL_VAR(  )
 
 ! Pseudorandom number generator seed
 IF( FSEED ) THEN
-  SEED = 123456789
+  SEED  = 123456789
+  ISEED = SEED
 ELSE IF( .NOT. FSEED ) THEN
   CALL RANDOM_SEED( SIZE= SIZE_SEED )
   ALLOCATE( RANS(SIZE_SEED) )
   CALL RANDOM_SEED( GET= RANS )
   CALL RANDOM_NUMBER( RANDOM_N )
   SEED_COMP = INT( RANDOM_N * DBLE( SIZE_SEED ) ) + 1
-  SEED = ABS( RANS(SEED_COMP) )
+  SEED  = ABS( RANS(SEED_COMP) )
+  ISEED = SEED
 END IF
 
 ! Allocation
@@ -1574,11 +1577,13 @@ END IF
 
 ! Pseudorandom number generator seed
 IF( FSEED ) THEN
-  SEED = 123456789
+  SEED  = 123456789
+  ISEED = SEED
 ELSE IF( .NOT. FSEED ) THEN
   CALL RANDOM_NUMBER( RANDOM_N )
   SEED_COMP = INT( RANDOM_N * DBLE( SIZE_SEED ) ) + 1
-  SEED = ABS( RANS(SEED_COMP) )
+  SEED  = ABS( RANS(SEED_COMP) )
+  ISEED = SEED
 END IF
 
 ! Initialize box distortion parameter
@@ -2801,7 +2806,7 @@ END IF
 DO C = 1, COMPONENTS
   WRITE( CHAR_LABEL(71,C), "(G0)"   ) SPHERCOMP(C)
 END DO
-WRITE( CHAR_LABEL(72,1), "(G0)"   ) SEED
+WRITE( CHAR_LABEL(72,1), "(G0)"   ) ISEED
 
 ! Log strings
 ALLOCATE( LOG_STRINGS_H(6), LOG_STRINGS_T(78,COMPONENTS), LOG_STRINGS_S(6) )
