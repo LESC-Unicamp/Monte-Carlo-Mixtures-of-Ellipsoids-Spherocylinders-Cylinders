@@ -163,7 +163,7 @@ The following features are supported in the current version:
 | **Compilation type** | **Command** |
 |:---:|:---:|
 | <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-debug">Debug</a> | ```make -f makefile.debug``` |
-| Standard | ```make -f makefile``` |
+| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile">Standard</a> | ```make -f makefile``` |
 
 <p align="justify">
   Each of these commands will produce an executable with a specific name depending on the chosen compilation type. Both executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization variables and options you need to set up.
@@ -175,7 +175,7 @@ The following features are supported in the current version:
   Apart from the executable file, the <code>/bin/</code> folder contains some initialization files that need to be set up.
 </p>
 
-### The Configuration File<br> <sub><code>ini_config.ini</code></sub>
+### The Configuration File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_config.ini"><sub>ini_config.ini</sub></a>
 
 <p align="justify">
   This file is used to set up the molecular geometry and the molecular configuration, including aditional information on the random structure (if selected). The table below shows some options that can be used to define the configuration parameters:
@@ -205,7 +205,7 @@ The following features are supported in the current version:
   The 14-character code is the [DATE][HOUR] descriptor of the filename. You can open this file using any text editor and edit some simulation settings that you find relevant. Please be reminded that editing anything in this file, except the reduced pressure and absolute temperature, may cause the program to detect overlapping configurations in the initial structure.
 </p>
 
-### The Control File<br> <sub><code>ini_control.ini</code></sub>
+### The Control File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_control.ini"><sub>ini_control.ini</sub></a>
 
 <p align="justify">
   This file is used to set up some control variables, such as data printing, seed type, and potential type. The table below shows some options that can be used to define the control parameters:
@@ -223,7 +223,7 @@ The following features are supported in the current version:
   <sup>¹TPT stands for thermodynamic perturbation theory.</sup>
 </p>
 
-### The Monte Carlo File<br> <sub><code>ini_montecarlo.ini</code></sub>
+### The Monte Carlo File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_montecarlo.ini"><sub>ini_montecarlo.ini</sub></a>
 
 <p align="justify">
   This file is used to set up the number of simulation cycles, maximum displacements, ensemble type, and lattice reduction algorithm (if anisotropic volume changes are considered). The table below shows some options that can be used to define the simulation parameters:
@@ -266,7 +266,33 @@ The following features are supported in the current version:
   <b>OBS. III</b>: The box distortion is defined as the product of the total surface area and perimeter of the box divided by its volume. We normalize the box distortion factor by dividing it by 72, which corresponds to minimum box distortion possible (perfect cube). In that case, 1 is a perfect cube and higher values represent triclinic or non-cubic orthorhombic structures.
 </p>
 
-### The Probabilities File<br> <sub><code>ini_probabilities.ini</code></sub>
+### The Potential File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_potential.ini"><sub>ini_potential.ini</sub></a>
+
+<p align="justify">
+  This file is used to set up variables related to the chosen force field. The table below shows some options that can be used to define the force field parameters:
+</p>
+
+| Name<br> ________________________ | String Name<br> _______________________ | Definition<br> _________________________________ | Options<br> _______________________________________ |
+|:---:|:---:| --- | --- 
+| Attrative range points<br><i>Square-well potential</i> | <code>lambda_points</code> | Used to define the number of attractive range points for which the potential will be computed | Any positive, non-zero <code>INTEGER</code> number |
+| Attrative range values<br><i>Square-well potential</i> | <code>lambda_values</code> | Used to define the attractive range of the potential | Any positive <code>FLOAT</code> number greater than 1|
+| Reduced temperature¹ | <code>reduced_temperature</code> | Used to define the reduced temperature of the system | Any positive, non-zero <code>FLOAT</code> number |
+| Minimum number of blocks | <code>min_blocks</code> | <b>Block-average parameter</b>:<br>Used to define the minimum number of blocks to compute the statistical inefficiency of a dataset | Any positive, non-zero <code>INTEGER</code> number |
+| Maximum number of blocks | <code>max_blocks</code> | <b>Block-average parameter</b>:<br>Used to define the maximum number of blocks to compute the statistical inefficiency of a dataset | Any positive <code>INTEGER</code> number greater than the minimum number of blocks |
+
+<p align="justify">
+  <sup>¹T<sup>*</sup> = (k<sub>B</sub>T)/&varepsilon;, where <i>T</i> is the absolute temperature in Kelvin, <i>k<sub>B</sub></i> is the Boltzmann constant, and <i>&varepsilon;</i> is the well depth of the potential.</sup>
+</p>
+
+<p align="justify">
+  <b>OBS. I</b>: If the number of attractive range points is greater than 1, the attractive range values must be entered successively on the same respective line, separated by a single space, as shown in the provided *.ini file.
+</p>
+
+<p align="justify">
+  <b>OBS. II</b>: The block-average parameters are used by a block-average subroutine that computes the perturbation coefficients from the potential dataset.
+</p>
+
+### The Probabilities File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_probabilities.ini"><sub>ini_probabilities.ini</sub></a>
 
 <p align="justify">
   This file is used to set up the probability of trial moves. The table below shows some options that can be used to define the probability parameters:
@@ -289,7 +315,7 @@ The following features are supported in the current version:
   <b>OBS. II</b>: If the <i>NVT</i> ensemble is selected, the probability of movement is replaced by 1. If the <i>NPT</i> ensemble is selected, the probability of movement cannot be 1, which means that the probability of volume change cannot be set to 0.
 </p>
 
-### The Acceptance Ratios File<br> <sub><code>ini_ratio.ini</code></sub>
+### The Acceptance Ratios File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_ratios.ini"><sub>ini_ratio.ini</sub></a>
 
 <p align="justify">
   This file is used to set up the acceptance ratio thresholds of trial moves. The table below shows some options that can be used to define the threshold parameters:
@@ -306,7 +332,7 @@ The following features are supported in the current version:
   <b>OBS.</b>: Adjustments to maximum diplacements are only made during the equilibration phase for every <code>adjustment_frequency</code> cycles. Let's call the number of accepted moves <b>n_accepted</b> and the number of trialed moves <b>n_trialed</b>. If <b>n_accepted</b> / <b>n_trialed</b> > <b>threshold</b>, the corresponding maximum displacement is increased by 5% of its current value; otherwise, it is decreased by 5% of its current value.
 </p>
 
-### The System File<br> <sub><code>ini_system.ini</code></sub>
+### The System File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_system.ini"><sub>ini_system.ini</sub></a>
 
 <p align="justify">
   This file is used to set up system-related variables, including geometric properties. The table below shows some options that can be used to define the system parameters:
@@ -343,16 +369,6 @@ The following features are supported in the current version:
 <p align="justify">
   <b>OBS. IV</b>: The absolute temperature is only required to calculate the real pressure in MPa.
 </p>
-
-### The Potential File<br> <sub><code>ini_potential.ini</code></sub>
-
-<p align="justify">
-  This file is used to set up system-related variables, including geometric properties. The table below shows some options that can be used to define the system parameters:
-</p>
-
-| Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
-|:---:|:---:| --- | --- |
-| Packing fraction | <code>packing_fraction</code> | Used to define the target packing fraction of an <b>NVT</b>-simulation or the initial packing fraction (initial volume) of an <b>NPT</b>-simulation | Any positive, non-zero <code>FLOAT</code> number between 0 and 1 |
 
 ## <a name="filesandfolders"></a>Files and Folders
 
