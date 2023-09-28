@@ -208,7 +208,7 @@ The following features are supported in the current version:
 ### The Control File<br> <sub><code>ini_control.ini</code></sub>
 
 <p align="justify">
-  This file is used to set up some control variables, such as trajectory printing and seed type. The table below shows some options that can be used to define the control parameters:
+  This file is used to set up some control variables, such as data printing, seed type, and potential type. The table below shows some options that can be used to define the control parameters:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _________________________________ | Options<br> _________________________________________________ |
@@ -226,7 +226,7 @@ The following features are supported in the current version:
 ### The Monte Carlo File<br> <sub><code>ini_montecarlo.ini</code></sub>
 
 <p align="justify">
-  This file is used to set up the number of simulation cycles, maximum displacements, and ensemble type. The table below shows some options that can be used to define the simulation parameters:
+  This file is used to set up the number of simulation cycles, maximum displacements, ensemble type, and lattice reduction algorithm (if anisotropic volume changes are considered). The table below shows some options that can be used to define the simulation parameters:
 </p>
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
@@ -236,21 +236,25 @@ The following features are supported in the current version:
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
 | Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
 | Adjustment frequency<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd</code> | Used to define how often displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
-| Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any positive, non-zero <code>FLOAT</code> number |
-| Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any positive, non-zero <code>FLOAT</code> number |
-| Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any positive, non-zero <code>FLOAT</code> number |
+| Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any non-zero <code>FLOAT</code> number |
+| Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any non-zero <code>FLOAT</code> number |
+| Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any non-zero <code>FLOAT</code> number |
 | Maximum rotational displacement<br> (<code>RND</code> only) | <code>max_rotational_displc_rnd</code> | Used to define the maximum rotational displacement \[+/-\] in radians (random configuration only) | Any positive, non-zero <code>FLOAT</code> number |
-| Maximum volumetric displacement | <code>max_volumetric_displc</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ | Any positive, non-zero <code>FLOAT</code> number |
-| Maximum volumetric displacement<br> (<code>RND</code> only) | <code>max_volumetric_displc_rnd</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any positive, non-zero <code>FLOAT</code> number |
-| Minimum volumetric displacement<br> (<code>RND</code> only) | <code>min_volumetric_displc_rnd</code> | Used to define the minimum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any positive, non-zero <code>FLOAT</code> number less than the maximum volumetric displacement |
-| Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isobaric-isothermal ensemble</li></ul> |
+| Maximum isotropic volumetric displacement | <code>max_volumetric_displc_iso</code> | Used to define the maximum isotropic volumetric displacement \[+/-\] in Å³ | Any non-zero <code>FLOAT</code> number |
+| Maximum anisotropic volumetric displacement | <code>max_volumetric_displc_aniso</code> | Used to define the maximum anisotropic volumetric displacement \[+/-\] in Å³ | Any non-zero <code>FLOAT</code> number |
+| Maximum isotropic volumetric displacement<br> (<code>RND</code> only) | <code>max_volumetric_displc_iso_rnd</code> | Used to define the maximum isotropic volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number |
+| Maximum anisotropic volumetric displacement<br> (<code>RND</code> only) | <code>max_volumetric_displc_aniso_rnd</code> | Used to define the maximum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number |
+| Minimum volumetric displacement<br> (<code>RND</code> only) | <code>min_volumetric_displc_rnd</code> | Used to define the minimum volumetric displacement \[+/-\] in Å³ (random configuration only) | Any non-zero <code>FLOAT</code> number such that its absolute value is less than the maximum isotropic and anisotropic volumetric displacements |
+| Maximum box distortion | <code>max_box_distortion</code> | Used to define the maximum box distortion before carrying out a lattice reduction technique | Any positive <code>FLOAT</code> number greater than 1 |
+| Lattice reduction algorithm | <code>lattice_reduction</code> | Used to define the algorithm that carries out the lattice reduction technique | <ul><li><code>GOTTWALD</code> for the algorithm used in the <a href="https://doi.org/10.1063/1.4767529">floppy-box Monte Carlo</a> method</li><li><code>LLL</code> for the <a href="https://doi.org/10.1007/BF01457454">Lenstra-Lenstra-Lovász</a> algorithm</li></ul> |
+| Ensemble type | <code>ensemble</code> | Used to define the statistical ensemble | <ul><li><code>NVT</code> for the canonical ensemble</li><li><code>NPT</code> for the isothermal-isobaric (or isothermal-isostress) ensemble</li></ul> |
 
 <p align="justify">
   <b>OBS. I</b>: The number of production cycles is defined automatically by subtracting the number of equilibration cycles from the total number of cycles.
 </p>
 
 <p align="justify">
-  <b>OBS. II</b>: The minimum volumetric displacement is really necessary only when the target packing fraction is above 0.6, as the algorithm may take hours to reach it.
+  <b>OBS. II</b>: The box distortion is defined as the product of the total surface area and perimeter of the box divided by its volume. We normalize the box distortion factor by dividing it by 72, which corresponds to minimum box distortion possible (perfect cube). In that case, 1 is a perfect cube and higher values represent triclinic or non-cubic orthorhombic structures.
 </p>
 
 ### The Probabilities File<br> <sub><code>ini_probabilities.ini</code></sub>
