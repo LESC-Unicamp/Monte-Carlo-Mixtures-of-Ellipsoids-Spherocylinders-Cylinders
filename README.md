@@ -162,7 +162,7 @@ The following features are supported in the current version:
 
 | **Compilation type** | **Command** |
 |:---:|:---:|
-| Debug | ```make -f makefile.debug``` |
+| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-debug">Debug</a> | ```make -f makefile.debug``` |
 | Standard | ```make -f makefile``` |
 
 <p align="justify">
