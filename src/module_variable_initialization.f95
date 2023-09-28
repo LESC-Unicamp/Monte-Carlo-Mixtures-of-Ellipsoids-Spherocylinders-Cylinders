@@ -796,6 +796,11 @@ IF( PROB_MOV > 1.D0 ) THEN
   CALL EXIT(  )
 END IF
 PROB_VOL = 1.D0 - PROB_MOV
+IF( DABS( PROB_VOL ) - 0.D0 <= EPSILON( 1.D0 ) .AND. MC_ENSEMBLE == "NPT" ) THEN
+  WRITE( *, "(G0,G0.5,2G0)" ) "The probability of volume change [", PROB_VOL, "] cannot be 0 when the NPT ensemble is selected", &
+  &                           ". Exiting... "
+  CALL EXIT(  )
+END IF
 
 ! Movement/Volume change probability (initial configuration)
 READ( 100, * ) GET, PROB_MOV_INIT
