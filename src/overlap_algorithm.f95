@@ -109,7 +109,7 @@ REAL( KIND= REAL64 ), DIMENSION( 3, 3 ) :: IDMATRIX    ! Identity matrix
 LOGICAL :: OVERLAP_HER ! Detects overlap between two ellipsoids of revolution: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: BISECTION   ! Checks whether the root from the bisection method will be used or not
 
-! Ellipsoid centers of mass coincide (FA = FB = 0 | Bisection method cannot be used)
+! Ellipsoid centers of mass coincide (FA = FB = 0 | Brent's method cannot be used)
 IF( DABS( RIJSQ - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
   OVERLAP_HER = .TRUE.
   INTFUNC     = 0.D0
