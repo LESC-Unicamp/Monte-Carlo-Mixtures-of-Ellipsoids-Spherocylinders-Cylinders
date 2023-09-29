@@ -301,7 +301,7 @@ IF( (FA * FB) < 0.D0 ) THEN
   ! Initialize 'BISECTION' flag as TRUE since the last iteration used was the bisection method
   BISECTION = .TRUE.
   ! Stop criterion
-  DO WHILE( DABS( FB ) >= TOLERANCE .AND. DABS( FS ) >= TOLERANCE .AND. DABS( LAMBDAA - LAMBDAB ) >= TOLERANCE )
+  DO WHILE( DABS( FB ) >= TOLERANCE .AND. DABS( FS ) >= TOLERANCE .AND. DABS( (LAMBDAA - LAMBDAB) / LAMBDAA ) >= TOLERANCE )
     ! Initialize root of the function
     IF( DABS( FA - FC ) >= EPSILON( 1.D0 ) .AND. DABS( FB - FC ) >= EPSILON( 1.D0 ) ) THEN
       ! Inverse quadratic interpolation root finding method
@@ -374,7 +374,7 @@ IF( (FA * FB) < 0.D0 ) THEN
       FB    = TEMPT
     END IF
     COUNTERB = COUNTERB + 1
-    IF( COUNTERB > 50 ) THEN
+    IF( COUNTERB > 100 ) THEN
       WRITE( *, "(3G0)" ) "Brent's method failed to converge after ", COUNTERB, " iterations. Exiting..."
       CALL EXIT(  )
     END IF
@@ -1546,7 +1546,7 @@ IF( ALPHA > 0.D0 ) THEN
       ! Initialize 'BISECTION' flag as TRUE since the last iteration used was the bisection method
       BISECTION = .TRUE.
       ! Stop criterion
-      DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( LAMBDA(2) - LAMBDA(3) ) >= TOLERANCE_B )
+      DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( ( LAMBDA(2) - LAMBDA(3) ) / LAMBDA(2) ) >= TOLERANCE_B )
         ! Initialize root of the function
         IF( DABS( F(2) - FC ) >= EPSILON( 1.D0 ) .AND. DABS( F(3) - FC ) >= EPSILON( 1.D0 ) ) THEN
           ! Inverse quadratic interpolation root-finding procedure
@@ -1598,7 +1598,7 @@ IF( ALPHA > 0.D0 ) THEN
         END IF
         ! Iteration
         COUNTERB = COUNTERB + 1
-        IF( COUNTERB > 50 ) THEN
+        IF( COUNTERB > 100 ) THEN
           WRITE( *, "(3G0)" ) "Brent's method failed to converge after ", COUNTERB, " iterations. Exiting..."
           CALL EXIT(  )
         END IF
