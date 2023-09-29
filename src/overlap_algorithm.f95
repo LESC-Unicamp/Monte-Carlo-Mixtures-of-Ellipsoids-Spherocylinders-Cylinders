@@ -1546,7 +1546,8 @@ IF( ALPHA > 0.D0 ) THEN
       ! Initialize 'BISECTION' flag as TRUE since the last iteration used was the bisection method
       BISECTION = .TRUE.
       ! Stop criterion
-      DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. DABS( ( LAMBDA(2) - LAMBDA(3) ) / LAMBDA(2) ) >= TOLERANCE_B )
+      DO WHILE( DABS( F(3) ) >= TOLERANCE_B .AND. DABS( FI ) >= TOLERANCE_B .AND. &
+        &       DABS( ( LAMBDA(2) - LAMBDA(3) ) / LAMBDA(2) ) >= TOLERANCE_B )
         ! Initialize root of the function
         IF( DABS( F(2) - FC ) >= EPSILON( 1.D0 ) .AND. DABS( F(3) - FC ) >= EPSILON( 1.D0 ) ) THEN
           ! Inverse quadratic interpolation root-finding procedure
