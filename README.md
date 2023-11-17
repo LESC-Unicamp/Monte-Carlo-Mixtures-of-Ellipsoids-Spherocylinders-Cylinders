@@ -215,6 +215,8 @@ The following features are supported in the current version:
 |:---:|:---:| --- | --- |
 | Trajectory printing | <code>print_trajectory</code> | Used to specify whether the trajectory files will be written out or not | <ul><li><code>Y</code> to write out the trajectory file</li><li><code>N</code> to NOT write out the trajectory file</li></ul> |
 | Seed type | <code>fixed_seed</code> | Used to control the type of pseudorandom number generator seed | <ul><li><code>Y</code> for a fixed seed</li><li><code>N</code> for a random seed</li></ul> |
+| Backup control | <code>backup_file</code> | Used to specify whether a backup file will be generated every <code>saving_frequency</code> cycles | <ul><li><code>Y</code> to generate a backup file</li><li><code>N</code> to NOT generate a backup file</li></ul> |
+| Restore backup | <code>restore_backup</code> | Used to restore data from previous, unfinished simulations | <ul><li><code>Y</code> to restore data from a previous simulation</li><li><code>N</code> to use current simulation data</li></ul> |
 | Potential type | <code>potential_type</code> | Used to control the type of potential applied in the perturbed system | <ul><li><code>HARDCORE</code> for a purely repulsive hard-core potential<br>(no attractive potential)</li><li><code>SQUAREWELL</code> for a spherically symmetric square-well potential</li></ul> |
 | Potential energy printing | <code>potential_production_only</code> | Used to specify whether the potential energy data will be written out during the whole <i>NVT</i>-simulation or only for production-related cycles | <ul><li><code>Y</code> to write out the potential data only for production-related cycles</li><li><code>N</code> to write out the potential data for both equilibration- and production-related cycles</li></ul> |
 | TPT¹ coefficients printing | <code>coefficients_calculation</code> | Used to specify whether the first- and second-order coefficients of a high-temperature expansion of the Helmholtz free energy will be calculated or not<br>(<i>NVT</i>-simulation only) | <ul><li><code>Y</code> to compute the perturbation coefficients, including the full Helmholtz free energy of the perturbed system</li><li><code>N</code> to skip the computation of the perturbation coefficients</li></ul> |
@@ -222,6 +224,12 @@ The following features are supported in the current version:
 <p align="justify">
   <sup>¹TPT stands for thermodynamic perturbation theory.</sup>
 </p>
+
+<p align="justify">
+  <b>OBS.</b>: When selecting to restore data from a backup file, the user will be asked to enter a 14-character code at some point. This code is part of the name of two configuration files ( inside the '/bin/Backup/' directory. The filename says something like:
+</p>
+
+<code>[DATE][HOUR]\_initconf\_[CONFIGURATION]\_[GEOMETRY].xyz</code>
 
 ### The Monte Carlo File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_montecarlo.ini"><sub>ini_montecarlo.ini</sub></a>
 
