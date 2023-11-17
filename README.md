@@ -226,7 +226,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  <b>OBS.</b>: When selecting to restore data from a backup file, the user will be asked to enter a 14-character code at some point. This code is part of the name of two configuration files ( inside the '/bin/Backup/' directory. The filename says something like:
+  <b>OBS.</b>: When selecting to restore data from a backup file, the user will be asked to enter a 14-character code at some point. This code is part of the name of two configuration files ( inside the '/bin/Backup/' directory. The filenames say something like:
 </p>
 
 <code>[DATE][HOUR]\simulation.backup</code>
