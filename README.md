@@ -229,7 +229,9 @@ The following features are supported in the current version:
   <b>OBS.</b>: When selecting to restore data from a backup file, the user will be asked to enter a 14-character code at some point. This code is part of the name of two configuration files ( inside the '/bin/Backup/' directory. The filename says something like:
 </p>
 
-<code>[DATE][HOUR]\_initconf\_[CONFIGURATION]\_[GEOMETRY].xyz</code>
+<code>[DATE][HOUR]\simulation.backup</code>
+
+<code>[DATE][HOUR]\variables.backup</code>
 
 ### The Monte Carlo File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_montecarlo.ini"><sub>ini_montecarlo.ini</sub></a>
 
