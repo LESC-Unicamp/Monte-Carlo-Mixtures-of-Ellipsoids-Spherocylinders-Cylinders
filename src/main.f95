@@ -7,7 +7,7 @@
 !  The algorithm of Lopes et al. (J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti, 2021) !
 !         is used to search for molecular overlaps between cylinders after a trial move.          !
 !                                                                                                 !
-! Version number: 1.1.0                                                                           !
+! Version number: 1.2.1                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -15,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 25th, 2023                                        !
+!                                       October 31st, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                 J. W. Perram, M. S. Wertheim                                   !
 !                               J. Comput. Phys 15, 409-416 (1985)                                !
@@ -47,899 +47,370 @@
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
-PROGRAM MAIN
+PROGRAM Main
 
-! USES FOUR MODULES: global variables, variable initialization, initial configuration, and directory creator
-USE GLOBALVAR
-USE INITVAR
-USE INITCONFIG
-USE FOLDERS
+! USES SEVEN MODULES: global variables, variable initialization, initial configuration, overlap check, potential energy, linked lists, and directory creator
+USE GlobalVar
+USE InitializeVariables
+USE InitialSystemConfiguration, ONLY: GeometrySelection, InitialConfigurationSelection, InitialConfigurationStructure
+USE OverlapCheck
+USE ComputePotential
+USE LinkedLists, ONLY: FinalizeList, MakeList, BoxCheckNPT, ParticleTranslationNVT
+USE Folders, ONLY: InquireFolders, DateFolders, RangeFolders, BackupFolder
 
 IMPLICIT NONE
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES -*- THIS IS SINGLE PRECISION -*-                                              !
 ! *********************************************************************************************** !
-INTEGER :: SIZE_SEED   ! Seed array size
-INTEGER :: SEED_COMP   ! Seed array component
+INTEGER                 :: SeedSize   ! Seed array size
+INTEGER                 :: iSeed      ! Seed array component
+INTEGER, DIMENSION( 8 ) :: DateTime   ! Computer clock (date and time)
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (ALLOCATABLE) -*- THIS IS SINGLE PRECISION -*-                                !
 ! *********************************************************************************************** !
-INTEGER, DIMENSION( : ), ALLOCATABLE :: RANS
+INTEGER, DIMENSION( : ), ALLOCATABLE :: RandomSeed ! Random seed array
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: I, J, K, L ! Counters
-INTEGER( KIND= INT64 ) :: CI, CJ, C  ! Counters (component)
-INTEGER( KIND= INT64 ) :: C_LAMB     ! Counter
-INTEGER( KIND= INT64 ) :: COMPONENT  ! Box matrix component
-INTEGER( KIND= INT64 ) :: CYCLES     ! Cycles
-INTEGER( KIND= INT64 ) :: NACCT      ! Move acceptance counter: Translation
-INTEGER( KIND= INT64 ) :: NACCR      ! Move acceptance counter: Rotation
-INTEGER( KIND= INT64 ) :: NACCVI     ! Move acceptance counter: Volume change
-INTEGER( KIND= INT64 ) :: NACCVA     ! Move acceptance counter: Volume change
-INTEGER( KIND= INT64 ) :: MOVT       ! Move counter (Translation)
-INTEGER( KIND= INT64 ) :: MOVR       ! Move counter (Rotation)
-INTEGER( KIND= INT64 ) :: MOVVI      ! Move counter (Volume change)
-INTEGER( KIND= INT64 ) :: MOVVA      ! Move counter (Volume change)
-INTEGER( KIND= INT64 ) :: REMAINDER  ! Remainder of division
-INTEGER( KIND= INT64 ) :: ISEED      ! Initial seed
+INTEGER( Kind= Int64 )                 :: iParticle, pParticle               ! Counter (particles)
+INTEGER( Kind= Int64 )                 :: bEdge                              ! Counter (box edges)
+INTEGER( Kind= Int64 )                 :: pCycle                             ! Counter of cycles
+INTEGER( Kind= Int64 )                 :: iComponent, cComponent             ! Counter (component)
+INTEGER( Kind= Int64 )                 :: rRange                             ! Counter (potential range)
+INTEGER( Kind= Int64 )                 :: FirstCycle                         ! Initial cycle
+INTEGER( Kind= Int64 )                 :: BoxMatrixComponent                 ! Box matrix component
+INTEGER( Kind= Int64 )                 :: iCycle                             ! Counter (simulation cycles)
+INTEGER( Kind= Int64 )                 :: nAcceptanceTranslation             ! Move acceptance counter: Translation
+INTEGER( Kind= Int64 )                 :: nAcceptanceRotation                ! Move acceptance counter: Rotation
+INTEGER( Kind= Int64 )                 :: nAcceptanceIsotropicVolumeChange   ! Move acceptance counter: Volume scaling
+INTEGER( Kind= Int64 )                 :: nAcceptanceAnisotropicVolumeChange ! Move acceptance counter: Volume scaling
+INTEGER( Kind= Int64 )                 :: nMovementTranslationCounter        ! Move counter (Translation)
+INTEGER( Kind= Int64 )                 :: nMovementRotationCounter           ! Move counter (Rotation)
+INTEGER( Kind= Int64 )                 :: nMovementIsoVolumeChangeCounter    ! Move counter (Volume scaling)
+INTEGER( Kind= Int64 )                 :: nMovementAnisoVolumeChangeCounter  ! Move counter (Volume scaling)
+INTEGER( Kind= Int64 ), DIMENSION( 3 ) :: LastLine                           ! Last line of a file
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                      :: RIJSQ            ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                      :: CD               ! Contact distance (Perram-Wertheim or Vega-Lago methods)
-REAL( KIND= REAL64 )                      :: CUTOFF_D         ! Cutoff distance
-REAL( KIND= REAL64 )                      :: RATIO            ! Acceptance ratio (simulation)
-REAL( KIND= REAL64 )                      :: S                ! Nematic order parameter
-REAL( KIND= REAL64 )                      :: BOXVM, BOXVN     ! Volume of simulation box (before/after a trial move)
-REAL( KIND= REAL64 )                      :: HNM              ! Enthalpy criterion (reduced)
-REAL( KIND= REAL64 )                      :: SCALE_FACTOR     ! Scaling factor
-REAL( KIND= REAL64 )                      :: DISTORTION       ! Box distortion
-REAL( KIND= REAL64 )                      :: EXEC_TIME        ! Execution time
-REAL( KIND= REAL64 )                      :: BOXVROT          ! Volume of simulation box (after undoing box rotation)
-REAL( KIND= REAL64 )                      :: THETA            ! Angle between box vector and coordination system
-REAL( KIND= REAL64 )                      :: RAXISMAG         ! Magnitude of rotation axis
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: PROJY_XY         ! Projection of the y-vector of the box onto the ZY-plane and the unit vector of the y-axis
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: S12              ! Position (unit box)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: RIJ              ! Vector distance between particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: EM, EN           ! Orientation (before/after a trial move)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: EI, EJ           ! Orientation of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: RM, RN           ! Position (before/after a trial move)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: RI, RJ           ! Position of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 9 )      :: BOXLM, BOXLN     ! Length of simulation box (before/after a trial move)
-REAL( KIND= REAL64 ), DIMENSION( 9 )      :: BOXLM_I, BOXLN_I ! Length of simulation box (before/after a trial move)
-REAL( KIND= REAL64 ), DIMENSION( 9 )      :: BOXLMC           ! Length (x,y,z) of the simulation box
-REAL( KIND= REAL64 ), DIMENSION( 9 )      :: BOXLMC_I         ! Length (x,y,z) of simulation box (inverse)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: COSANGLE_VEC     ! Cossine of angle between box vectors
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: LBOX             ! Length of box edges
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: LBOXR            ! Length ratio of box edges
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: RAXIS            ! Rotation axis
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: AUXV             ! Auxiliary vector
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: V1, V2, V3       ! Box vectors
-REAL( KIND= REAL64 ), DIMENSION( 9 )      :: BOXLROT, BOXIROT ! Length of simulation box (after undoing box rotation)
-REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QROT             ! Rotation quaternion
-REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QAUX             ! Auxiliary quaternion
-REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QM, QN           ! Quaternion (before/after a trial move)
-REAL( KIND= REAL64 ), DIMENSION( 0:3 )    :: QI, QJ           ! Quaternion of particles i and j
+REAL( Kind= Real64 )                   :: StartTimer                               ! Start timer of Monte Carlo simulation
+REAL( Kind= Real64 )                   :: StopTimer                                ! Stop timer of Monte Carlo simulation
+REAL( Kind= Real64 )                   :: ContactDistance                          ! Contact distance (Perram-Wertheim or Vega-Lago methods)
+REAL( Kind= Real64 )                   :: Ratio                                    ! Acceptance ratio (simulation)
+REAL( Kind= Real64 )                   :: OrderParameterMC                         ! Nematic order parameter
+REAL( Kind= Real64 )                   :: OldBoxVolume, NewBoxVolume               ! Volume of simulation box (before/after a trial move)
+REAL( Kind= Real64 )                   :: EnthalpyChange                           ! Enthalpy criterion (reduced)
+REAL( Kind= Real64 )                   :: VolumeScalingFactor                      ! Scaling factor
+REAL( Kind= Real64 )                   :: BoxDistortionMC                          ! Box distortion
+REAL( Kind= Real64 )                   :: ExecutionTime                            ! Execution time
+REAL( Kind= Real64 )                   :: BoxVolumeMC                              ! Reduced volume of the simulation box
+REAL( Kind= Real64 )                   :: MaxTranslationalDisplacement             ! Maximum displacement [+/-] (Translation)
+REAL( Kind= Real64 )                   :: MaxAngularDisplacement                   ! Maximum displacement [+/-] (Rotation)
+REAL( Kind= Real64 )                   :: MaxIsoVolumetricDisplacement             ! Maximum displacement [+/-] (Isotropic volume scaling)
+REAL( Kind= Real64 )                   :: MaxAnisoVolumetricDisplacement           ! Maximum displacement [+/-] (Anisotropic volume scaling)
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: BoxCutoff                                ! Box cutoff (x-, y-, and z-directions)
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: ScalingDistanceUnitBox                   ! Scaled position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: iOldOrientation, iNewOrientation         ! Orientation (before/after a trial move)
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: iOldPosition, iNewPosition               ! Position (before/after a trial move)
+REAL( Kind= Real64 ), DIMENSION( 9 )   :: OldBoxLength, NewBoxLength               ! Length of simulation box (before/after a trial move)
+REAL( Kind= Real64 ), DIMENSION( 9 )   :: OldBoxLengthInverse, NewBoxLengthInverse ! Length of simulation box (before/after a trial move)
+REAL( Kind= Real64 ), DIMENSION( 9 )   :: BoxLengthMC                              ! Length (x,y,z) of the simulation box
+REAL( Kind= Real64 ), DIMENSION( 9 )   :: BoxLengthInverseMC                       ! Length (x,y,z) of simulation box (inverse)
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: BoxVectorAngle                           ! Cossine of angle between box vectors
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: BoxEdgeLength                            ! Length of box edges
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: BoxEdgeRatio                             ! Length ratio of box edges
+REAL( Kind= Real64 ), DIMENSION( 0:3 ) :: iOldQuaternion, iNewQuaternion           ! Quaternion (before/after a trial move)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (ALLOCATABLE)                                                                    !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: CUTOFF     ! Cutoff distance
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: VM, VN     ! Perturbed potential energy (before/after a trial move)
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: DV         ! Perturbed potential energy difference between two microstates m and n
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: A1, A2     ! First- and second-order TPT coefficients
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: APERT      ! Full Helmholtz free energy of the perturbed system
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: DPA1, DPA2 ! First- and second-order TPT coefficients (standard deviation)
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: DPAPERT    ! Full Helmholtz free energy of the perturbed system (standard deviation)
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: STRSH      ! String size
-REAL( KIND= REAL64 ), DIMENSION( : ), ALLOCATABLE    :: STRSS      ! String size
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: STRST      ! String size
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: RMCV       ! Old position of particles
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: RPROT      ! Position of the center of mass (after undoing box rotation)
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: QPROT      ! Quaternion of the center of mass (after undoing box rotation)
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: EPROT      ! Orientation of the center of mass (after undoing box rotation)
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: TotalPotentialEnergyMC                   ! Potential energy array
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: iOldPotentialEnergy, iNewPotentialEnergy ! Perturbed potential energy (before/after a trial move)
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: iPotentialEnergyDifference               ! Perturbed potential energy difference between two microstates m and n
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: CoefficientTPT1, CoefficientTPT2         ! First- and second-order TPT coefficients
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: rFreeEnergy                              ! Full Helmholtz free energy of the perturbed system
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: CoefficientTPT1Deviation                 ! First-order TPT coefficient (standard deviation)
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: CoefficientTPT2Deviation                 ! Second-order TPT coefficient (standard deviation)
+REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: rFreeEnergyDeviation                     ! Full Helmholtz free energy of the perturbed system (standard deviation)
+REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: PositionSaveMC                           ! Old position of particles
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS (ALLOCATABLE)                                                                 !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 68 ), DIMENSION( : ), ALLOCATABLE     :: LOG_STRINGS_H ! Strings used in the simulation log file
-CHARACTER( LEN= 68 ), DIMENSION( : ), ALLOCATABLE     :: LOG_STRINGS_S ! Strings used in the simulation log file
-CHARACTER( LEN= 68 ), DIMENSION( :, : ), ALLOCATABLE  :: LOG_STRINGS_T ! Strings used in the simulation log file
-CHARACTER( LEN= 100 ), DIMENSION( :, : ), ALLOCATABLE :: LOG_STRINGS_L ! Strings used in the simulation log file
-CHARACTER( LEN= 100 ), DIMENSION( :, : ), ALLOCATABLE :: CHAR_LABEL    ! Simulation log
-CHARACTER( LEN= 100 ), DIMENSION( :, : ), ALLOCATABLE :: CHAR_LABEL_L  ! Simulation log
+CHARACTER( LEN= 02 ) :: VolumeType       ! Expansion/Compression type
+CHARACTER( LEN= 32 ) :: FormatHour       ! String format for output file
+CHARACTER( LEN= 32 ) :: FormatDate       ! String format for output folder
+CHARACTER( LEN= 14 ) :: DescriptorBackup ! Descriptor for output file
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL :: OVERLAP            ! Detects overlap between two particles (PW) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: OVERLAP_PRELIMINAR ! Detects overlap between two particles : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: PARALLEL           ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
-LOGICAL :: MOV_ROT            ! Rotation move selection : TRUE = movement selected; FALSE = movement not selected
-LOGICAL :: MOV_TRANS          ! Translation movement selection : TRUE = movement selected; FALSE = movement not selected
-LOGICAL :: MOV_VOL_I          ! Volumetric movement selection : TRUE = movement selected; FALSE = movement not selected
-LOGICAL :: MOV_VOL_A          ! Volumetric movement selection : TRUE = movement selected; FALSE = movement not selected
-LOGICAL :: IGNORE_VOL_ATTEMPT ! Detects if a box deformation is valid or not : TRUE = ignore box deformation; FALSE = consider box deformation
-LOGICAL :: LATTICER           ! Detects if a lattice reduction is necessary : TRUE = lattice reduction; FALSE = box shape preserved
-LOGICAL :: FLAG               ! Generic TRUE/FALSE flag
+LOGICAL :: Overlap                          ! Detects overlap between two particles (PW) : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: MovementRotationLogical          ! Rotation move selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: MovementTranslationLogical       ! Translation movement selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: MovementIsoVolumeChangeLogical   ! Volumetric movement selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: MovementAnisoVolumeChangeLogical ! Volumetric movement selection : TRUE = movement selected; FALSE = movement not selected
+LOGICAL :: CheckBoxDistortion               ! Detects if a box deformation is valid or not : TRUE = ignore box deformation; FALSE = consider box deformation
+LOGICAL :: LatticeReductionLogical          ! Detects if a lattice reduction is necessary : TRUE = lattice reduction; FALSE = box shape preserved
+LOGICAL :: FlagLogical                      ! Generic TRUE/FALSE flag
+LOGICAL :: FileExist                        ! Checks whether a file exists or not
+LOGICAL :: FolderExist                      ! Checks whether a folder exists or not
 
 ! Title
 WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 6 )//"NVT/NPT-MONTE CARLO SIMULATION OF MIXTURES"//REPEAT( " ", 7 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
 
-! Molecular geometry selection (see 'INITCONFIG' module)
-CALL GEOM_SELECTION(  )
+! Restoration from backup file
+OPEN( Unit= 10, File= "ini_control.ini", Action= "READ" )
+READ( 10, * ) Dummy, Dummy
+READ( 10, * ) Dummy, Dummy
+READ( 10, * ) Dummy, Dummy
+READ( 10, * ) Dummy, RestoreBackupFileInquiry
+CALL ToUpper( RestoreBackupFileInquiry, LEN_TRIM( RestoreBackupFileInquiry ), RestoreBackupFileInquiry )
+! Transforms characters into logical variables
+IF( RestoreBackupFileInquiry == "Y" ) THEN
+  RestoreBackupFileLogical = .TRUE.
+  WRITE( *, "(G0)" ) "User has chosen to restore a backup file from a previous simulation. Type the 14-digit backup descriptor: "
+  READ( *, * ) DescriptorBackup
+  WRITE( *, "(G0)" ) " "
+  INQUIRE( File= "Backup/", Exist= FolderExist )
+  IF( .NOT. FolderExist ) THEN
+    WRITE( *, "(G0)" ) "Backup folder not found! Exiting..."
+    CALL Sleep( 1 )
+    CALL Exit(  )
+  END IF
+  INQUIRE( File= "Backup/"//TRIM( DescriptorBackup )//"_simulation.backup", Exist= FileExist )
+  IF( .NOT. FileExist ) THEN
+    INQUIRE( File= "Backup/"//TRIM( DescriptorBackup )//"_variables.backup", Exist= FileExist )
+    IF( .NOT. FileExist ) THEN
+      WRITE( *, "(G0)" ) "Variable and simulation backup files not found! Exiting..."
+      CALL Sleep( 1 )
+      CALL Exit(  )
+    ELSE
+      WRITE( *, "(G0)" ) "Simulation backup file not found! Exiting..."
+      CALL Sleep( 1 )
+      CALL Exit(  )
+    END IF
+  ELSE
+    INQUIRE( File= "Backup/"//TRIM( DescriptorBackup )//"_variables.backup", Exist= FileExist )
+    IF( .NOT. FileExist ) THEN
+      WRITE( *, "(G0)" ) "Variable backup file not found! Exiting..."
+      CALL Sleep( 1 )
+      CALL Exit(  )
+    ELSE
+      WRITE( *, "(G0)" ) "Backup files found! Restoring previous simulation..."
+      CALL Sleep( 1 )
+      WRITE( *, "(G0)" ) " "
+    END IF
+  END IF
+ELSE
+  RestoreBackupFileLogical = .FALSE.
+END IF
+CLOSE( 10 )
 
-! Molecular configuration selection (see 'INITCONFIG' module)
-CALL CONFIG_SELECTION(  )
-
-! Initialization of Monte Carlo parameters (see 'INITVAR' module)
-CALL MONTECARLO_VAR(  )
-
-! Initialization of Inquiry/Control variables (see 'INITVAR' module)
-CALL INQUERY_VAR(  )
-
-! Initialization of common variables (see 'INITVAR' module)
-CALL COMMON_VAR(  )
-
-! Initialization of potential variables (see 'INITVAR' module)
-CALL POTENTIAL_VAR(  )
-
-! Pseudorandom number generator seed
-IF( FSEED ) THEN
-  SEED  = 123456789
-  ISEED = SEED
-ELSE IF( .NOT. FSEED ) THEN
-  CALL RANDOM_SEED( SIZE= SIZE_SEED )
-  ALLOCATE( RANS(SIZE_SEED) )
-  CALL RANDOM_SEED( GET= RANS )
-  CALL RANDOM_NUMBER( RANDOM_N )
-  SEED_COMP = INT( RANDOM_N * DBLE( SIZE_SEED ) ) + 1
-  SEED  = ABS( RANS(SEED_COMP) )
-  ISEED = SEED
+! Initialize variables if restoration is not selected
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  ! Molecular geometry selection (see 'InitialConfiguration' module)
+  CALL GeometrySelection(  )
+  ! Molecular configuration selection (see 'InitialConfiguration' module)
+  CALL InitialConfigurationSelection(  )
+  ! Initialization of Monte Carlo parameters (see 'InitializeVariables' module)
+  CALL MonteCarloVariables(  )
+  ! Initialization of Inquiry/Control variables (see 'InitializeVariables' module)
+  CALL VariablesInquest(  )
+  ! Initialization of common variables (see 'InitializeVariables' module)
+  CALL GeneralVariables(  )
+  ! Initialization of potential variables (see 'InitializeVariables' module)
+  CALL ForceFieldVariables(  )
+  ! Pseudorandom number generator seed
+  IF( FixedSeedLogical ) THEN
+    SeedValue   = 123456789
+    InitialSeed = SeedValue
+  ELSE IF( .NOT. FixedSeedLogical ) THEN
+    CALL RANDOM_SEED( SIZE= SeedSize )
+    ALLOCATE( RandomSeed(SeedSize) )
+    CALL RANDOM_SEED( GET= RandomSeed )
+    CALL RANDOM_NUMBER( RandomNumber )
+    iSeed       = INT( RandomNumber * DBLE( SeedSize ) ) + 1
+    SeedValue   = ABS( RandomSeed(iSeed) )
+    InitialSeed = SeedValue
+  END IF
+! Initialize variables from backup file
+ELSE IF( RestoreBackupFileLogical ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Restoring common variables from a previous run..."
+  OPEN( Unit= 105, File= "Backup/"//TRIM( DescriptorBackup )//"_variables.backup", Action= "READ" )
+  READ( 105, * ) Dummy, nParticles
+  READ( 105, * ) Dummy, nComponents
+  READ( 105, * ) Dummy, CellListLogical
+  READ( 105, * ) Dummy, PotentialTypeLogical
+  ! Allocation
+  ALLOCATE( pQuaternion(0:3,nParticles), pQuaternionMC(0:3,nParticles) )
+  ALLOCATE( pPosition(3,nParticles), pPositionMC(3,nParticles) )
+  ALLOCATE( pOrientation(3,nParticles), pOrientationMC(3,nParticles) )
+  ALLOCATE( cDiameter(nComponents), cLength(nComponents), cAspectRatio(nComponents), cMolecularVolume(nComponents) )
+  ALLOCATE( pComponents(nParticles) )
+  ALLOCATE( cParticles(0:nComponents), cMolarFraction(nComponents), cNumberDensity(nComponents) )
+  ALLOCATE( cDiameterEquivalentSphere(nComponents) )
+  ALLOCATE( SphericalComponentInquiry(nComponents) )
+  ALLOCATE( SphericalComponentLogical(nComponents) )
+  IF( CellListLogical ) ALLOCATE( pCellList(nParticles), pCellIndex(3,nParticles) )
+  IF( PotentialTypeLogical(2) ) THEN
+    READ( 105, * ) Dummy, nRange
+    ! Allocation
+    ALLOCATE( PotentialRange(nRange) )
+    ALLOCATE( CoefficientTPT1(nRange), CoefficientTPT2(nRange), rFreeEnergy(nRange) )
+    ALLOCATE( CoefficientTPT1Deviation(nRange), CoefficientTPT2Deviation(nRange), rFreeEnergyDeviation(nRange) )
+    ALLOCATE( TotalPotentialEnergy(nRange), TotalPotentialEnergyMC(nRange) )
+    ALLOCATE( iNewPotentialEnergy(nRange), iOldPotentialEnergy(nRange), iPotentialEnergyDifference(nRange) )
+    ALLOCATE( cPotentialRange(nComponents,nRange) )
+  END IF
+  CLOSE( 105 )
+  CALL RestoreBackupVariables( DescriptorBackup, DateTime )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
 END IF
 
 ! Allocation
-ALLOCATE( Q(0:3,N_PARTICLES), QMC(0:3,N_PARTICLES) )
-ALLOCATE( R(3,N_PARTICLES), RMC(3,N_PARTICLES) )
-ALLOCATE( E(3,N_PARTICLES), EMC(3,N_PARTICLES) )
-ALLOCATE( RMCV(3,N_PARTICLES) )
-ALLOCATE( CUTOFF(COMPONENTS) )
-ALLOCATE( A1(N_LAMBDA), A2(N_LAMBDA), APERT(N_LAMBDA) )
-ALLOCATE( DPA1(N_LAMBDA), DPA2(N_LAMBDA), DPAPERT(N_LAMBDA) )
-ALLOCATE( V(N_LAMBDA), VMC(N_LAMBDA) )
-ALLOCATE( VN(N_LAMBDA), VM(N_LAMBDA), DV(N_LAMBDA) )
-ALLOCATE( SWRANGE(COMPONENTS,N_LAMBDA) )
-ALLOCATE( QPROT(0:3,N_PARTICLES) )
-ALLOCATE( RPROT(3,N_PARTICLES) )
-ALLOCATE( EPROT(3,N_PARTICLES) )
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  ALLOCATE( pQuaternion(0:3,nParticles), pQuaternionMC(0:3,nParticles) )
+  ALLOCATE( pPosition(3,nParticles), pPositionMC(3,nParticles) )
+  ALLOCATE( pOrientation(3,nParticles), pOrientationMC(3,nParticles) )
+  IF( PotentialTypeLogical(2) ) THEN
+    ALLOCATE( CoefficientTPT1(nRange), CoefficientTPT2(nRange), rFreeEnergy(nRange) )
+    ALLOCATE( CoefficientTPT1Deviation(nRange), CoefficientTPT2Deviation(nRange), rFreeEnergyDeviation(nRange) )
+    ALLOCATE( TotalPotentialEnergy(nRange), TotalPotentialEnergyMC(nRange) )
+    ALLOCATE( iNewPotentialEnergy(nRange), iOldPotentialEnergy(nRange), iPotentialEnergyDifference(nRange) )
+    ALLOCATE( cPotentialRange(nComponents,nRange) )
+  END IF
+END IF
+
+! Hard-core volumetric relation (EOR/SPC/HC and SPHERES)
+IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) * ( ( cAspectRatio(cComponent) ) ** ( 1.D0 / 3.D0 ) ) ! Ellipsoids of revolution
+    ELSE
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) ! Spheres
+    END IF
+  END DO
+ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) * ( ( 1.D0 + ( 1.5D0 * cAspectRatio(cComponent) ) ) ** &
+      &                                       ( 1.D0 / 3.D0 ) ) ! Spherocylinders
+    ELSE
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) ! Spheres
+    END IF
+  END DO
+ELSE IF( GeometryType(3) ) THEN ! Cylinders
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) * ( ( 1.5D0 * cAspectRatio(cComponent) ) ** ( 1.D0 / 3.D0 ) ) ! Cylinders
+    ELSE
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) ! Spheres
+    END IF
+  END DO
+END IF
+
+! Effective range of attraction
+IF( PotentialTypeLogical(2) ) THEN
+  DO cComponent = 1, nComponents
+    cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
+  END DO
+END IF
+
+! Diameter of the largest circumscribing sphere
+cLargestSphereDiameter = 0.D0
+IF( CellListLogical ) THEN
+  ! Geometrical reference
+  IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+    DO cComponent = 1, nComponents
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        IF( cAspectRatio(cComponent) > 0.D0 .AND. cAspectRatio(cComponent) < 1.D0 ) THEN
+          IF( cDiameter(cComponent) >= cLargestSphereDiameter ) cLargestSphereDiameter = cDiameter(cComponent)
+        ELSE IF( cAspectRatio(cComponent) > 1.D0 ) THEN
+          IF( cLength(cComponent) >= cLargestSphereDiameter ) cLargestSphereDiameter = cLength(cComponent)
+        END IF
+      ELSE
+        IF( cDiameter(cComponent) >= cLargestSphereDiameter ) cLargestSphereDiameter = cDiameter(cComponent)
+      END IF
+    END DO
+  ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+    DO cComponent = 1, nComponents
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        IF( ( cDiameter(cComponent) + cLength(cComponent) ) >= cLargestSphereDiameter ) cLargestSphereDiameter = &
+        &     cDiameter(cComponent) + cLength(cComponent)
+      ELSE
+        IF( cDiameter(cComponent) >= cLargestSphereDiameter ) cLargestSphereDiameter = cDiameter(cComponent)
+      END IF
+    END DO
+  ELSE IF( GeometryType(3) ) THEN ! Cylinders
+    DO cComponent = 1, nComponents
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        IF( ( cDiameter(cComponent) + cLength(cComponent) ) >= cLargestSphereDiameter ) cLargestSphereDiameter = &
+        &     cDiameter(cComponent) + cLength(cComponent)
+      ELSE
+        IF( cDiameter(cComponent) >= cLargestSphereDiameter ) cLargestSphereDiameter = cDiameter(cComponent)
+      END IF
+    END DO
+  END IF
+  ! Potential reference
+  IF( PotentialTypeLogical(2) .AND. EnsembleMC == "NVT" ) THEN
+    DO cComponent = 1, nComponents
+      DO rRange = 1, nRange
+        IF( cPotentialRange(cComponent,rRange) >= cLargestSphereDiameter ) cLargestSphereDiameter = &
+        &   cPotentialRange(cComponent,rRange)
+      END DO
+    END DO
+  END IF
+END IF
 
 ! Atom ID (Required in some visualization and analysis software)
-ALLOCATE( INDEX_P(COMPONENTS) )
-DO C = 1, COMPONENTS
-  INDEX_P(C) = C
+ALLOCATE( cIndex(nComponents) )
+DO cComponent = 1, nComponents
+  cIndex(cComponent) = cComponent
 END DO
 
-! Unrotated reference orientation (Allen and Tildesley, 2nd Edition, pages 106-111)
-AXISX(1) = 1.D0 ! X-axis
-AXISX(2) = 0.D0 ! X-axis
-AXISX(3) = 0.D0 ! X-axis
-AXISY(1) = 0.D0 ! Y-axis
-AXISY(2) = 1.D0 ! Y-axis
-AXISY(3) = 0.D0 ! Y-axis
-AXISZ(1) = 0.D0 ! Z-axis
-AXISZ(2) = 0.D0 ! Z-axis
-AXISZ(3) = 1.D0 ! Z-axis
-
-! CPU Clock
-CALL DATE_AND_TIME( VALUES= DATE_TIME )
-
-! Date format (YYYY/MM/DD)
-FORMAT_DATE = "(I4,2I2.2)"
-WRITE( DESCRIPTOR_DATE, FORMAT_DATE ) DATE_TIME(1), DATE_TIME(2), DATE_TIME(3)
-
-! Time format (HH:MM:SS)
-FORMAT_HOUR = "(3I2.2)"
-! Hour descriptor
-WRITE( DESCRIPTOR_HOUR, FORMAT_HOUR ) DATE_TIME(5), DATE_TIME(6), DATE_TIME(7)
-
-! Output file descriptors (p. fraction/pressure [1], # of components [2], and geometry [3])
-FORMAT_FILE1 = "(F0.5)"
-IF( MC_ENSEMBLE == "NVT" ) THEN
-  WRITE( DESCRIPTOR_FILE1, FORMAT_FILE1 ) PACKING_F
-ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
-  WRITE( DESCRIPTOR_FILE1, FORMAT_FILE1 ) PRESS
+! Initialize descriptors if restoration is not selected
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  ! CPU Clock
+  CALL DATE_AND_TIME( VALUES= DateTime )
+  ! Date format (YYYY/MM/DD)
+  FormatDate = "(I4,2I2.2)"
+  WRITE( DescriptorDate, FormatDate ) DateTime(1), DateTime(2), DateTime(3)
+  ! Time format (HH:MM:SS)
+  FormatHour = "(3I2.2)"
+  ! Hour descriptor
+  WRITE( DescriptorHour, FormatHour ) DateTime(5), DateTime(6), DateTime(7)
+  ! Output file descriptors (p. fraction/pressure [1], # of components [2], and geometry [3])
+  FormatFileThermoVariable = "(F0.5)"
+  IF( EnsembleMC == "NVT" ) THEN
+    WRITE( DescriptorFileThermoVariable, FormatFileThermoVariable ) PackingFraction
+  ELSE IF( EnsembleMC == "NPT" ) THEN
+    WRITE( DescriptorFileThermoVariable, FormatFileThermoVariable ) ReducedPressure
+  END IF
+  FormatFileComponents = "(I0.3)"
+  WRITE( DescriptorFileComponents, FormatFileComponents ) nComponents
+  FormatFileGeometry = "(A3)"
+  WRITE( DescriptorFileGeometry, FormatFileGeometry ) GeometryAcronym
 END IF
-FORMAT_FILE2 = "(I0.3)"
-WRITE( DESCRIPTOR_FILE2, FORMAT_FILE2 ) COMPONENTS
-FORMAT_FILE3 = "(A3)"
-WRITE( DESCRIPTOR_FILE3, FORMAT_FILE3 ) GEO_ACRONYM
 
-! Initial configuration (see 'INITCONFIG' module)
-WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
-WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 17 )//"INITIAL CONFIGURATION"//REPEAT( " ", 17 )//CH_VS
-WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
-WRITE( *, "(G0)" ) "Setting up initial configuration folder..."
-CALL SLEEP( 1 )
-WRITE( *, "(G0)" ) " "
-
-! Initial configuration folder (see 'FOLDERS' module)
-CALL INITFOLDER(  )
-
-! Calls 'CONFIG_SC' subroutine if the user chooses a simple cubic structure
-IF( CONFIG_SELEC(1) ) THEN
-  IF( .NOT. INIT_CONF ) THEN
-    DO C = 1, COMPONENTS - 1
-      IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
-        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                         "The simple cubic structure might create overlaping configurations. ", &
-        &                         "Do you wish to continue?"
-        READ( *, * ) DUMMY
-        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-        IF( DUMMY /= "Y" ) THEN
-          CALL SLEEP( 1 )
-          CALL EXIT(  )
-        END IF
-        WRITE( *, "(G0)" ) " "
-      END IF
-      IF( ( SPHERCOMP(C) .AND. .NOT. SPHERCOMP(C+1) ) .OR. ( .NOT. SPHERCOMP(C) .AND. SPHERCOMP(C+1) ) ) THEN
-        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                         "The simple cubic structure might create overlapping configurations. ", &
-        &                         "Do you wish to continue?"
-        READ( *, * ) DUMMY
-        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-        IF( DUMMY /= "Y" ) THEN
-          CALL SLEEP( 1 )
-          CALL EXIT(  )
-        END IF
-        WRITE( *, "(G0)" ) " "
-      END IF
-    END DO
-    CALL CONFIG_SC(  )
-    CALL CONFIG_OUT(  )
-  ELSE
-    WRITE( *, "(2G0)" ) "Preset initial configuration selected! Simulation parameters previously calculated will be overwritten.", &
-    &                   " Continue? [Y/N]"
-    READ( *, * ) DUMMY
-    CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-    IF( DUMMY /= "Y" ) THEN
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "Please enter the 14-character descriptor code of the file: "
-    READ( *, * ) CODE_DESCRIPTOR
-    INQUIRE( FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_sc_"//TRIM( DESCRIPTOR_FILE3 )//".xyz", &
-    &        EXIST= FILE_EXIST )
-    WRITE( *, "(G0)" ) " "
-    IF( .NOT. FILE_EXIST ) THEN
-      WRITE( *, "(G0,G0)" ) "Preset initial configuration not found for the specified configuration or the ", &
-      &                     "selected molecular geometry. Exiting..."
-      CALL SLEEP( 1 )
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 1 )
-    OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_sc_" &
-    &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-    READ( 10, * ) DUMMY, GEOM_INQ
-    ! Extended configuration name
-    GEOM_SELEC(:) = .FALSE.
-    IF( GEOM_INQ == "EOR" ) THEN
-      GEOMETRY    = "Ellipsoids of revolution"
-      GEO_ACRONYM = "eor"
-      GEOM_SELEC(1) = .TRUE.
-    ELSE IF( GEOM_INQ == "SPC" ) THEN
-      GEOMETRY    = "Spherocylinders"
-      GEO_ACRONYM = "spc"
-      GEOM_SELEC(2) = .TRUE.
-    ELSE IF( GEOM_INQ == "CYL" ) THEN
-      GEOMETRY    = "Cylinders"
-      GEO_ACRONYM = "cyl"
-      GEOM_SELEC(3) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, CONFIG_INQ
-    ! Extended configuration name
-    CONFIG_SELEC(:) = .FALSE.
-    IF( CONFIG_INQ == "SC" ) THEN
-      CONFIGURATION   = "Simple Cube"
-      CONFIG_SELEC(1) = .TRUE.
-    ELSE IF( CONFIG_INQ == "BCC" ) THEN
-      CONFIGURATION   = "Body-Centered Cube"
-      CONFIG_SELEC(2) = .TRUE.
-    ELSE IF( CONFIG_INQ == "FCC" ) THEN
-      CONFIGURATION   = "Face-Centered Cube"
-      CONFIG_SELEC(3) = .TRUE.
-    ELSE IF( CONFIG_INQ == "RND" ) THEN
-      CONFIGURATION   = "Random"
-      CONFIG_SELEC(4) = .TRUE.
-    ELSE IF( CONFIG_INQ == "PB" ) THEN
-      CONFIGURATION   = "Packed Box"
-      CONFIG_SELEC(5) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, PACKING_F
-    READ( 10, * ) DUMMY, COMPONENTS
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
-      IF( SPHCOMP_INQ(C) == "T" ) THEN
-        SPHERCOMP(C) = .TRUE.
-      ELSE
-        SPHERCOMP(C) = .FALSE.
-      END IF
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, LENGTH(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, ASPECT_RATIO(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, MOLAR_F(C)
-    END DO
-    READ( 10, * ) DUMMY, N_PARTICLES
-    READ( 10, * ) DUMMY, TOTAL_VP, DUMMY
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, N_COMPONENT(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, PARTICLE_VOL(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, BOX_VOLUME, DUMMY
-    READ( 10, * ) DUMMY, BOX_LENGTH(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH(7:9)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(7:9)
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, RHO_PARTICLE(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, TOTAL_RHO, DUMMY
-    READ( 10, * ) DUMMY, TEMP, DUMMY
-    READ( 10, * ) DUMMY, PRESS
-    DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        READ( 10, * ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I)
-      END DO
-    END DO
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)" ) " "
-    CALL CONFIG_OUT(  )
-  END IF
-! Calls 'CONFIG_BCC' subroutine if the user chooses a body-centered cubic structure
-ELSE IF( CONFIG_SELEC(2) ) THEN
-  IF( .NOT. INIT_CONF ) THEN
-    DO C = 1, COMPONENTS - 1
-      IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
-        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                         "The body-centered cubic structure might create overlapping configurations. ", &
-        &                         "Do you wish to continue?"
-        READ( *, * ) DUMMY
-        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-        IF( DUMMY /= "Y" ) THEN
-          CALL SLEEP( 1 )
-          CALL EXIT(  )
-        END IF
-        WRITE( *, "(G0)" ) " "
-      END IF
-      IF( ( SPHERCOMP(C) .AND. .NOT. SPHERCOMP(C+1) ) .OR. ( .NOT. SPHERCOMP(C) .AND. SPHERCOMP(C+1) ) ) THEN
-        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                         "The body-centered cubic structure might create overlapping configurations. ", &
-        &                         "Do you wish to continue?"
-        READ( *, * ) DUMMY
-        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-        IF( DUMMY /= "Y" ) THEN
-          CALL SLEEP( 1 )
-          CALL EXIT(  )
-        END IF
-        WRITE( *, "(G0)" ) " "
-      END IF
-    END DO
-    CALL CONFIG_BCC(  )
-    CALL CONFIG_OUT(  )
-  ELSE
-    WRITE( *, "(2G0)" ) "Preset initial configuration selected! Simulation parameters previously calculated will be overwritten.", &
-    &                   " Continue? [Y/N]"
-    READ( *, * ) DUMMY
-    CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-    IF( DUMMY /= "Y" ) THEN
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "Please enter the 14-character descriptor code of the file: "
-    READ( *, * ) CODE_DESCRIPTOR
-    INQUIRE( FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_bcc_"//TRIM( DESCRIPTOR_FILE3 )//".xyz", &
-    &        EXIST= FILE_EXIST )
-    WRITE( *, "(G0)" ) " "
-    IF( .NOT. FILE_EXIST ) THEN
-      WRITE( *, "(G0,G0)" ) "Preset initial configuration not found for the specified configuration or the ", &
-      &                     "selected molecular geometry. Exiting..."
-      CALL SLEEP( 1 )
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 1 )
-    OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_bcc_" &
-    &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-    READ( 10, * ) DUMMY, GEOM_INQ
-    ! Extended configuration name
-    GEOM_SELEC(:) = .FALSE.
-    IF( GEOM_INQ == "EOR" ) THEN
-      GEOMETRY    = "Ellipsoids of revolution"
-      GEO_ACRONYM = "eor"
-      GEOM_SELEC(1) = .TRUE.
-    ELSE IF( GEOM_INQ == "SPC" ) THEN
-      GEOMETRY    = "Spherocylinders"
-      GEO_ACRONYM = "spc"
-      GEOM_SELEC(2) = .TRUE.
-    ELSE IF( GEOM_INQ == "CYL" ) THEN
-      GEOMETRY    = "Cylinders"
-      GEO_ACRONYM = "cyl"
-      GEOM_SELEC(3) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, CONFIG_INQ
-    ! Extended configuration name
-    CONFIG_SELEC(:) = .FALSE.
-    IF( CONFIG_INQ == "SC" ) THEN
-      CONFIGURATION   = "Simple Cube"
-      CONFIG_SELEC(1) = .TRUE.
-    ELSE IF( CONFIG_INQ == "BCC" ) THEN
-      CONFIGURATION   = "Body-Centered Cube"
-      CONFIG_SELEC(2) = .TRUE.
-    ELSE IF( CONFIG_INQ == "FCC" ) THEN
-      CONFIGURATION   = "Face-Centered Cube"
-      CONFIG_SELEC(3) = .TRUE.
-    ELSE IF( CONFIG_INQ == "RND" ) THEN
-      CONFIGURATION   = "Random"
-      CONFIG_SELEC(4) = .TRUE.
-    ELSE IF( CONFIG_INQ == "PB" ) THEN
-      CONFIGURATION   = "Packed Box"
-      CONFIG_SELEC(5) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, PACKING_F
-    READ( 10, * ) DUMMY, COMPONENTS
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
-      IF( SPHCOMP_INQ(C) == "T" ) THEN
-        SPHERCOMP(C) = .TRUE.
-      ELSE
-        SPHERCOMP(C) = .FALSE.
-      END IF
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, LENGTH(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, ASPECT_RATIO(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, MOLAR_F(C)
-    END DO
-    READ( 10, * ) DUMMY, N_PARTICLES
-    READ( 10, * ) DUMMY, TOTAL_VP, DUMMY
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, N_COMPONENT(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, PARTICLE_VOL(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, BOX_VOLUME, DUMMY
-    READ( 10, * ) DUMMY, BOX_LENGTH(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH(7:9)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(7:9)
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, RHO_PARTICLE(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, TOTAL_RHO, DUMMY
-    READ( 10, * ) DUMMY, TEMP, DUMMY
-    READ( 10, * ) DUMMY, PRESS
-    DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        READ( 10, * ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I)
-      END DO
-    END DO
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)" ) " "
-    CALL CONFIG_OUT(  )
-  END IF
-! Calls 'CONFIG_FCC' subroutine if the user chooses a face-centered cubic structure
-ELSE IF( CONFIG_SELEC(3) ) THEN
-  IF( .NOT. INIT_CONF ) THEN
-    DO C = 1, COMPONENTS - 1
-      IF( DABS( DIAMETER(C) - DIAMETER(C+1) ) >= EPSILON( 1.D0 ) .OR. DABS( LENGTH(C) - LENGTH(C+1) ) >= EPSILON( 1.D0 ) ) THEN
-        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                         "The face-centered cubic structure might create overlapping configurations. ", &
-        &                         "Do you wish to continue?"
-        READ( *, * ) DUMMY
-        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-        IF( DUMMY /= "Y" ) THEN
-          CALL SLEEP( 1 )
-          CALL EXIT(  )
-        END IF
-        WRITE( *, "(G0)" ) " "
-      END IF
-      IF( ( SPHERCOMP(C) .AND. .NOT. SPHERCOMP(C+1) ) .OR. ( .NOT. SPHERCOMP(C) .AND. SPHERCOMP(C+1) ) ) THEN
-        WRITE( *, "(5G0,/,2G0)" ) "Molecules of component ", C, " are not isomorphic with molecules of component ", C + 1, "! ", &
-        &                         "The face-centered cubic structure might create overlapping configurations. ", &
-        &                         "Do you wish to continue?"
-        READ( *, * ) DUMMY
-        CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-        IF( DUMMY /= "Y" ) THEN
-          CALL SLEEP( 1 )
-          CALL EXIT(  )
-        END IF
-        WRITE( *, "(G0)" ) " "
-      END IF
-    END DO
-    CALL CONFIG_FCC(  )
-    CALL CONFIG_OUT(  )
-  ELSE
-    WRITE( *, "(2G0)" ) "Preset initial configuration selected! Simulation parameters previously calculated will be overwritten.", &
-    &                   " Continue? [Y/N]"
-    READ( *, * ) DUMMY
-    CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-    IF( DUMMY /= "Y" ) THEN
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "Please enter the 14-character descriptor code of the file: "
-    READ( *, * ) CODE_DESCRIPTOR
-    INQUIRE( FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_fcc_"//TRIM( DESCRIPTOR_FILE3 )//".xyz", &
-    &        EXIST= FILE_EXIST )
-    WRITE( *, "(G0)" ) " "
-    IF( .NOT. FILE_EXIST ) THEN
-      WRITE( *, "(G0,G0)" ) "Preset initial configuration not found for the specified configuration or the ", &
-      &                     "selected molecular geometry. Exiting..."
-      CALL SLEEP( 1 )
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 1 )
-    OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_fcc_" &
-    &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-    READ( 10, * ) DUMMY, GEOM_INQ
-    ! Extended configuration name
-    GEOM_SELEC(:) = .FALSE.
-    IF( GEOM_INQ == "EOR" ) THEN
-      GEOMETRY    = "Ellipsoids of revolution"
-      GEO_ACRONYM = "eor"
-      GEOM_SELEC(1) = .TRUE.
-    ELSE IF( GEOM_INQ == "SPC" ) THEN
-      GEOMETRY    = "Spherocylinders"
-      GEO_ACRONYM = "spc"
-      GEOM_SELEC(2) = .TRUE.
-    ELSE IF( GEOM_INQ == "CYL" ) THEN
-      GEOMETRY    = "Cylinders"
-      GEO_ACRONYM = "cyl"
-      GEOM_SELEC(3) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, CONFIG_INQ
-    ! Extended configuration name
-    CONFIG_SELEC(:) = .FALSE.
-    IF( CONFIG_INQ == "SC" ) THEN
-      CONFIGURATION   = "Simple Cube"
-      CONFIG_SELEC(1) = .TRUE.
-    ELSE IF( CONFIG_INQ == "BCC" ) THEN
-      CONFIGURATION   = "Body-Centered Cube"
-      CONFIG_SELEC(2) = .TRUE.
-    ELSE IF( CONFIG_INQ == "FCC" ) THEN
-      CONFIGURATION   = "Face-Centered Cube"
-      CONFIG_SELEC(3) = .TRUE.
-    ELSE IF( CONFIG_INQ == "RND" ) THEN
-      CONFIGURATION   = "Random"
-      CONFIG_SELEC(4) = .TRUE.
-    ELSE IF( CONFIG_INQ == "PB" ) THEN
-      CONFIGURATION   = "Packed Box"
-      CONFIG_SELEC(5) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, PACKING_F
-    READ( 10, * ) DUMMY, COMPONENTS
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
-      IF( SPHCOMP_INQ(C) == "T" ) THEN
-        SPHERCOMP(C) = .TRUE.
-      ELSE
-        SPHERCOMP(C) = .FALSE.
-      END IF
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, LENGTH(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, ASPECT_RATIO(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, MOLAR_F(C)
-    END DO
-    READ( 10, * ) DUMMY, N_PARTICLES
-    READ( 10, * ) DUMMY, TOTAL_VP, DUMMY
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, N_COMPONENT(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, PARTICLE_VOL(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, BOX_VOLUME, DUMMY
-    READ( 10, * ) DUMMY, BOX_LENGTH(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH(7:9)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(7:9)
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, RHO_PARTICLE(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, TOTAL_RHO, DUMMY
-    READ( 10, * ) DUMMY, TEMP, DUMMY
-    READ( 10, * ) DUMMY, PRESS
-    DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        READ( 10, * ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I)
-      END DO
-    END DO
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)" ) " "
-    CALL CONFIG_OUT(  )
-  END IF
-! Calls 'CONFIG_RND' subroutine if the user chooses a random structure
-ELSE IF( CONFIG_SELEC(4) ) THEN
-  IF( .NOT. INIT_CONF ) THEN
-    CALL CONFIG_RND(  )
-    CALL CONFIG_OUT(  )
-  ELSE
-    WRITE( *, "(2G0)" ) "Preset initial configuration selected! Simulation parameters previously calculated will be overwritten.", &
-    &                   " Continue? [Y/N]"
-    READ( *, * ) DUMMY
-    CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-    IF( DUMMY /= "Y" ) THEN
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "Please enter the 14-character descriptor code of the file: "
-    READ( *, * ) CODE_DESCRIPTOR
-    INQUIRE( FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_rnd_"//TRIM( DESCRIPTOR_FILE3 )//".xyz", &
-    &        EXIST= FILE_EXIST )
-    WRITE( *, "(G0)" ) " "
-    IF( .NOT. FILE_EXIST ) THEN
-      WRITE( *, "(G0,G0)" ) "Preset initial configuration not found for the specified configuration or the ", &
-      &                     "selected molecular geometry. Exiting..."
-      CALL SLEEP( 1 )
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 1 )
-    OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_rnd_" &
-    &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-    READ( 10, * ) DUMMY, GEOM_INQ
-    ! Extended configuration name
-    GEOM_SELEC(:) = .FALSE.
-    IF( GEOM_INQ == "EOR" ) THEN
-      GEOMETRY    = "Ellipsoids of revolution"
-      GEO_ACRONYM = "eor"
-      GEOM_SELEC(1) = .TRUE.
-    ELSE IF( GEOM_INQ == "SPC" ) THEN
-      GEOMETRY    = "Spherocylinders"
-      GEO_ACRONYM = "spc"
-      GEOM_SELEC(2) = .TRUE.
-    ELSE IF( GEOM_INQ == "CYL" ) THEN
-      GEOMETRY    = "Cylinders"
-      GEO_ACRONYM = "cyl"
-      GEOM_SELEC(3) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, CONFIG_INQ
-    ! Extended configuration name
-    CONFIG_SELEC(:) = .FALSE.
-    IF( CONFIG_INQ == "SC" ) THEN
-      CONFIGURATION   = "Simple Cube"
-      CONFIG_SELEC(1) = .TRUE.
-    ELSE IF( CONFIG_INQ == "BCC" ) THEN
-      CONFIGURATION   = "Body-Centered Cube"
-      CONFIG_SELEC(2) = .TRUE.
-    ELSE IF( CONFIG_INQ == "FCC" ) THEN
-      CONFIGURATION   = "Face-Centered Cube"
-      CONFIG_SELEC(3) = .TRUE.
-    ELSE IF( CONFIG_INQ == "RND" ) THEN
-      CONFIGURATION   = "Random"
-      CONFIG_SELEC(4) = .TRUE.
-    ELSE IF( CONFIG_INQ == "PB" ) THEN
-      CONFIGURATION   = "Packed Box"
-      CONFIG_SELEC(5) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, PACKING_F
-    READ( 10, * ) DUMMY, COMPONENTS
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
-      IF( SPHCOMP_INQ(C) == "T" ) THEN
-        SPHERCOMP(C) = .TRUE.
-      ELSE
-        SPHERCOMP(C) = .FALSE.
-      END IF
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, LENGTH(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, ASPECT_RATIO(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, MOLAR_F(C)
-    END DO
-    READ( 10, * ) DUMMY, N_PARTICLES
-    READ( 10, * ) DUMMY, TOTAL_VP, DUMMY
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, N_COMPONENT(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, PARTICLE_VOL(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, BOX_VOLUME, DUMMY
-    READ( 10, * ) DUMMY, BOX_LENGTH(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH(7:9)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(7:9)
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, RHO_PARTICLE(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, TOTAL_RHO, DUMMY
-    READ( 10, * ) DUMMY, TEMP, DUMMY
-    READ( 10, * ) DUMMY, PRESS
-    DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        READ( 10, * ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I)
-      END DO
-    END DO
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)" ) " "
-    CALL CONFIG_OUT(  )
-  END IF
-! Calls 'CONFIG_PB' subroutine if the user chooses a packed-box structure
-ELSE IF( CONFIG_SELEC(5) ) THEN
-  IF( .NOT. INIT_CONF ) THEN
-    CALL CONFIG_PB(  )
-    CALL CONFIG_OUT(  )
-  ELSE
-    WRITE( *, "(2G0)" ) "Preset initial configuration selected! Simulation parameters previously calculated will be overwritten.", &
-    &                   " Continue? [Y/N]"
-    READ( *, * ) DUMMY
-    CALL TO_UPPER( DUMMY, LEN_TRIM( DUMMY ), DUMMY )
-    IF( DUMMY /= "Y" ) THEN
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "Please enter the 14-character descriptor code of the file: "
-    READ( *, * ) CODE_DESCRIPTOR
-    INQUIRE( FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_pb_"//TRIM( DESCRIPTOR_FILE3 )//".xyz", &
-    &        EXIST= FILE_EXIST )
-    WRITE( *, "(G0)" ) " "
-    IF( .NOT. FILE_EXIST ) THEN
-      WRITE( *, "(G0,G0)" ) "Preset initial configuration not found for the specified configuration or the ", &
-      &                     "selected molecular geometry. Exiting..."
-      CALL SLEEP( 1 )
-      CALL EXIT(  )
-    END IF
-    WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL SLEEP( 1 )
-    OPEN( UNIT= 10, ACTION= "READ", FILE= "Initial_Configuration/"//TRIM( CODE_DESCRIPTOR )//"_initconf_pb_" &
-    &                                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-    READ( 10, * ) DUMMY, GEOM_INQ
-    ! Extended configuration name
-    GEOM_SELEC(:) = .FALSE.
-    IF( GEOM_INQ == "EOR" ) THEN
-      GEOMETRY    = "Ellipsoids of revolution"
-      GEO_ACRONYM = "eor"
-      GEOM_SELEC(1) = .TRUE.
-    ELSE IF( GEOM_INQ == "SPC" ) THEN
-      GEOMETRY    = "Spherocylinders"
-      GEO_ACRONYM = "spc"
-      GEOM_SELEC(2) = .TRUE.
-    ELSE IF( GEOM_INQ == "CYL" ) THEN
-      GEOMETRY    = "Cylinders"
-      GEO_ACRONYM = "cyl"
-      GEOM_SELEC(3) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, CONFIG_INQ
-    ! Extended configuration name
-    CONFIG_SELEC(:) = .FALSE.
-    IF( CONFIG_INQ == "SC" ) THEN
-      CONFIGURATION   = "Simple Cube"
-      CONFIG_SELEC(1) = .TRUE.
-    ELSE IF( CONFIG_INQ == "BCC" ) THEN
-      CONFIGURATION   = "Body-Centered Cube"
-      CONFIG_SELEC(2) = .TRUE.
-    ELSE IF( CONFIG_INQ == "FCC" ) THEN
-      CONFIGURATION   = "Face-Centered Cube"
-      CONFIG_SELEC(3) = .TRUE.
-    ELSE IF( CONFIG_INQ == "RND" ) THEN
-      CONFIGURATION   = "Random"
-      CONFIG_SELEC(4) = .TRUE.
-    ELSE IF( CONFIG_INQ == "PB" ) THEN
-      CONFIGURATION   = "Packed Box"
-      CONFIG_SELEC(5) = .TRUE.
-    END IF
-    READ( 10, * ) DUMMY, PACKING_F
-    READ( 10, * ) DUMMY, COMPONENTS
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, SPHCOMP_INQ(C)
-      IF( SPHCOMP_INQ(C) == "T" ) THEN
-        SPHERCOMP(C) = .TRUE.
-      ELSE
-        SPHERCOMP(C) = .FALSE.
-      END IF
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, DIAMETER(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, LENGTH(C), DUMMY
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, ASPECT_RATIO(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, MOLAR_F(C)
-    END DO
-    READ( 10, * ) DUMMY, N_PARTICLES
-    READ( 10, * ) DUMMY, TOTAL_VP, DUMMY
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, N_COMPONENT(C)
-    END DO
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, PARTICLE_VOL(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, BOX_VOLUME, DUMMY
-    READ( 10, * ) DUMMY, BOX_LENGTH(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH(7:9)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(1:3)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(4:6)
-    READ( 10, * ) DUMMY, BOX_LENGTH_I(7:9)
-    DO C = 1, COMPONENTS
-      READ( 10, * ) DUMMY, RHO_PARTICLE(C), DUMMY
-    END DO
-    READ( 10, * ) DUMMY, TOTAL_RHO, DUMMY
-    READ( 10, * ) DUMMY, TEMP, DUMMY
-    READ( 10, * ) DUMMY, PRESS
-    DO C = 1, COMPONENTS
-      DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-        READ( 10, * ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I)
-      END DO
-    END DO
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "File sucessfully read! Resuming..."
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)" ) " "
-    CALL CONFIG_OUT(  )
-  END IF
+! Initialize initial structure if restoration is not selected
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  ! Initial configuration (see 'InitialConfiguration' module)
+  WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
+  WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 17 )//"INITIAL CONFIGURATION"//REPEAT( " ", 17 )//CH_VS
+  WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
+  WRITE( *, "(G0)" ) "Setting up initial configuration folder..."
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)" ) " "
+  ! Initial configuration structure
+  CALL InitialConfigurationStructure(  )
 END IF
 
 ! Status
@@ -947,681 +418,238 @@ WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"FOLDER ORGANIZER"//REPEAT( " ", 20 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
 WRITE( *, "(G0)" ) "Setting up folders..."
-CALL SLEEP( 1 )
+CALL Sleep( 1 )
 WRITE( *, "(G0)" ) " "
 
-! Create output directories (see 'FOLDERS' module)
-CALL INQUIRE_FOLDERS(  )
+! Create output directories (see 'Folders' module)
+CALL InquireFolders(  )
 
-! Create date subfolders (see 'FOLDERS' module)
-CALL DATE_FOLDERS(  )
+! Create date subfolders (see 'Folders' module)
+CALL DateFolders(  )
 
-! Initialization of the attractive range subfolders (see 'FOLDERS' module)
-IF( POTENTIAL_SELEC(2) ) THEN
-  CALL LAMBDA_FOLDERS(  )
+! Create backup folder (see 'Folders' module)
+IF( BackupFileLogical ) THEN
+  CALL BackupFolder(  )
+  ! Date format (YYYY/MM/DD)
+  FormatDate = "(I4,2I2.2)"
+  ! Time format (HH:MM:SS)
+  FormatHour = "(3I2.2)"
+  ! Output file descriptors (p. fraction/pressure [1], # of components [2], and geometry [3])
+  FormatFileThermoVariable = "(F0.5)"
+  FormatFileComponents     = "(I0.3)"
+  FormatFileGeometry       = "(A3)"
 END IF
 
-! Hard-core volumetric relation (EOR/SPC/HC and SPHERES)
-IF( GEOM_SELEC(1) ) THEN
-  DO C = 1, COMPONENTS
-    IF( .NOT. SPHERCOMP(C) ) THEN
-      SIGSPHERE(C) = DIAMETER(C) * ( ( ASPECT_RATIO(C) ) ** ( 1.D0 / 3.D0 ) ) ! Ellipsoids of revolution
-    ELSE
-      SIGSPHERE(C) = DIAMETER(C) ! Spheres
-    END IF
-  END DO
-ELSE IF( GEOM_SELEC(2) ) THEN
-  DO C = 1, COMPONENTS
-    IF( .NOT. SPHERCOMP(C) ) THEN
-      SIGSPHERE(C) = DIAMETER(C) * ( ( 1.D0 + ( 1.5D0 * ASPECT_RATIO(C) ) ) ** ( 1.D0 / 3.D0 ) ) ! Spherocylinders
-    ELSE
-      SIGSPHERE(C) = DIAMETER(C) ! Spheres
-    END IF
-  END DO
-ELSE IF( GEOM_SELEC(3) ) THEN
-  DO C = 1, COMPONENTS
-    IF( .NOT. SPHERCOMP(C) ) THEN
-      SIGSPHERE(C) = DIAMETER(C) * ( ( 1.5D0 * ASPECT_RATIO(C) ) ** ( 1.D0 / 3.D0 ) ) ! Cylinders
-    ELSE
-      SIGSPHERE(C) = DIAMETER(C) ! Spheres
-    END IF
-  END DO
+! Initialization of the attractive range subfolders (see 'Folders' module)
+IF( PotentialTypeLogical(2) ) THEN
+  CALL RangeFolders(  )
 END IF
 
-! Effective range of attraction
-IF( POTENTIAL_SELEC(2) ) THEN
-  DO C = 1, COMPONENTS
-    SWRANGE(C,:) = L_RANGE(:) * SIGSPHERE(C)
-  END DO
+! Re-initialize cell arrays
+IF( CellListLogical .AND. .NOT. RestoreBackupFileLogical ) THEN
+  BoxCutoff(1) = cLargestSphereDiameter / BoxLength(1)
+  BoxCutoff(2) = cLargestSphereDiameter / BoxLength(5)
+  BoxCutoff(3) = cLargestSphereDiameter / BoxLength(9)
+  CALL MakeList( BoxCutoff, pPosition, BoxLengthInverse )
 END IF
 
-! Active transformation (orientation of particles)
-DO I = 1, N_PARTICLES
-  CALL ACTIVE_TRANSFORMATION( AXISZ, Q(:,I), E(:,I) )
-END DO
-
-! Status
-WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
-WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 6 )//"OVERLAP CHECK FOR THE INITIAL CONFIGURATION"//REPEAT( " ", 6 )//CH_VS
-WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
-WRITE( *, "(G0)" ) "Verifying initial configuration..."
-CALL SLEEP( 1 )
-WRITE( *, "(G0)" ) " "
-
-! Diameter of circumscribing sphere
-IF( GEOM_SELEC(1) ) THEN
-  DO C = 1, COMPONENTS
-    IF( .NOT. SPHERCOMP(C) ) THEN
-      IF( ASPECT_RATIO(C) > 0.D0 .AND. ASPECT_RATIO(C) < 1.D0 ) THEN
-        CUTOFF(C) = DIAMETER(C)
-      ELSE IF( ASPECT_RATIO(C) > 1.D0 ) THEN
-        CUTOFF(C) = LENGTH(C)
-      END IF
-    ELSE
-      CUTOFF(C) = DIAMETER(C)
-    END IF
+! Search for overlapping configurations if restoration is not selected
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  ! Active transformation (orientation of particles)
+  DO pParticle = 1, nParticles
+    CALL ActiveTransformation( zAxis, pQuaternion(:,pParticle), pOrientation(:,pParticle) )
   END DO
-ELSE IF( GEOM_SELEC(2) ) THEN
-  DO C = 1, COMPONENTS
-    IF( .NOT. SPHERCOMP(C) ) THEN
-      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
-    ELSE
-      CUTOFF(C) = DIAMETER(C)
-    END IF
-  END DO
-ELSE IF( GEOM_SELEC(3) ) THEN
-  DO C = 1, COMPONENTS
-    IF( .NOT. SPHERCOMP(C) ) THEN
-      CUTOFF(C) = DIAMETER(C) + LENGTH(C)
-    ELSE
-      CUTOFF(C) = DIAMETER(C)
-    END IF
-  END DO
+  ! Status
+  WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
+  WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 6 )//"OVERLAP CHECK FOR THE INITIAL CONFIGURATION"//REPEAT( " ", 6 )//CH_VS
+  WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
+  WRITE( *, "(G0)" ) "Verifying initial configuration..."
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)" ) " "
+  ! Overlap check (initial configuration)
+  IF( .NOT. CellListControl ) THEN
+    ! Whole system
+    CALL OverlapCheckInitialConfiguration(  )
+  ELSE
+    ! Linked lists
+    CALL FullListOverlapCheckInitialConfiguration( ContactDistance, BoxLength, BoxLengthInverse, HalfNeighboursControl )
+  END IF
+  ! Status
+  WRITE( *, "(G0)" ) "No overlaps found in the initial configuration. Resuming..."
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)" ) " "
 END IF
-
-! Overlap check (initial configuration)
-OVERLAP = .FALSE.
-! Anisomorphic molecules (unlike components)
-DO CI = 1, COMPONENTS - 1
-  DO CJ = CI + 1, COMPONENTS
-    ! First loop represents all particles with indexes i of component Ci
-    DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
-      ! Second loop represents all particles with indexes j of component Cj
-      DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
-        ! Position of particle i
-        RI(1)  = R(1,I)
-        RI(2)  = R(2,I)
-        RI(3)  = R(3,I)
-        ! Position of particle j
-        RJ(1)  = R(1,J)
-        RJ(2)  = R(2,J)
-        RJ(3)  = R(3,J)
-        ! Orientation of particle i
-        EI(1)  = E(1,I)
-        EI(2)  = E(2,I)
-        EI(3)  = E(3,I)
-        ! Orientation of particle j
-        EJ(1)  = E(1,J)
-        EJ(2)  = E(2,J)
-        EJ(3)  = E(3,J)
-        ! Quaternion of particle i
-        QI(0)  = Q(0,I)
-        QI(1)  = Q(1,I)
-        QI(2)  = Q(2,I)
-        QI(3)  = Q(3,I)
-        ! Quaternion of particle j
-        QJ(0)  = Q(0,J)
-        QJ(1)  = Q(1,J)
-        QJ(2)  = Q(2,J)
-        QJ(3)  = Q(3,J)
-        ! Vector distance between particles i and j
-        RIJ(1) = RJ(1) - RI(1)
-        RIJ(2) = RJ(2) - RI(2)
-        RIJ(3) = RJ(3) - RI(3)
-        ! Minimum image convention
-        CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
-        S12 = S12 - ANINT(S12)
-        CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
-        ! Magnitude of the vector distance (squared)
-        RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-        ! Cutoff distance (squared)
-        CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-        CUTOFF_D = CUTOFF_D * CUTOFF_D
-        ! Preliminary test (circumscribing spheres)
-        IF( RIJSQ <= CUTOFF_D ) THEN
-          ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-          IF( GEOM_SELEC(1) ) THEN
-            CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
-            ! Overlap criterion
-            IF( OVERLAP ) THEN
-              ! Overlap detected
-              IF( COMPONENTS > 1 ) THEN
-                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-              ELSE IF( COMPONENTS == 1 ) THEN
-                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-              END IF
-              CALL SLEEP( 1 )
-              CALL EXIT(  )
-            END IF
-          ! Overlap test for spherocylinders (Vega-Lago method)
-          ELSE IF( GEOM_SELEC(2) ) THEN
-            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
-            ! Overlap criterion
-            IF( OVERLAP ) THEN
-              ! Overlap detected
-              IF( COMPONENTS > 1 ) THEN
-                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-              ELSE IF( COMPONENTS == 1 ) THEN
-                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-              END IF
-              CALL SLEEP( 1 )
-              CALL EXIT(  )
-            END IF
-          ! Overlap test for cylinders and/or spheres
-          ELSE IF( GEOM_SELEC(3) ) THEN
-            IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-              ! Initialization
-              OVERLAP_PRELIMINAR = .FALSE.
-              ! Preliminary test (circumscribing spherocylinders)
-              CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-              ! Overlap criterion
-              IF( OVERLAP_PRELIMINAR ) THEN
-                ! Retrive position of the particle j after applying the PBC
-                RJ(1) = RI(1) + RIJ(1)
-                RJ(2) = RI(2) + RIJ(2)
-                RJ(3) = RI(3) + RIJ(3)
-                ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-                CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                ! Overlap criterion
-                IF( OVERLAP ) THEN
-                  ! Overlap detected
-                  IF( COMPONENTS > 1 ) THEN
-                    WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                    &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-                  ELSE IF( COMPONENTS == 1 ) THEN
-                    WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
-                    &                   ". Exiting..."
-                  END IF
-                  CALL SLEEP( 1 )
-                  CALL EXIT(  )
-                END IF
-              END IF
-            ! Overlap test for cylinders and spheres
-            ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-              ! Retrive position of the particle j after applying the PBC
-              RJ(1) = RI(1) + RIJ(1)
-              RJ(2) = RI(2) + RIJ(2)
-              RJ(3) = RI(3) + RIJ(3)
-              CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
-              ! Overlap criterion
-              IF( OVERLAP ) THEN
-                ! Overlap detected
-                IF( COMPONENTS > 1 ) THEN
-                  WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                  &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-                ELSE IF( COMPONENTS == 1 ) THEN
-                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
-                  &                   ". Exiting..."
-                END IF
-                CALL SLEEP( 1 )
-                CALL EXIT(  )
-              END IF
-            ! Overlap test for cylinders and spheres
-            ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-              ! Retrive position of the particle j after applying the PBC
-              RJ(1) = RI(1) + RIJ(1)
-              RJ(2) = RI(2) + RIJ(2)
-              RJ(3) = RI(3) + RIJ(3)
-              CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
-              ! Overlap criterion
-              IF( OVERLAP ) THEN
-                ! Overlap detected
-                IF( COMPONENTS > 1 ) THEN
-                  WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                  &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-                ELSE IF( COMPONENTS == 1 ) THEN
-                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
-                  &                   ". Exiting..."
-                END IF
-                CALL SLEEP( 1 )
-                CALL EXIT(  )
-              END IF
-            ! Overlap test for spheres
-            ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-              ! Overlap detected
-              IF( COMPONENTS > 1 ) THEN
-                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-              ELSE IF( COMPONENTS == 1 ) THEN
-                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-              END IF
-              CALL SLEEP( 1 )
-              CALL EXIT(  )
-            END IF
-          END IF
-        END IF
-      END DO
-    END DO
-  END DO
-END DO
-! Isomorphic molecules (like components)
-DO CI = 1, COMPONENTS
-  CJ = CI
-  ! First loop represents a particle with an index i of component Ci
-  DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
-    ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-    DO J = I + 1, SUM( N_COMPONENT(0:CI) )
-      ! Position of particle i
-      RI(1)  = R(1,I)
-      RI(2)  = R(2,I)
-      RI(3)  = R(3,I)
-      ! Position of particle j
-      RJ(1)  = R(1,J)
-      RJ(2)  = R(2,J)
-      RJ(3)  = R(3,J)
-      ! Orientation of particle i
-      EI(1)  = E(1,I)
-      EI(2)  = E(2,I)
-      EI(3)  = E(3,I)
-      ! Orientation of particle j
-      EJ(1)  = E(1,J)
-      EJ(2)  = E(2,J)
-      EJ(3)  = E(3,J)
-      ! Quaternion of particle i
-      QI(0)  = Q(0,I)
-      QI(1)  = Q(1,I)
-      QI(2)  = Q(2,I)
-      QI(3)  = Q(3,I)
-      ! Quaternion of particle j
-      QJ(0)  = Q(0,J)
-      QJ(1)  = Q(1,J)
-      QJ(2)  = Q(2,J)
-      QJ(3)  = Q(3,J)
-      ! Vector distance between particles i and j
-      RIJ(1) = RJ(1) - RI(1)
-      RIJ(2) = RJ(2) - RI(2)
-      RIJ(3) = RJ(3) - RI(3)
-      ! Minimum image convention
-      CALL MULTI_MATRIX( BOX_LENGTH_I, RIJ, S12 )
-      S12 = S12 - ANINT(S12)
-      CALL MULTI_MATRIX( BOX_LENGTH, S12, RIJ )
-      ! Magnitude of the vector distance (squared)
-      RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-      ! Cutoff distance (squared)
-      CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-      CUTOFF_D = CUTOFF_D * CUTOFF_D
-      ! Preliminary test (circumscribing spheres)
-      IF( RIJSQ <= CUTOFF_D ) THEN
-        ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
-        IF( GEOM_SELEC(1) ) THEN
-          CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
-          ! Overlap criterion
-          IF( OVERLAP ) THEN
-            ! Overlap detected
-            IF( COMPONENTS > 1 ) THEN
-              WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-              &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-            ELSE IF( COMPONENTS == 1 ) THEN
-              WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-            END IF
-            CALL SLEEP( 1 )
-            CALL EXIT(  )
-          END IF
-        ! Overlap test for spherocylinders (Vega-Lago Method)
-        ELSE IF( GEOM_SELEC(2) ) THEN
-          CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
-          ! Overlap criterion
-          IF( OVERLAP ) THEN
-            ! Overlap detected
-            IF( COMPONENTS > 1 ) THEN
-              WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-              &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-            ELSE IF( COMPONENTS == 1 ) THEN
-              WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-            END IF
-            CALL SLEEP( 1 )
-            CALL EXIT(  )
-          END IF
-        ! Overlap test for cylinders and/or spheres
-        ELSE IF( GEOM_SELEC(3) ) THEN
-          IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-            ! Initialization
-            OVERLAP_PRELIMINAR = .FALSE.
-            ! Preliminary test (circumscribing spherocylinders)
-            CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-            ! Overlap criterion
-            IF( OVERLAP_PRELIMINAR ) THEN
-              ! Retrive position of the particle j after applying the PBC
-              RJ(1) = RI(1) + RIJ(1)
-              RJ(2) = RI(2) + RIJ(2)
-              RJ(3) = RI(3) + RIJ(3)
-              ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-              CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-              ! Overlap criterion
-              IF( OVERLAP ) THEN
-                ! Overlap detected
-                IF( COMPONENTS > 1 ) THEN
-                  WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                  &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-                ELSE IF( COMPONENTS == 1 ) THEN
-                  WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-                END IF
-                CALL SLEEP( 1 )
-                CALL EXIT(  )
-              END IF
-            END IF
-            ! Overlap test for cylinders and spheres
-          ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-            ! Retrive position of the particle j after applying the PBC
-            RJ(1) = RI(1) + RIJ(1)
-            RJ(2) = RI(2) + RIJ(2)
-            RJ(3) = RI(3) + RIJ(3)
-            CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
-            ! Overlap criterion
-            IF( OVERLAP ) THEN
-              ! Overlap detected
-              IF( COMPONENTS > 1 ) THEN
-                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-              ELSE IF( COMPONENTS == 1 ) THEN
-                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
-                &                   ". Exiting..."
-              END IF
-              CALL SLEEP( 1 )
-              CALL EXIT(  )
-            END IF
-          ! Overlap test for cylinders and spheres
-          ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-            ! Retrive position of the particle j after applying the PBC
-            RJ(1) = RI(1) + RIJ(1)
-            RJ(2) = RI(2) + RIJ(2)
-            RJ(3) = RI(3) + RIJ(3)
-            CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
-            ! Overlap criterion
-            IF( OVERLAP ) THEN
-              ! Overlap detected
-              IF( COMPONENTS > 1 ) THEN
-                WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-                &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-              ELSE IF( COMPONENTS == 1 ) THEN
-                WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, &
-                &                   ". Exiting..."
-              END IF
-              CALL SLEEP( 1 )
-              CALL EXIT(  )
-            END IF
-          ! Overlap test for spheres
-          ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-            ! Overlap detected
-            IF( COMPONENTS > 1 ) THEN
-              WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", I, " of component ", &
-              &                   CI, " and ", J, " of component ", CJ, ". Exiting..."
-            ELSE IF( COMPONENTS == 1 ) THEN
-              WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", I, " and ", J, ". Exiting..."
-            END IF
-            CALL SLEEP( 1 )
-            CALL EXIT(  )
-          END IF
-        END IF
-      END IF
-    END DO
-  END DO
-END DO
-
-! Status
-WRITE( *, "(G0)" ) "No overlaps found in the initial configuration. Resuming..."
-CALL SLEEP( 1 )
-WRITE( *, "(G0)" ) " "
 
 ! Start simulation timer
-CALL CPU_TIME( START_TIMER )
-
-! Active transformation
-DO I = 1, N_PARTICLES
-  CALL ACTIVE_TRANSFORMATION( AXISZ, Q(:,I), E(:,I) )
-END DO
+CALL CPU_Time( StartTimer )
 
 ! Status
 WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 20 )//"FILE ORGANIZER"//REPEAT( " ", 21 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
-WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating files..."
+WRITE( *, "(G0)", Advance= "NO" ) "Creating files..."
 
-! *********************************************************************************************** !
-! Output file units                                                                               !
-! *********************************************************************************************** !
-
-! Trajectory file (depends on user's choice)
-IF( TRAJ_CHECK ) THEN
-  IF( MC_ENSEMBLE == "NVT" ) THEN
-    OPEN( UNIT= 20, FILE= "Trajectories/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-    &                     "_traj_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-    &                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-  ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
-    OPEN( UNIT= 20, FILE= "Trajectories/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-    &                     "_traj_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-    &                     //TRIM( DESCRIPTOR_FILE3 )//".xyz" )
-  END IF
-  WRITE( 20, "(G0)" ) N_PARTICLES
-  WRITE( 20, * ) " "
-  IF( GEOM_SELEC(1) ) THEN
-    DO C = 1, COMPONENTS
-      IF( .NOT. SPHERCOMP(C) ) THEN
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
-          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
-        END DO
-      ELSE
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
-          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
-        END DO
-      END IF
-    END DO
-  ELSE IF( GEOM_SELEC(2) ) THEN
-    DO C = 1, COMPONENTS
-      IF( .NOT. SPHERCOMP(C) ) THEN
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
-          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
-        END DO
-      ELSE
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
-          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
-        END DO
-      END IF
-    END DO
-  ELSE IF( GEOM_SELEC(3) ) THEN
-    DO C = 1, COMPONENTS
-      IF( .NOT. SPHERCOMP(C) ) THEN
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
-          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
-        END DO
-      ELSE
-        DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-          WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), R(1,I), R(2,I), R(3,I), Q(0,I), Q(1,I), Q(2,I), Q(3,I), &
-          &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
-        END DO
-      END IF
-    END DO
-  END IF
-  FLUSH( 20 )
-END IF
-
-! Ratio file (translation)
-IF( MC_ENSEMBLE == "NVT" ) THEN
-  OPEN( UNIT= 30, FILE= "Ratio/Translation/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_ratio_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 30, "(7G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [Å]"//'"', ",", &
-  &                    '"'//"Acceptance Ratio Threshold"//'"'
-  FLUSH( 30 )
-ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
-  OPEN( UNIT= 30, FILE= "Ratio/Translation/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_ratio_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 30, "(7G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [Å]"//'"', ",", &
-  &                    '"'//"Acceptance Ratio Threshold"//'"'
-  FLUSH( 30 )
-END IF
-
-! Ratio file (rotation)
-IF( MC_ENSEMBLE == "NVT" ) THEN
-  OPEN( UNIT= 40, FILE= "Ratio/Rotation/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_ratio_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 40, "(7G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [rad]"//'"', ",", &
-  &                    '"'//"Acceptance Ratio Threshold"//'"'
-  FLUSH( 40 )
-ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
-  OPEN( UNIT= 40, FILE= "Ratio/Rotation/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_ratio_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 40, "(7G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [rad]"//'"', ",", &
-  &                    '"'//"Acceptance Ratio Threshold"//'"'
-  FLUSH( 40 )
-END IF
-
-! Ratio file (volume change)
-IF( MC_ENSEMBLE == "NPT" ) THEN
-  OPEN( UNIT= 50, FILE= "Ratio/Volume/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_ratio_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 50, "(9G0)" ) '"'//"Cycles"//'"', ",", '"'//"Acceptance Ratio"//'"', ",", '"'//"Maximum Displacement [Å³]"//'"', ",", &
-  &                    '"'//"Acceptance Ratio Threshold"//'"', ",", '"'//"Type of Volume Change"//'"'
-  FLUSH( 50 )
-END IF
-
-! Ratio file (box properties)
-IF( MC_ENSEMBLE == "NPT" ) THEN
-  OPEN( UNIT= 55, FILE= "Ratio/Box/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_ratio_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 55, "(23G0)" ) '"'//"Cycles"//'"', ",", '"'//"Box Distortion"//'"', ",", &
-  &                     '"'//"Box Volume [Å³]"//'"', ",", '"'//"Box Length 1 [Å]"//'"', ",", &
-  &                     '"'//"Box Length 2 [Å]"//'"', ",", '"'//"Box Length 3 [Å]"//'"', ",", &
-  &                     '"'//"Box Length 4 [Å]"//'"', ",", '"'//"Box Length 5 [Å]"//'"', ",", &
-  &                     '"'//"Box Length 6 [Å]"//'"', ",", '"'//"Box Length 7 [Å]"//'"', ",", &
-  &                     '"'//"Box Length 8 [Å]"//'"', ",", '"'//"Box Length 9 [Å]"//'"'
-  FLUSH( 55 )
-END IF
-
-! Order parameter file
-IF( MC_ENSEMBLE == "NVT" ) THEN
-  OPEN( UNIT= 60, FILE= "Order_Parameter/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_order_η"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 60, "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"'
-  FLUSH( 60 )
-ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
-  OPEN( UNIT= 60, FILE= "Order_Parameter/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_order_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 60, "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"'
-  FLUSH( 60 )
-END IF
-
-! Results file
-IF( MC_ENSEMBLE == "NPT" ) THEN
-  OPEN( UNIT= 70, FILE= "Results/"//TRIM( DESCRIPTOR_DATE )//"/"//TRIM( DESCRIPTOR_HOUR )// &
-  &                     "_results_P"//TRIM( DESCRIPTOR_FILE1 )//"_C"//TRIM( DESCRIPTOR_FILE2 )//"_" &
-  &                     //TRIM( DESCRIPTOR_FILE3 )//".dat" )
-  WRITE( 70, "(9G0)" ) '"'//"Cycles"//'"', ",", '"'//"Packing Fraction"//'"', ",", '"'//"Number Density [Å⁻³]"//'"', ",", &
-  &                    '"'//"Box Volume"//'"', ",", '"'//"Reduced Pressure"//'"'
-  FLUSH( 70 )
-END IF
-
-! Potential file
-IF( POTENTIAL_SELEC(2) ) THEN
-  DO C_LAMB = 1, N_LAMBDA
-    WRITE( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
-    ! Potential files
-    OPEN( UNIT= (80 + C_LAMB), FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/"&
-    &                                //TRIM( DESCRIPTOR_HOUR )//"_thermo_η"//TRIM( DESCRIPTOR_FILE1 )//"_C" &
-    &                                //TRIM( DESCRIPTOR_FILE2 )//"_"//TRIM( DESCRIPTOR_FILE3 )//".dat" )
-    WRITE( (80 + C_LAMB), "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Potential Energy"//'"'
-    FLUSH( (80 + C_LAMB) )
-  END DO
-END IF
+! Output file units
+CALL FileHandler( LastLine )
 
 ! Status
-CALL SLEEP( 1 )
-WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+CALL Sleep( 1 )
+WRITE( *, "(G0)", Advance= "YES" ) " Done!"
 WRITE( *, "(G0)" ) " "
 
 ! Status
 WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 16 )//"MONTE CARLO SIMULATION"//REPEAT( " ", 17 )//CH_VS
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
-IF( MC_ENSEMBLE == "NVT" ) THEN
+IF( EnsembleMC == "NVT" ) THEN
   WRITE( *, "(G0)" ) "Starting up the NVT-Monte Carlo simulation..."
-ELSE IF( MC_ENSEMBLE == "NPT" ) THEN
+ELSE IF( EnsembleMC == "NPT" ) THEN
   WRITE( *, "(G0)" ) "Starting up the NPT-Monte Carlo simulation..."
 END IF
-CALL SLEEP( 1 )
+CALL Sleep( 1 )
 WRITE( *, "(G0)" ) " "
 
-! Computation of total potential energy (initial configuration)
-IF( POTENTIAL_SELEC(2) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Computing total potential energy of the initial configuration..."
-  CALL COMPUTE_TOTAL_ENERGY(  )
-  ! Status
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
-  WRITE( *, "(G0)" ) " "
+! Computation of total potential energy (initial configuration) if restoration is not selected
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  IF( PotentialTypeLogical(2) ) THEN
+    WRITE( *, "(G0)", Advance= "NO" ) "Computing total potential energy of the initial configuration..."
+    IF( .NOT. CellListControl ) THEN
+      CALL ComputeTotalPotentialEnergy(  )
+    ELSE
+      CALL ListComputeTotalPotentialEnergyInitialConfiguration( BoxLength, BoxLengthInverse, HalfNeighboursControl )
+    END IF
+    ! Status
+    CALL Sleep( 1 )
+    WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+    WRITE( *, "(G0)" ) " "
+  END IF
 END IF
 
-! Pseudorandom number generator seed
-IF( FSEED ) THEN
-  SEED  = 123456789
-  ISEED = SEED
-ELSE IF( .NOT. FSEED ) THEN
-  CALL RANDOM_NUMBER( RANDOM_N )
-  SEED_COMP = INT( RANDOM_N * DBLE( SIZE_SEED ) ) + 1
-  SEED  = ABS( RANS(SEED_COMP) )
-  ISEED = SEED
+! Pseudorandom number generator seed (if restoration is not selected)
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  IF( FixedSeedLogical ) THEN
+    SeedValue   = 123456789
+    InitialSeed = SeedValue
+  ELSE IF( .NOT. FixedSeedLogical ) THEN
+    CALL RANDOM_NUMBER( RandomNumber )
+    iSeed       = INT( RandomNumber * DBLE( SeedSize ) ) + 1
+    SeedValue   = ABS( RandomSeed(iSeed) )
+    InitialSeed = SeedValue
+  END IF
 END IF
 
-! Initialize box distortion parameter
-CALL LATTICE_REDUCTION( BOX_LENGTH, DISTORTION, LATTICER )
+! Initialize box distortion parameter if restoration is not selected
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  CALL LatticeReduction( BoxLength, BoxDistortionMC, LatticeReductionLogical )
+END IF
+
+! Backup file
+IF( BackupFileLogical ) THEN
+  CALL WriteBackupVariables( DateTime )
+END IF
 
 ! *********************************************************************************************** !
 ! Monte Carlo parameters                                                                          !
 ! *********************************************************************************************** !
-MOV_TRANS    = .FALSE.         ! Translational move selector                       (initial value)
-MOV_ROT      = .FALSE.         ! Rotational move selector                          (initial value)
-MOV_VOL_I    = .FALSE.         ! Volume move selector (Isotropic)                  (initial value)
-MOV_VOL_A    = .FALSE.         ! Volume move selector (Anisotropic)                (initial value)
-DRMAX        = MAX_TRANS       ! Maximum translational displacement                (initial value)
-ANGMAX       = MAX_ROT         ! Maximum rotational displacement                   (initial value)
-DVMAXISO     = MAX_VOLI        ! Maximum isovolumetric displacement                (initial value)
-DVMAXANI     = MAX_VOLA        ! Maximum anisovolumetric displacement              (initial value)
-NACCT        = 0               ! Translational move acceptance counter             (initial value)
-NACCR        = 0               ! Rotational move acceptance counter                (initial value)
-NACCVI       = 0               ! Volumetric move acceptance counter (Isotropic)    (initial value)
-NACCVA       = 0               ! Volumetric move acceptance counter (Anisotropic)  (initial value)
-MOVT         = 0               ! Translational move counter                        (initial value)
-MOVR         = 0               ! Rotational move counter                           (initial value)
-MOVVI        = 0               ! Volume change counter (Isotropic)                 (initial value)
-MOVVA        = 0               ! Volume change counter (Anisotropic)               (initial value)
-QMC(:,:)     = Q(:,:)          ! Rotation quaternions                              (initial value)
-RMC(:,:)     = R(:,:)          ! Position of particles                             (initial value)
-EMC(:,:)     = E(:,:)          ! Orientation of particles                          (initial value)
-VMC(:)       = V(:)            ! Total potential energy                            (initial value)
-BOXLMC(:)    = BOX_LENGTH(:)   ! Box length                                        (initial value)
-BOXLMC_I(:)  = BOX_LENGTH_I(:) ! Box length (inverse)                              (initial value)
-BOXVMC       = BOX_VOLUME      ! Box volume                                        (initial value)
-SCALE_FACTOR = 1.D0            ! Scaling factor                                    (initial value)
-LATTICER     = .FALSE.         ! Lattice reduction                                 (initial value)
+IF( .NOT. RestoreBackupFileLogical ) THEN
+  FirstCycle                         = 0                                  ! First cycle of the simulation                    (initial value)
+  MovementTranslationLogical         = .FALSE.                            ! Translational move selector                      (initial value)
+  MovementRotationLogical            = .FALSE.                            ! Rotational move selector                         (initial value)
+  MovementIsoVolumeChangeLogical     = .FALSE.                            ! Volume move selector (Isotropic)                 (initial value)
+  MovementAnisoVolumeChangeLogical   = .FALSE.                            ! Volume move selector (Anisotropic)               (initial value)
+  nAcceptanceTranslation             = 0                                  ! Translational move acceptance counter            (initial value)
+  nAcceptanceRotation                = 0                                  ! Rotational move acceptance counter               (initial value)
+  nAcceptanceIsotropicVolumeChange   = 0                                  ! Volumetric move acceptance counter (Isotropic)   (initial value)
+  nAcceptanceAnisotropicVolumeChange = 0                                  ! Volumetric move acceptance counter (Anisotropic) (initial value)
+  nMovementTranslationCounter        = 0                                  ! Translational move counter                       (initial value)
+  nMovementRotationCounter           = 0                                  ! Rotational move counter                          (initial value)
+  nMovementIsoVolumeChangeCounter    = 0                                  ! Volume scaling counter (Isotropic)               (initial value)
+  nMovementAnisoVolumeChangeCounter  = 0                                  ! Volume scaling counter (Anisotropic)             (initial value)
+  pQuaternionMC                      = pQuaternion                        ! Rotation quaternions                             (initial value)
+  pPositionMC                        = pPosition                          ! Position of particles                            (initial value)
+  pOrientationMC                     = pOrientation                       ! Orientation of particles                         (initial value)
+  IF( PotentialTypeLogical(2) ) THEN
+    TotalPotentialEnergyMC           = TotalPotentialEnergy               ! Total potential energy                           (initial value)
+  END IF
+  BoxLengthMC                        = BoxLength                          ! Box length                                       (initial value)
+  BoxLengthInverseMC                 = BoxLengthInverse                   ! Box length (inverse)                             (initial value)
+  BoxVolumeMC                        = BoxVolume                          ! Box volume                                       (initial value)
+  VolumeScalingFactor                = 1.D0                               ! Scaling factor                                   (initial value)
+  LatticeReductionLogical            = .FALSE.                            ! Lattice reduction                                (initial value)
+  MaxTranslationalDisplacement       = UserMaxTranslationalDisplacement   ! Maximum translational displacement               (initial value)
+  MaxAngularDisplacement             = UserMaxRotationalDisplacement      ! Maximum rotational displacement                  (initial value)
+  MaxIsoVolumetricDisplacement       = UserMaxIsoVolumetricDisplacement   ! Maximum isovolumetric displacement               (initial value)
+  MaxAnisoVolumetricDisplacement     = UserMaxAnisoVolumetricDisplacement ! Maximum anisovolumetric displacement             (initial value)
+ELSE
+  WRITE( *, "(G0)", Advance= "NO" ) "Restoring simulation variables from a previous run..."
+  OPEN( Unit= 105, File= "Backup/"//TRIM( DescriptorBackup )//"_simulation.backup", Action= "READ" )
+  READ( 105, * ) Dummy, FirstCycle
+  IF( CellListLogical ) THEN
+    READ( 105, * ) Dummy, CellListControl
+    READ( 105, * ) Dummy, pCells
+    ! Allocation
+    ALLOCATE( pCellHead(0:(pCells(1)-1),0:(pCells(2)-1),0:(pCells(3)-1)) )
+    READ( 105, * ) pCellHead
+    DO pParticle = 1, nParticles
+      READ( 105, * ) pCellList(pParticle), pCellIndex(:,pParticle)
+    END DO
+  END IF
+  DO pParticle = 1, nParticles
+    READ( 105, * ) pPositionMC(:,pParticle), pQuaternionMC(:,pParticle), pOrientationMC(:,pParticle)
+  END DO
+  IF( PotentialTypeLogical(2) ) THEN
+    DO rRange = 1, nRange
+      READ( 105, * ) TotalPotentialEnergyMC(rRange)
+    END DO
+  END IF
+  IF( CellListLogical ) THEN
+    READ( 105, * ) Dummy, OldBoxLength
+  END IF
+  READ( 105, * ) Dummy, BoxLengthMC
+  READ( 105, * ) Dummy, BoxLengthInverseMC
+  READ( 105, * ) Dummy, BoxVolumeMC
+  READ( 105, * ) Dummy, BoxDistortionMC
+  READ( 105, * ) Dummy, nAcceptanceTranslation
+  READ( 105, * ) Dummy, nAcceptanceRotation
+  READ( 105, * ) Dummy, nAcceptanceIsotropicVolumeChange
+  READ( 105, * ) Dummy, nAcceptanceAnisotropicVolumeChange
+  READ( 105, * ) Dummy, nMovementTranslationCounter
+  READ( 105, * ) Dummy, nMovementRotationCounter
+  READ( 105, * ) Dummy, nMovementIsoVolumeChangeCounter
+  READ( 105, * ) Dummy, nMovementAnisoVolumeChangeCounter
+  READ( 105, * ) Dummy, MaxTranslationalDisplacement
+  READ( 105, * ) Dummy, MaxAngularDisplacement
+  READ( 105, * ) Dummy, MaxIsoVolumetricDisplacement
+  READ( 105, * ) Dummy, MaxAnisoVolumetricDisplacement
+  READ( 105, * ) Dummy, SeedValue
+  CLOSE( 105 )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
+
+! Deallocation
+DEALLOCATE( pQuaternion, pPosition, pOrientation, SphericalComponentInquiry )
+IF( PotentialTypeLogical(2) ) THEN
+  DEALLOCATE( TotalPotentialEnergy )
+END IF
+
+! Allocation
+ALLOCATE( PositionSaveMC(3,nParticles) )
 
 ! Metropolis Algorithm - Importance Sampling
 WRITE( *, "(G0)" ) "Running Metropolis algorithm..."
-CALL SLEEP( 1 )
+CALL Sleep( 1 )
 WRITE( *, "(G0)" ) " "
+
+! Initialize cell list
+IF( CellListLogical .AND. .NOT. RestoreBackupFileLogical ) THEN
+  BoxCutoff(1) = cLargestSphereDiameter / BoxLengthMC(1)
+  BoxCutoff(2) = cLargestSphereDiameter / BoxLengthMC(5)
+  BoxCutoff(3) = cLargestSphereDiameter / BoxLengthMC(9)
+  OldBoxLength = BoxLengthMC
+  CALL MakeList( BoxCutoff, pPositionMC, BoxLengthInverseMC )
+END IF
 
 ! *********************************************************************************************** !
 ! Simulation cycles                                                                               !
@@ -1629,863 +657,492 @@ WRITE( *, "(G0)" ) " "
 !  A 'cycle' is characterized by N trial moves (rotation or translation) of a random particle or  !
 !  by a single change of the simulation box volume.                                               !
 ! *********************************************************************************************** !
-DO CYCLES = 1, MAX_CYCLES
+DO iCycle = FirstCycle + 1, MaxSimulationCycles
 
   ! Simulation progress
-  CALL PROGRESS_BAR_MC( CYCLES, MAX_CYCLES, MC_ENSEMBLE )
+  CALL ProgressBarMC( iCycle, MaxSimulationCycles, EnsembleMC )
 
-  ! Save all potential data (equilibration and production)
-  IF( POTENTIAL_SELEC(2) ) THEN
-    IF( .NOT. POTENTIAL_CHECK ) THEN
-      IF( MOD( CYCLES, N_SAVE ) == 0 ) THEN
-        DO C_LAMB = 1, N_LAMBDA
-          WRITE( (80 + C_LAMB), "(3G0)" ) CYCLES, ",", VMC(C_LAMB)
-          FLUSH( (80 + C_LAMB) )
-        END DO
-      END IF
-    ! Save potential data (production-related only)
-    ELSE IF( POTENTIAL_CHECK ) THEN
-      IF( CYCLES > N_EQUIL .AND. MOD( CYCLES, N_SAVE ) == 0 ) THEN
-        DO C_LAMB = 1, N_LAMBDA
-          WRITE( (80 + C_LAMB), "(3G0)" ) CYCLES, ",", VMC(C_LAMB)
-          FLUSH( (80 + C_LAMB) )
-        END DO
-      END IF
-    END IF
+  ! Prepare simulation box for single-particle moves
+  IF( CellListLogical .AND. (MovementAnisoVolumeChangeLogical .OR. MovementIsoVolumeChangeLogical) ) THEN ! Check cells only after a volume change
+    CALL BoxCheckNPT( pPositionMC, OldBoxLength, BoxLengthMC, BoxLengthInverseMC )
   END IF
 
   ! Generates a random number for the NPT-simulation
-  IF( MC_ENSEMBLE == "NPT" ) THEN
-    CALL RANF(  )
+  IF( EnsembleMC == "NPT" ) THEN
+    CALL RandomNumberGenLCG(  )
   END IF
 
   ! Movement (Translation or Rotation)
-  IF( RANDOM_N <= PROB_MOV .OR. MC_ENSEMBLE == "NVT" ) THEN
+  IF( RandomNumber <= MovementProbability .OR. EnsembleMC == "NVT" ) THEN
 
-    ! Disable volume change
-    MOV_VOL_I = .FALSE.
-    MOV_VOL_A = .FALSE.
+    ! Disable volume scaling
+    MovementIsoVolumeChangeLogical   = .FALSE.
+    MovementAnisoVolumeChangeLogical = .FALSE.
 
     ! Particle loop
-    DO K = 1, N_PARTICLES
+    DO pCycle = 1, nParticles
 
       ! Component index
-      IF( COMPONENTS > 1 ) THEN
+      IF( nComponents > 1 ) THEN
         ! Pseudorandom number generator (uniform distribution)
-        CALL RANF(  )
+        CALL RandomNumberGenLCG(  )
         ! Get component index
-        CI = INT( RANDOM_N * DBLE( COMPONENTS ) ) + 1
+        iComponent = INT( RandomNumber * DBLE( nComponents ) ) + 1
       ELSE
         ! Get component index
-        CI = 1
+        iComponent = 1
       END IF
 
       ! Avoid components with molar fraction of 0
-      DO WHILE( N_COMPONENT(CI) < 1 )
+      DO WHILE( cParticles(iComponent) < 1 )
         ! Component index
-        IF( COMPONENTS > 1 ) THEN
+        IF( nComponents > 1 ) THEN
           ! Pseudorandom number generator (uniform distribution)
-          CALL RANF(  )
+          CALL RandomNumberGenLCG(  )
           ! Get component index
-          CI = INT( RANDOM_N * DBLE( COMPONENTS ) ) + 1
+          iComponent = INT( RandomNumber * DBLE( nComponents ) ) + 1
         ELSE
           ! Get component index
-          CI = 1
+          iComponent = 1
         END IF
       END DO
 
       ! Forbid rotation if component is spherical
-      IF( SPHERCOMP(CI) ) THEN
-        MOV_TRANS = .TRUE.   ! Enable translation
-        MOV_ROT   = .FALSE.  ! Disable rotation
-        MOVT      = MOVT + 1 ! Increment move counter
+      IF( SphericalComponentLogical(iComponent) ) THEN
+        MovementTranslationLogical  = .TRUE.  ! Enable translation
+        MovementRotationLogical     = .FALSE. ! Disable rotation
+        nMovementTranslationCounter = nMovementTranslationCounter + 1 ! Increment move counter
       ! Allow rotation if component is nonspherical
       ELSE
         ! Pseudorandom number generator (uniform distribution)
-        CALL RANF(  )
+        CALL RandomNumberGenLCG(  )
         ! Translation criterion
-        IF( RANDOM_N < PROB_TRANS ) THEN
-          MOV_TRANS = .TRUE.   ! Enable translation
-          MOV_ROT   = .FALSE.  ! Disable rotation
-          MOVT      = MOVT + 1 ! Increment move counter
+        IF( RandomNumber < TranslationalProbability ) THEN
+          MovementTranslationLogical  = .TRUE.  ! Enable translation
+          MovementRotationLogical     = .FALSE. ! Disable rotation
+          nMovementTranslationCounter = nMovementTranslationCounter + 1 ! Increment move counter
         ! Rotation criterion
-        ELSE IF( RANDOM_N >= PROB_TRANS ) THEN
-          MOV_ROT   = .TRUE.   ! Enable rotation
-          MOV_TRANS = .FALSE.  ! Disable translation
-          MOVR      = MOVR + 1 ! Increment move counter
+        ELSE IF( RandomNumber >= TranslationalProbability ) THEN
+          MovementRotationLogical    = .TRUE.  ! Enable rotation
+          MovementTranslationLogical = .FALSE. ! Disable translation
+          nMovementRotationCounter   = nMovementRotationCounter + 1 ! Increment move counter
         END IF
       END IF
 
       ! Pseudorandom number generator (uniform distribution)
-      CALL RANF(  )
-      ! Random selection of particles of component C
-      I = SUM( N_COMPONENT(0:(CI-1)) ) + INT( RANDOM_N * DBLE( N_COMPONENT(CI) ) ) + 1
+      CALL RandomNumberGenLCG(  )
+      ! Random selection of particles of component cComponent
+      iParticle = SUM( cParticles(0:(iComponent-1)) ) + INT( RandomNumber * DBLE( cParticles(iComponent) ) ) + 1
 
       ! Assignment of previous configuration (Microstate m)
-      RM(:) = RMC(:,I) ! Position
-      QM(:) = QMC(:,I) ! Quaternion
-      EM(:) = EMC(:,I) ! Orientation
+      iOldPosition(:)    = pPositionMC(:,iParticle)    ! Position
+      iOldQuaternion(:)  = pQuaternionMC(:,iParticle)  ! Quaternion
+      iOldOrientation(:) = pOrientationMC(:,iParticle) ! Orientation
 
       ! Translational movement
-      IF( MOV_TRANS ) THEN
+      IF( MovementTranslationLogical ) THEN
         ! Random translation along x-axis
-        CALL RANF(  )
-        RN(1) = RM(1) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
+        CALL RandomNumberGenLCG(  )
+        iNewPosition(1) = iOldPosition(1) + ( ( 2.D0 * RandomNumber ) - 1.D0 ) * MaxTranslationalDisplacement ! Range [-drmax,drmax]
         ! Random translation along y-axis
-        CALL RANF(  )
-        RN(2) = RM(2) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
+        CALL RandomNumberGenLCG(  )
+        iNewPosition(2) = iOldPosition(2) + ( ( 2.D0 * RandomNumber ) - 1.D0 ) * MaxTranslationalDisplacement ! Range [-drmax,drmax]
         ! Random translation along z-axis
-        CALL RANF(  )
-        RN(3) = RM(3) + ( ( 2.D0 * RANDOM_N ) - 1.D0 ) * DRMAX  ! Range [-drmax,drmax]
-        ! Minimum Image Convention
-        CALL MULTI_MATRIX( BOXLMC_I, RN, S12 )
-        S12 = S12 - ANINT( S12 )
-        CALL MULTI_MATRIX( BOXLMC, S12, RN )
+        CALL RandomNumberGenLCG(  )
+        iNewPosition(3) = iOldPosition(3) + ( ( 2.D0 * RandomNumber ) - 1.D0 ) * MaxTranslationalDisplacement ! Range [-drmax,drmax]
+        ! Minimum image convention
+        CALL MatrixVectorMultiplication( BoxLengthInverseMC, iNewPosition, ScalingDistanceUnitBox ) ! Spatial transformation
+        ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+        CALL MatrixVectorMultiplication( BoxLengthMC, ScalingDistanceUnitBox, iNewPosition ) ! Spatial transformation
       ! No translation
-      ELSE IF( .NOT. MOV_TRANS ) THEN
-        RN(:) = RM(:)
+      ELSE IF( .NOT. MovementTranslationLogical ) THEN
+        iNewPosition = iOldPosition
       END IF
 
       ! Rotational movement
-      IF( MOV_ROT ) THEN
-        ! Random Composed Unit Quaternion
-        CALL COMPOSED_QUATERNION( QM, QN, ANGMAX )
+      IF( MovementRotationLogical ) THEN
+        ! Random quaternion
+        CALL QuaternionCombination( iOldQuaternion, iNewQuaternion, MaxAngularDisplacement )
         ! Active transformation
-        CALL ACTIVE_TRANSFORMATION( AXISZ, QN, EN )
+        CALL ActiveTransformation( zAxis, iNewQuaternion, iNewOrientation )
       ! No rotation
-      ELSE IF( .NOT. MOV_ROT ) THEN
-        QN(:) = QM(:)
-        EN(:) = EM(:)
+      ELSE IF( .NOT. MovementRotationLogical ) THEN
+        iNewQuaternion  = iOldQuaternion
+        iNewOrientation = iOldOrientation
       END IF
 
-      ! Overlap check
-      CALL CHECK_OVERLAP( CI, I, QN, EN, RN, CD, BOXLMC, BOXLMC_I, OVERLAP )
+      ! Overlap check after displacement of a particle
+      IF( .NOT. CellListControl ) THEN
+        ! Whole system
+        CALL ParticleOverlapCheck( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, ContactDistance, &
+        &                          BoxLengthMC, BoxLengthInverseMC, Overlap )
+      ELSE
+        ! Linked lists
+        CALL ListOverlapCheck( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, ContactDistance, &
+        &                      BoxLengthMC, BoxLengthInverseMC, Overlap, .FALSE. )
+      END IF
 
       ! Acceptance criterion
-      IF( .NOT. OVERLAP ) THEN
+      IF( .NOT. Overlap ) THEN
         ! System configuration update
-        RMC(:,I) = RN(:) ! Update position
-        QMC(:,I) = QN(:) ! Update quaternion
-        EMC(:,I) = EN(:) ! Update orientation
+        pPositionMC(:,iParticle)    = iNewPosition(:)    ! Update position
+        pQuaternionMC(:,iParticle)  = iNewQuaternion(:)  ! Update quaternion
+        pOrientationMC(:,iParticle) = iNewOrientation(:) ! Update orientation
         ! Update total potential energy
-        IF( POTENTIAL_SELEC(2) ) THEN
-          ! Computation of potential energy of particle i (microstate m)
-          CALL COMPUTE_PARTICLE_ENERGY( CI, I, RM, VM, BOXLMC, BOXLMC_I )
-          ! Computation of potential energy of particle i (microstate n)
-          CALL COMPUTE_PARTICLE_ENERGY( CI, I, RN, VN, BOXLMC, BOXLMC_I )
+        IF( PotentialTypeLogical(2) ) THEN
+          IF( .NOT. CellListControl ) THEN
+            ! Computation of potential energy of particle i (microstate m)
+            CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
+            &                                    BoxLengthInverseMC )
+            ! Computation of potential energy of particle i (microstate n)
+            CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iNewPosition, iNewPotentialEnergy, BoxLengthMC, &
+            &                                    BoxLengthInverseMC )
+          ELSE
+            ! Computation of potential energy of particle i (microstate m)
+            CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
+            &                                        BoxLengthInverseMC, .FALSE. )
+            ! Computation of potential energy of particle i (microstate n)
+            CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iNewPosition, iNewPotentialEnergy, BoxLengthMC, &
+            &                                        BoxLengthInverseMC, .FALSE. )
+          END IF
           ! Computation of energy difference of microstates n and m
-          DV(:)  = VN(:) - VM(:)
+          iPotentialEnergyDifference = iNewPotentialEnergy - iOldPotentialEnergy
           ! System energy update
-          VMC(:) = VMC(:) + DV(:)
+          TotalPotentialEnergyMC = TotalPotentialEnergyMC + iPotentialEnergyDifference
         END IF
         ! Displacement counter update
-        IF( MOV_TRANS ) THEN
-          NACCT = NACCT + 1  ! Translational move counter
-        ELSE IF ( MOV_ROT ) THEN
-          NACCR = NACCR + 1  ! Rotational move counter
+        IF( MovementTranslationLogical ) THEN
+          IF( CellListControl ) CALL ParticleTranslationNVT( iParticle, ScalingDistanceUnitBox ) ! Update cell
+          nAcceptanceTranslation = nAcceptanceTranslation + 1 ! Translational move counter
+        ELSE IF ( MovementRotationLogical ) THEN
+          nAcceptanceRotation = nAcceptanceRotation + 1 ! Rotational move counter
         END IF
       ELSE
         ! Retrieve old configuration
-        RMC(:,I) = RM(:) ! Retrieve position
-        QMC(:,I) = QM(:) ! Retrieve quaternion
-        EMC(:,I) = EM(:) ! Retrieve orientation
+        pPositionMC(:,iParticle)    = iOldPosition(:)    ! Retrieve old position
+        pQuaternionMC(:,iParticle)  = iOldQuaternion(:)  ! Retrieve old quaternion
+        pOrientationMC(:,iParticle) = iOldOrientation(:) ! Retrieve old orientation
       END IF
 
     END DO
 
-  ! Volume change
-  ELSE IF( RANDOM_N > PROB_MOV .AND. MC_ENSEMBLE == "NPT" ) THEN
+  ! Volume scaling
+  ELSE IF( RandomNumber > MovementProbability .AND. EnsembleMC == "NPT" ) THEN
 
     ! Disable translation and rotation
-    MOV_TRANS = .FALSE.
-    MOV_ROT   = .FALSE.
+    MovementTranslationLogical = .FALSE.
+    MovementRotationLogical    = .FALSE.
 
-    ! Assignment of previous configuration
-    BOXLM(:)   = BOXLMC(:)   ! Box length
-    BOXLM_I(:) = BOXLMC_I(:) ! Box length (inverse)
-    BOXVM      = BOXVMC      ! Box volume
+    ! Assignment of previous configuration (box)
+    OldBoxLength        = BoxLengthMC        ! Box length
+    OldBoxLengthInverse = BoxLengthInverseMC ! Box length (inverse)
+    OldBoxVolume        = BoxVolumeMC        ! Box volume
 
     ! Expansion/compression type
-    CALL RANF(  )
+    CALL RandomNumberGenLCG(  )
 
-    ! Isotropic volume change
-    IF( RANDOM_N <= PROB_VOL_ISO ) THEN
-      ! Random scaling factor
-      CALL RANF(  )
-      SCALE_FACTOR = 1.0D0 + DVMAXISO * (RANDOM_N - 0.5D0)
+    ! Isotropic volume scaling
+    IF( RandomNumber <= IsoVolumetricProbability ) THEN
+      ! Random walk in the logarithm of the volume
+      CALL RandomNumberGenLCG(  )
+      VolumeScalingFactor = DLOG( OldBoxVolume ) + (RandomNumber - 0.5D0) * MaxIsoVolumetricDisplacement 
+      VolumeScalingFactor = DEXP( VolumeScalingFactor )
+      VolumeScalingFactor = (VolumeScalingFactor / OldBoxVolume) ** (1.D0 / 3.D0)
       ! Proportional box length
-      BOXLN(:) = BOXLM(:) * SCALE_FACTOR
-      VOL_TYPE = "IS"
+      NewBoxLength = OldBoxLength * VolumeScalingFactor
+      VolumeType   = "IS"
       ! Calculate the new reciprocal box basis vectors and the volume of the system
-      CALL INVERSE_COF( BOXLN, BOXLN_I, BOXVN )
+      CALL InverseMatrixCofactorVec( NewBoxLength, NewBoxLengthInverse, NewBoxVolume )
       ! Movement counter
-      MOVVI = MOVVI + 1
+      nMovementIsoVolumeChangeCounter = nMovementIsoVolumeChangeCounter + 1
       ! Movement type
-      MOV_VOL_I = .TRUE.  ! Enable isotropic volume change
-      MOV_VOL_A = .FALSE. ! Disable anisotropic volume change
-    ! Anisotropic volume change
-    ELSE IF( RANDOM_N > PROB_VOL_ISO ) THEN
+      MovementIsoVolumeChangeLogical   = .TRUE.  ! Enable isotropic volume scaling
+      MovementAnisoVolumeChangeLogical = .FALSE. ! Disable anisotropic volume scaling
+    ! Anisotropic volume scaling
+    ELSE IF( RandomNumber > IsoVolumetricProbability ) THEN
       ! Random box component
-      CALL RANF(  )
-      COMPONENT = INT( RANDOM_N * 6.D0 ) + 1
-      IF( COMPONENT == 1 ) THEN
-        COMPONENT = 1 ! xx component
-      ELSE IF( COMPONENT == 2 ) THEN
-        COMPONENT = 4 ! xy component
-      ELSE IF( COMPONENT == 3 ) THEN
-        COMPONENT = 5 ! yy component
-      ELSE IF( COMPONENT == 4 ) THEN
-        COMPONENT = 7 ! xz component
-      ELSE IF( COMPONENT == 5 ) THEN
-        COMPONENT = 8 ! yz component
-      ELSE IF( COMPONENT == 6 ) THEN
-        COMPONENT = 9 ! zz component
+      CALL RandomNumberGenLCG(  )
+      BoxMatrixComponent = INT( RandomNumber * 6.D0 ) + 1
+      IF( BoxMatrixComponent == 1 ) THEN
+        BoxMatrixComponent = 1 ! xx component
+      ELSE IF( BoxMatrixComponent == 2 ) THEN
+        BoxMatrixComponent = 4 ! xy component
+      ELSE IF( BoxMatrixComponent == 3 ) THEN
+        BoxMatrixComponent = 5 ! yy component
+      ELSE IF( BoxMatrixComponent == 4 ) THEN
+        BoxMatrixComponent = 7 ! xz component
+      ELSE IF( BoxMatrixComponent == 5 ) THEN
+        BoxMatrixComponent = 8 ! yz component
+      ELSE IF( BoxMatrixComponent == 6 ) THEN
+        BoxMatrixComponent = 9 ! zz component
       END IF
-      BOXLN(:) = BOXLM(:)
-      ! Random stretching/shortening of the box length component
-      CALL RANF(  )
-      BOXLN(COMPONENT) = BOXLM(COMPONENT) + DVMAXANI * (RANDOM_N - 0.5D0)
-      VOL_TYPE = "AN"
+      NewBoxLength = OldBoxLength
+      ! Random deformation of the box
+      CALL RandomNumberGenLCG(  )
+      NewBoxLength(BoxMatrixComponent) = OldBoxLength(BoxMatrixComponent) + MaxAnisoVolumetricDisplacement * (RandomNumber - 0.5D0)
+      VolumeType = "AN"
       ! Calculate the new reciprocal box basis vectors and the volume of the system
-      CALL INVERSE_COF( BOXLN, BOXLN_I, BOXVN )
+      CALL InverseMatrixCofactorVec( NewBoxLength, NewBoxLengthInverse, NewBoxVolume )
       ! Movement counter
-      MOVVA = MOVVA + 1
+      nMovementAnisoVolumeChangeCounter = nMovementAnisoVolumeChangeCounter + 1
       ! Movement type
-      MOV_VOL_I = .FALSE. ! Disable isotropic volume change
-      MOV_VOL_A = .TRUE.  ! Enable anisotropic volume change
+      MovementAnisoVolumeChangeLogical = .TRUE.  ! Enable anisotropic volume scaling
+      MovementIsoVolumeChangeLogical   = .FALSE. ! Disable isotropic volume scaling
     END IF
 
-    ! Reset condition of anisotropic volume change
-    IGNORE_VOL_ATTEMPT = .FALSE.
+    ! Reset condition of anisotropic volume scaling (we must be careful not to induce a bias in the system)
+    CheckBoxDistortion = .FALSE.
 
-    ! Condition of anisotropic volume change (box distortion)
-    IF( MOV_VOL_A ) THEN
+    ! Condition of anisotropic volume scaling (box distortion)
+    IF( MovementAnisoVolumeChangeLogical ) THEN
       ! Box length
-      LBOX(1) = DSQRT( DOT_PRODUCT( BOXLN(1:3), BOXLN(1:3) ) )
-      LBOX(2) = DSQRT( DOT_PRODUCT( BOXLN(4:6), BOXLN(4:6) ) )
-      LBOX(3) = DSQRT( DOT_PRODUCT( BOXLN(7:9), BOXLN(7:9) ) )
+      BoxEdgeLength(1) = DSQRT( DOT_PRODUCT( NewBoxLength(1:3), NewBoxLength(1:3) ) )
+      BoxEdgeLength(2) = DSQRT( DOT_PRODUCT( NewBoxLength(4:6), NewBoxLength(4:6) ) )
+      BoxEdgeLength(3) = DSQRT( DOT_PRODUCT( NewBoxLength(7:9), NewBoxLength(7:9) ) )
       ! Length ratio
-      LBOXR(1) = LBOX(1) / LBOX(2)
-      LBOXR(2) = LBOX(1) / LBOX(3)
-      LBOXR(3) = LBOX(2) / LBOX(3)
+      BoxEdgeRatio(1) = BoxEdgeLength(1) / BoxEdgeLength(2)
+      BoxEdgeRatio(2) = BoxEdgeLength(1) / BoxEdgeLength(3)
+      BoxEdgeRatio(3) = BoxEdgeLength(2) / BoxEdgeLength(3)
       ! Angle between box vectors
-      COSANGLE_VEC(1) = DOT_PRODUCT( BOXLN(1:3), BOXLN(4:6) ) / ( LBOX(1) * LBOX(2) )
-      COSANGLE_VEC(2) = DOT_PRODUCT( BOXLN(1:3), BOXLN(7:9) ) / ( LBOX(1) * LBOX(3) )
-      COSANGLE_VEC(3) = DOT_PRODUCT( BOXLN(4:6), BOXLN(7:9) ) / ( LBOX(2) * LBOX(3) )
+      BoxVectorAngle(1) = DOT_PRODUCT( NewBoxLength(1:3), NewBoxLength(4:6) ) / ( BoxEdgeLength(1) * BoxEdgeLength(2) )
+      BoxVectorAngle(2) = DOT_PRODUCT( NewBoxLength(1:3), NewBoxLength(7:9) ) / ( BoxEdgeLength(1) * BoxEdgeLength(3) )
+      BoxVectorAngle(3) = DOT_PRODUCT( NewBoxLength(4:6), NewBoxLength(7:9) ) / ( BoxEdgeLength(2) * BoxEdgeLength(3) )
       ! Avoid big distortions of the simulation box
-      DO L = 1, 3
+      DO bEdge = 1, 3
         ! Angle distortion
-        IF( COSANGLE_VEC(L) < DCOS( (PI / 2.D0) + MAX_ANGLE ) .OR. COSANGLE_VEC(L) > DCOS( (PI / 2.D0) - MAX_ANGLE ) ) THEN
-          BOXVMC      = BOXVM
-          BOXLMC(:)   = BOXLM(:)
-          BOXLMC_I(:) = BOXLM_I(:)
-          IGNORE_VOL_ATTEMPT = .TRUE.
+        IF( BoxVectorAngle(bEdge) < DCOS( (cPi / 2.D0) + BoxVectorMaxAngle ) .OR. &
+        &   BoxVectorAngle(bEdge) > DCOS( (cPi / 2.D0) - BoxVectorMaxAngle ) ) THEN
+          BoxVolumeMC        = OldBoxVolume
+          BoxLengthMC        = OldBoxLength
+          BoxLengthInverseMC = OldBoxLengthInverse
+          CheckBoxDistortion = .TRUE.
           EXIT
         END IF
         ! Length distortion
-        IF( LBOXR(L) > MAX_LENGTH_RATIO .OR. LBOXR(L) < 1.D0 / MAX_LENGTH_RATIO ) THEN
-          BOXVMC      = BOXVM
-          BOXLMC(:)   = BOXLM(:)
-          BOXLMC_I(:) = BOXLM_I(:)
-          IGNORE_VOL_ATTEMPT = .TRUE.
+        IF( BoxEdgeRatio(bEdge) > BoxEdgeMaxRatio .OR. BoxEdgeRatio(bEdge) < 1.D0 / BoxEdgeMaxRatio ) THEN
+          BoxVolumeMC        = OldBoxVolume
+          BoxLengthMC        = OldBoxLength
+          BoxLengthInverseMC = OldBoxLengthInverse
+          CheckBoxDistortion = .TRUE.
           EXIT
         END IF
       END DO
     END IF
 
     ! Box not too distorted
-    IF( .NOT. IGNORE_VOL_ATTEMPT ) THEN
+    IF( .NOT. CheckBoxDistortion ) THEN
 
       ! Enthalpy (weighing function)
-      HNM = ( PRESS * ( BOXVN - BOXVM ) ) - ( DBLE( N_PARTICLES ) * DLOG( BOXVN / BOXVM ) )
+      EnthalpyChange = ( ReducedPressure * ( NewBoxVolume - OldBoxVolume ) ) - ( DBLE( nParticles + 1 ) * &
+      &                DLOG( NewBoxVolume / OldBoxVolume ) )
 
       ! Random number
-      CALL RANF(  )
+      CALL RandomNumberGenLCG(  )
 
-      ! Enthalpy Criterion
-      IF( DEXP( - HNM ) >= RANDOM_N ) THEN
+      ! Enthalpy change criterion
+      IF( DEXP( - EnthalpyChange ) >= RandomNumber ) THEN
 
         ! System configuration update
-        RMCV(:,:) = RMC(:,:) ! Old configuration
+        PositionSaveMC = pPositionMC ! Old configuration
 
-        ! Rescale positions of all particles accordingly
-        IF( MOV_VOL_I ) THEN
-          ! Isotropic volume change
-          DO K = 1, N_PARTICLES
-            RMC(:,K) = RMC(:,K) * SCALE_FACTOR
+        ! Isotropic volume scaling
+        IF( MovementIsoVolumeChangeLogical ) THEN
+          ! Rescale positions of all particles accordingly
+          DO pParticle = 1, nParticles
+            pPositionMC(:,pParticle) = pPositionMC(:,pParticle) * VolumeScalingFactor
           END DO
-        ELSE IF( MOV_VOL_A ) THEN
-          ! Anisotropic volume change
-          DO K = 1, N_PARTICLES
+        ! Anisotropic volume scaling
+        ELSE IF( MovementAnisoVolumeChangeLogical ) THEN
+          ! Rescale positions of all particles accordingly
+          DO pParticle = 1, nParticles
             ! Scaling coordinates using the old box length
-            CALL MULTI_MATRIX( BOXLM_I, RMC(:,K), S12 )
+            CALL MatrixVectorMultiplication( OldBoxLengthInverse, pPositionMC(:,pParticle), ScalingDistanceUnitBox )
             ! New real coordinates using the new box length
-            CALL MULTI_MATRIX( BOXLN, S12, RMC(:,K) )
+            CALL MatrixVectorMultiplication( NewBoxLength, ScalingDistanceUnitBox, pPositionMC(:,pParticle) )
           END DO
         END IF
 
         ! Overlap check after expansion/compression of the simulation box
-        LOOP_ALLOVERLAP_NPT: DO
-
-          ! Initialization
-          OVERLAP = .FALSE.
-
-          ! Anisomorphic molecules (unlike components)
-          DO CI = 1, COMPONENTS - 1
-            DO CJ = CI + 1, COMPONENTS
-              ! First loop represents all particles with indexes i of component Ci
-              DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) )
-                ! Second loop represents all particles with indexes j of component Cj
-                DO J = SUM( N_COMPONENT(0:(CJ-1)) ) + 1, SUM( N_COMPONENT(0:CJ) )
-                  ! Position of particle i
-                  RI(1)  = RMC(1,I)
-                  RI(2)  = RMC(2,I)
-                  RI(3)  = RMC(3,I)
-                  ! Position of particle j
-                  RJ(1)  = RMC(1,J)
-                  RJ(2)  = RMC(2,J)
-                  RJ(3)  = RMC(3,J)
-                  ! Orientation of particle i
-                  EI(1)  = EMC(1,I)
-                  EI(2)  = EMC(2,I)
-                  EI(3)  = EMC(3,I)
-                  ! Orientation of particle j
-                  EJ(1)  = EMC(1,J)
-                  EJ(2)  = EMC(2,J)
-                  EJ(3)  = EMC(3,J)
-                  ! Quaternion of particle i
-                  QI(0)  = QMC(0,I)
-                  QI(1)  = QMC(1,I)
-                  QI(2)  = QMC(2,I)
-                  QI(3)  = QMC(3,I)
-                  ! Quaternion of particle j
-                  QJ(0)  = QMC(0,J)
-                  QJ(1)  = QMC(1,J)
-                  QJ(2)  = QMC(2,J)
-                  QJ(3)  = QMC(3,J)
-                  ! Vector distance between particles i and j
-                  RIJ(1) = RJ(1) - RI(1)
-                  RIJ(2) = RJ(2) - RI(2)
-                  RIJ(3) = RJ(3) - RI(3)
-                  ! Minimum Image Convention
-                  CALL MULTI_MATRIX( BOXLN_I, RIJ, S12 )
-                  S12 = S12 - ANINT( S12 )
-                  CALL MULTI_MATRIX( BOXLN, S12, RIJ )
-                  ! Magnitude of the vector distance (squared)
-                  RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-                  ! Cutoff distance (squared)
-                  CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-                  CUTOFF_D = CUTOFF_D * CUTOFF_D
-                  ! Preliminary test (circumscribing spheres)
-                  IF( RIJSQ <= CUTOFF_D ) THEN
-                    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-                    IF( GEOM_SELEC(1) ) THEN
-                      CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
-                      ! Overlap criterion
-                      IF( OVERLAP ) THEN
-                        ! Overlap detected
-                        EXIT LOOP_ALLOVERLAP_NPT
-                      END IF
-                    ! Overlap test for spherocylinders (Vega-Lago method)
-                    ELSE IF( GEOM_SELEC(2) ) THEN
-                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
-                      ! Overlap criterion
-                      IF( OVERLAP ) THEN
-                        ! Overlap detected
-                        EXIT LOOP_ALLOVERLAP_NPT
-                      END IF
-                    ! Overlap test for cylinders and/or spheres
-                    ELSE IF( GEOM_SELEC(3) ) THEN
-                      IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                        ! Initialization
-                        OVERLAP_PRELIMINAR = .FALSE.
-                        ! Preliminary test (circumscribing spherocylinders)
-                        CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                        ! Overlap criterion
-                        IF( OVERLAP_PRELIMINAR ) THEN
-                          ! Retrive position of the particle j after applying the PBC
-                          RJ(1) = RI(1) + RIJ(1)
-                          RJ(2) = RI(2) + RIJ(2)
-                          RJ(3) = RI(3) + RIJ(3)
-                          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-                          CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                          ! Overlap criterion
-                          IF( OVERLAP ) THEN
-                            ! Overlap detected
-                            EXIT LOOP_ALLOVERLAP_NPT
-                          END IF
-                        END IF
-                      ! Overlap test for cylinders and spheres
-                      ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                        ! Retrive position of the particle j after applying the PBC
-                        RJ(1) = RI(1) + RIJ(1)
-                        RJ(2) = RI(2) + RIJ(2)
-                        RJ(3) = RI(3) + RIJ(3)
-                        CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
-                        IF( OVERLAP ) THEN
-                          ! Overlap detected
-                          EXIT LOOP_ALLOVERLAP_NPT
-                        END IF
-                      ! Overlap test for cylinders and spheres
-                      ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                        ! Retrive position of the particle j after applying the PBC
-                        RJ(1) = RI(1) + RIJ(1)
-                        RJ(2) = RI(2) + RIJ(2)
-                        RJ(3) = RI(3) + RIJ(3)
-                        CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
-                        IF( OVERLAP ) THEN
-                          ! Overlap detected
-                          EXIT LOOP_ALLOVERLAP_NPT
-                        END IF
-                      ! Overlap test for spheres
-                      ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                        ! Overlap detected
-                        OVERLAP = .TRUE.
-                        EXIT LOOP_ALLOVERLAP_NPT
-                      END IF
-                    END IF
-                  END IF
-                END DO
-              END DO
-            END DO
-          END DO
-
-          ! Isomorphic molecules (like components)
-          DO CI = 1, COMPONENTS
-            CJ = CI
-            ! First loop represents a particle with an index i of component Ci
-            DO I = SUM( N_COMPONENT(0:(CI-1)) ) + 1, SUM( N_COMPONENT(0:CI) ) - 1
-              ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-              DO J = I + 1, SUM( N_COMPONENT(0:CI) )
-                ! Position of particle i
-                RI(1)  = RMC(1,I)
-                RI(2)  = RMC(2,I)
-                RI(3)  = RMC(3,I)
-                ! Position of particle j
-                RJ(1)  = RMC(1,J)
-                RJ(2)  = RMC(2,J)
-                RJ(3)  = RMC(3,J)
-                ! Orientation of particle i
-                EI(1)  = EMC(1,I)
-                EI(2)  = EMC(2,I)
-                EI(3)  = EMC(3,I)
-                ! Orientation of particle j
-                EJ(1)  = EMC(1,J)
-                EJ(2)  = EMC(2,J)
-                EJ(3)  = EMC(3,J)
-                ! Quaternion of particle i
-                QI(0)  = QMC(0,I)
-                QI(1)  = QMC(1,I)
-                QI(2)  = QMC(2,I)
-                QI(3)  = QMC(3,I)
-                ! Quaternion of particle j
-                QJ(0)  = QMC(0,J)
-                QJ(1)  = QMC(1,J)
-                QJ(2)  = QMC(2,J)
-                QJ(3)  = QMC(3,J)
-                ! Vector distance between particles i and j
-                RIJ(1) = RJ(1) - RI(1)
-                RIJ(2) = RJ(2) - RI(2)
-                RIJ(3) = RJ(3) - RI(3)
-                ! Minimum Image Convention
-                CALL MULTI_MATRIX( BOXLN_I, RIJ, S12 )
-                S12 = S12 - ANINT( S12 )
-                CALL MULTI_MATRIX( BOXLN, S12, RIJ )
-                ! Magnitude of the vector distance (squared)
-                RIJSQ = ( RIJ(1) * RIJ(1) ) + ( RIJ(2) * RIJ(2) ) + ( RIJ(3) * RIJ(3) )
-                ! Cutoff distance (squared)
-                CUTOFF_D = 0.5D0 * ( CUTOFF(CI) + CUTOFF(CJ) )
-                CUTOFF_D = CUTOFF_D * CUTOFF_D
-                ! Preliminary test (circumscribing spheres)
-                IF( RIJSQ <= CUTOFF_D ) THEN
-                  ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
-                  IF( GEOM_SELEC(1) ) THEN
-                    CALL ELLIPSOID_OVERLAP( QI, QJ, RIJ, RIJSQ, CI, CJ, CD, OVERLAP )
-                    ! Overlap criterion
-                    IF( OVERLAP ) THEN
-                      ! Overlap detected
-                      EXIT LOOP_ALLOVERLAP_NPT
-                    END IF
-                  ! Overlap test for spherocylinders (Vega-Lago Method)
-                  ELSE IF( GEOM_SELEC(2) ) THEN
-                    CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP )
-                    ! Overlap criterion
-                    IF( OVERLAP ) THEN
-                      ! Overlap detected
-                      EXIT LOOP_ALLOVERLAP_NPT
-                    END IF
-                  ! Overlap test for cylinders (Lopes et al. Method)
-                  ELSE IF( GEOM_SELEC(3) ) THEN
-                    IF( .NOT. SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                      ! Initialization
-                      OVERLAP_PRELIMINAR = .FALSE.
-                      ! Preliminary test (circumscribing spherocylinders)
-                      CALL SPHEROCYLINDER_OVERLAP( EI, EJ, RIJ, RIJSQ, CI, CJ, CD, PARALLEL, OVERLAP_PRELIMINAR )
-                      ! Overlap criterion
-                      IF( OVERLAP_PRELIMINAR ) THEN
-                        ! Retrive position of the particle j after applying the PBC
-                        RJ(1) = RI(1) + RIJ(1)
-                        RJ(2) = RI(2) + RIJ(2)
-                        RJ(3) = RI(3) + RIJ(3)
-                        ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-                        CALL CYLINDER_OVERLAP( QI, QJ, EI, EJ, RIJ, RI, RJ, CI, CJ, PARALLEL, OVERLAP )
-                        ! Overlap criterion
-                        IF( OVERLAP ) THEN
-                          ! Overlap detected
-                          EXIT LOOP_ALLOVERLAP_NPT
-                        END IF
-                      END IF
-                    ! Overlap test for cylinders and spheres
-                    ELSE IF( .NOT. SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                      ! Retrive position of the particle j after applying the PBC
-                      RJ(1) = RI(1) + RIJ(1)
-                      RJ(2) = RI(2) + RIJ(2)
-                      RJ(3) = RI(3) + RIJ(3)
-                      CALL CYLINDERSPHERE_OVERLAP( CI, CJ, QI, RI, RJ, OVERLAP )
-                      IF( OVERLAP ) THEN
-                        ! Overlap detected
-                        EXIT LOOP_ALLOVERLAP_NPT
-                      END IF
-                    ! Overlap test for cylinders and spheres
-                    ELSE IF( SPHERCOMP(CI) .AND. .NOT. SPHERCOMP(CJ) ) THEN
-                      ! Retrive position of the particle j after applying the PBC
-                      RJ(1) = RI(1) + RIJ(1)
-                      RJ(2) = RI(2) + RIJ(2)
-                      RJ(3) = RI(3) + RIJ(3)
-                      CALL CYLINDERSPHERE_OVERLAP( CJ, CI, QJ, RJ, RI, OVERLAP )
-                      IF( OVERLAP ) THEN
-                        ! Overlap detected
-                        EXIT LOOP_ALLOVERLAP_NPT
-                      END IF
-                    ! Overlap test for spheres
-                    ELSE IF( SPHERCOMP(CI) .AND. SPHERCOMP(CJ) ) THEN
-                      ! Overlap detected
-                      OVERLAP = .TRUE.
-                      EXIT LOOP_ALLOVERLAP_NPT
-                    END IF
-                  END IF
-                END IF
-              END DO
-            END DO
-          END DO
-
-          ! No overlaps
-          EXIT LOOP_ALLOVERLAP_NPT
-
-        END DO LOOP_ALLOVERLAP_NPT
+        IF( .NOT. CellListControl ) THEN
+          ! Whole system
+          CALL FullOverlapCheck( ContactDistance, NewBoxLength, NewBoxLengthInverse, Overlap )
+        ELSE
+          ! Linked lists
+          CALL FullListOverlapCheck( ContactDistance, NewBoxLength, NewBoxLengthInverse, Overlap, HalfNeighboursControl )
+          ! In case the number of cells in one direction (x, y, or z) becomes less than 3
+          IF( .NOT. CellListControl ) CALL FullOverlapCheck( ContactDistance, NewBoxLength, NewBoxLengthInverse, Overlap )
+        END IF
 
         ! Acceptance criterion
-        IF( .NOT. OVERLAP ) THEN
+        IF( .NOT. Overlap ) THEN
           ! System configuration update
-          BOXVMC      = BOXVN      ! Update volume
-          BOXLMC(:)   = BOXLN(:)   ! Update length
-          BOXLMC_I(:) = BOXLN_I(:) ! Update length (inverse)
+          BoxVolumeMC        = NewBoxVolume        ! Update volume
+          BoxLengthMC        = NewBoxLength        ! Update box length
+          BoxLengthInverseMC = NewBoxLengthInverse ! Update box length (inverse)
           ! Displacement counter update
-          IF( MOV_VOL_I ) THEN
-            NACCVI = NACCVI + 1 ! Isotropic move counter
-          ELSE IF( MOV_VOL_A ) THEN
-            NACCVA = NACCVA + 1 ! Anisotropic move counter
+          IF( MovementIsoVolumeChangeLogical ) THEN
+            nAcceptanceIsotropicVolumeChange = nAcceptanceIsotropicVolumeChange + 1 ! Isotropic move counter
+          ELSE IF( MovementAnisoVolumeChangeLogical ) THEN
+            nAcceptanceAnisotropicVolumeChange = nAcceptanceAnisotropicVolumeChange + 1 ! Anisotropic move counter
           END IF
           ! Update packing fraction and reduced number density
-          PACKING_F = ( TOTAL_VP / BOXVN )
-          TOTAL_RHO = ( DBLE( N_PARTICLES ) / BOXVN )
+          PackingFraction    = ( TotalParticleVolume / NewBoxVolume )
+          TotalNumberDensity = ( DBLE( nParticles ) / NewBoxVolume )
           ! Re-initialization
-          IGNORE_VOL_ATTEMPT = .FALSE.
+          CheckBoxDistortion = .FALSE.
           ! Lattice reduction
-          LATTICER = .FALSE.
-          CALL LATTICE_REDUCTION( BOXLMC, DISTORTION, LATTICER )
-          IF( LATTICER ) THEN
+          LatticeReductionLogical = .FALSE.
+          CALL LatticeReduction( BoxLengthMC, BoxDistortionMC, LatticeReductionLogical )
+          IF( LatticeReductionLogical ) THEN
             ! Calculate the new reciprocal box basis vectors
-            CALL INVERSE_COF( BOXLMC, BOXLMC_I, BOXVMC )
-            DO K = 1, N_PARTICLES
-              ! Minimum image convention
-              CALL MULTI_MATRIX( BOXLMC_I, RMC(:,K), S12 )
-              S12 = S12 - ANINT( S12 )
-              CALL MULTI_MATRIX( BOXLMC, S12, RMC(:,K) )
+            CALL InverseMatrixCofactorVec( BoxLengthMC, BoxLengthInverseMC, BoxVolumeMC )
+            DO pParticle = 1, nParticles
+              ! Minimum image convention (the spatial distribution of particles remains unchanged)
+              CALL MatrixVectorMultiplication( BoxLengthInverseMC, pPositionMC(:,pParticle), ScalingDistanceUnitBox ) ! Spatial transformation
+              ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+              CALL MatrixVectorMultiplication( BoxLengthMC, ScalingDistanceUnitBox, pPositionMC(:,pParticle) ) ! Spatial transformation
             END DO
-            ! Undo box rotation
-            IF( DABS( BOXLMC(2) - 0.D0 ) >= EPSILON( 1.D0 ) .OR. DABS( BOXLMC(3) - 0.D0 ) >= EPSILON( 1.D0 ) .OR. &
-            &   DABS( BOXLMC(6) - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
-              ! Initialization
-              BOXLM   = BOXLMC
-              BOXLM_I = BOXLMC_I
-              ! Box vectors
-              V1 = BOXLMC(1:3)
-              V2 = BOXLMC(4:6)
-              V3 = BOXLMC(7:9)
-              ! Angle between x-vector and x-axis
-              THETA = DACOS( DOT_PRODUCT( V1, [1.D0,0.D0,0.D0] ) / DSQRT( DOT_PRODUCT( V1, V1 ) ) )
-              ! Cross product between x-vector and x-axis (rotation axis)
-              RAXIS(1) = 0.D0
-              RAXIS(2) = V1(3)
-              RAXIS(3) = - V1(2)
-              ! Magnitude of rotation axis
-              RAXISMAG = DSQRT( DOT_PRODUCT( RAXIS, RAXIS ) )
-              ! Avoid null vectors
-              IF( DABS( RAXISMAG - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-                RAXIS(:) = 0.D0
-              ELSE
-                RAXIS(:) = RAXIS(:) / RAXISMAG
-              END IF
-              ! Rotation quaternion
-              QROT(0) = DCOS( THETA * 0.5D0 )            ! Real part
-              QROT(1) = DSIN( THETA * 0.5D0 ) * RAXIS(1) ! Imaginary part (Vector)
-              QROT(2) = DSIN( THETA * 0.5D0 ) * RAXIS(2) ! Imaginary part (Vector)
-              QROT(3) = DSIN( THETA * 0.5D0 ) * RAXIS(3) ! Imaginary part (Vector)
-              ! Make box x-vector parallel to x-axis of coordination system
-              IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
-                ! Auxiliary vector
-                CALL ACTIVE_TRANSFORMATION( V1 / ( DSQRT( DOT_PRODUCT( V1, V1 ) ) ), QROT, AUXV )
-                ! New x-vector of the simulation box
-                BOXLROT(1:3) = DSQRT( DOT_PRODUCT( BOXLMC(1:3), BOXLMC(1:3) ) ) * AUXV
-                BOXLROT(2:3) = 0.D0
-                ! Auxiliary vector
-                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROT, AUXV )
-                ! New y-vector of the simulation box
-                BOXLROT(4:6) = DSQRT( DOT_PRODUCT( BOXLMC(4:6), BOXLMC(4:6) ) ) * AUXV
-                ! Auxiliary vector
-                CALL ACTIVE_TRANSFORMATION( V3 / ( DSQRT( DOT_PRODUCT( V3, V3 ) ) ), QROT, AUXV )
-                ! New z-vector of the simulation box
-                BOXLROT(7:9) = DSQRT( DOT_PRODUCT( BOXLMC(7:9), BOXLMC(7:9) ) ) * AUXV
-                ! Calculate the new reciprocal box basis vectors
-                CALL INVERSE_COF( BOXLROT, BOXIROT, BOXVROT )
-                ! Rescale positions and orientations of particles accordingly
-                DO K = 1, N_PARTICLES
-                  ! Scaled coordinates using old dimensions
-                  CALL MULTI_MATRIX( BOXLM_I, RMC(:,K), S12 )
-                  ! New real coordinates using new dimensions
-                  CALL MULTI_MATRIX( BOXLROT, S12, RPROT(:,K) )
-                  ! Reorient particles
-                  QAUX(:) = QMC(:,K)
-                  CALL MULTIPLY_QUATERNIONS( QROT, QAUX, QPROT(:,K) )
-                  ! Active transformation (rotation)
-                  CALL ACTIVE_TRANSFORMATION( AXISZ, QPROT(:,K), EPROT(:,K) )
-                END DO
-              ! Box x-vector already parallel to x-axis of coordination system
-              ELSE
-                ! Retrive old box properties
-                BOXLROT(:) = BOXLMC(:)
-                BOXIROT(:) = BOXLMC_I(:)
-                BOXVROT    = BOXVMC
-                ! Retrive old molecular properties
-                RPROT(:,:) = RMC(:,:)
-                QPROT(:,:) = QMC(:,:)
-                EPROT(:,:) = EMC(:,:)
-              END IF
-              ! Initialization
-              BOXLM   = BOXLROT
-              BOXLM_I = BOXIROT
-              ! Box vectors
-              V1 = BOXLROT(1:3)
-              V2 = BOXLROT(4:6)
-              V3 = BOXLROT(7:9)
-              ! Axis of rotation
-              RAXIS = V1
-              ! Magnitude of rotation axis
-              RAXISMAG = DSQRT( DOT_PRODUCT( RAXIS, RAXIS ) )
-              ! Avoid null vectors
-              IF( DABS( RAXISMAG - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
-                RAXIS(:) = 0.D0
-              ELSE
-                RAXIS(:) = RAXIS(:) / RAXISMAG
-              END IF
-              ! Projection of the y-vector of the box onto the ZY-plane
-              PROJY_XY = V2 - ( DOT_PRODUCT( V2, RAXIS ) ) * RAXIS
-              ! Versor of the projection of the y-vector of the box onto the ZY-plane
-              PROJY_XY = PROJY_XY / DSQRT( DOT_PRODUCT( PROJY_XY, PROJY_XY ) )
-              ! Angle between the projection of the y-vector of the box and the y-axis of the coordination system
-              THETA = DACOS( DOT_PRODUCT( PROJY_XY, [0.D0,1.D0,0.D0] ) / DSQRT( DOT_PRODUCT( PROJY_XY, PROJY_XY ) ) )
-              ! Direction of rotation
-              IF( PROJY_XY(3) < 0.D0 ) THEN
-                ! Rotation quaternion (clockwise rotation)
-                QROT(0) = DCOS( THETA * 0.5D0 )              ! Real part
-                QROT(1) = DSIN( THETA * 0.5D0 ) * RAXIS(1)   ! Imaginary part (Vector)
-                QROT(2) = DSIN( THETA * 0.5D0 ) * RAXIS(2)   ! Imaginary part (Vector)
-                QROT(3) = DSIN( THETA * 0.5D0 ) * RAXIS(3)   ! Imaginary part (Vector)
-              ELSE
-                ! Rotation quaternion (counterclockwise rotation)
-                QROT(0) = DCOS( - THETA * 0.5D0 )            ! Real part
-                QROT(1) = DSIN( - THETA * 0.5D0 ) * RAXIS(1) ! Imaginary part (Vector)
-                QROT(2) = DSIN( - THETA * 0.5D0 ) * RAXIS(2) ! Imaginary part (Vector)
-                QROT(3) = DSIN( - THETA * 0.5D0 ) * RAXIS(3) ! Imaginary part (Vector)
-              END IF
-              ! Make box y-vector coplanar with the XY-plane of the coordination system
-              IF( DABS( RAXISMAG - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
-                ! Auxiliary vector
-                CALL ACTIVE_TRANSFORMATION( V1 / ( DSQRT( DOT_PRODUCT( V1, V1 ) ) ), QROT, AUXV )
-                ! New x-vector of the simulation box
-                BOXLROT(1:3) = DSQRT( DOT_PRODUCT( BOXLROT(1:3), BOXLROT(1:3) ) ) * AUXV
-                BOXLROT(2:3) = 0.D0
-                ! Auxiliary vector
-                CALL ACTIVE_TRANSFORMATION( V2 / ( DSQRT( DOT_PRODUCT( V2, V2 ) ) ), QROT, AUXV )
-                ! New y-vector of the simulation box
-                BOXLROT(4:6) = DSQRT( DOT_PRODUCT( BOXLROT(4:6), BOXLROT(4:6) ) ) * AUXV
-                BOXLROT(6)   = 0.D0
-                ! Auxiliary vector
-                CALL ACTIVE_TRANSFORMATION( V3 / ( DSQRT( DOT_PRODUCT( V3, V3 ) ) ), QROT, AUXV )
-                ! New z-vector of the simulation box
-                BOXLROT(7:9) = DSQRT( DOT_PRODUCT( BOXLROT(7:9), BOXLROT(7:9) ) ) * AUXV
-                ! Calculate the new reciprocal box basis vectors
-                CALL INVERSE_COF( BOXLROT, BOXIROT, BOXVROT )
-                ! Rescale positions and orientations of particles accordingly
-                DO K = 1, N_PARTICLES
-                  ! Scaled coordinates using old dimensions
-                  CALL MULTI_MATRIX( BOXLM_I, RPROT(:,K), S12 )
-                  ! New real coordinates using new dimensions
-                  CALL MULTI_MATRIX( BOXLROT, S12, RPROT(:,K) )
-                  ! Reorient particles
-                  QAUX(:) = QPROT(:,K)
-                  CALL MULTIPLY_QUATERNIONS( QROT, QAUX, QPROT(:,K) )
-                  ! Active transformation (rotation)
-                  CALL ACTIVE_TRANSFORMATION( AXISZ, QPROT(:,K), EPROT(:,K) )
-                END DO
-              END IF
-              ! Update box properties
-              BOXLMC(:)   = BOXLROT(:)
-              BOXLMC_I(:) = BOXIROT(:)
-              BOXVMC      = BOXVROT
-              ! Update molecular properties
-              RMC(:,:) = RPROT(:,:)
-              QMC(:,:) = QPROT(:,:)
-              EMC(:,:) = EPROT(:,:)
+            ! Check orientation of the box (eliminate box rotations)
+            IF( DABS( BoxLengthMC(2) - 0.D0 ) >= EPSILON( 1.D0 ) .OR. DABS( BoxLengthMC(3) - 0.D0 ) >= EPSILON( 1.D0 ) .OR. &
+            &   DABS( BoxLengthMC(6) - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
+              ! Undo box rotation
+              CALL UndoBoxRotation( BoxLengthMC, BoxLengthInverseMC, BoxVolumeMC )
             END IF
           END IF
         ! Retrieve old properties of the system configuration
-        ELSE IF( OVERLAP ) THEN
-          BOXVMC      = BOXVM      ! Retrieve box volume
-          BOXLMC(:)   = BOXLM(:)   ! Retrieve box length
-          BOXLMC_I(:) = BOXLM_I(:) ! Retrieve box length (inverse)
-          RMC(:,:)    = RMCV(:,:)  ! Retrieve position of particles
+        ELSE
+          BoxVolumeMC        = OldBoxVolume        ! Retrieve old box volume
+          BoxLengthMC        = OldBoxLength        ! Retrieve old box length
+          BoxLengthInverseMC = OldBoxLengthInverse ! Retrieve old box length (inverse)
+          pPositionMC        = PositionSaveMC      ! Retrieve old position of particles
         END IF
 
       ! Retrieve old properties of the simulation box
       ELSE
 
-        BOXVMC      = BOXVM      ! Retrieve box volume
-        BOXLMC(:)   = BOXLM(:)   ! Retrieve box length
-        BOXLMC_I(:) = BOXLM_I(:) ! Retrieve box length (inverse)
+        BoxVolumeMC        = OldBoxVolume        ! Retrieve old box volume
+        BoxLengthMC        = OldBoxLength        ! Retrieve old box length
+        BoxLengthInverseMC = OldBoxLengthInverse ! Retrieve old box length (inverse)
 
       END IF ! Enthalpy criterion
-
     END IF ! Box distortion criterion
 
   END IF
 
   ! Adjustment of maximum displacements
-  IF( CYCLES <= N_EQUIL ) THEN  ! During equilibration only
+  IF( iCycle <= nEquilibrationCycles ) THEN ! During equilibration only
 
     ! Adjustment of maximum displacement (translation)
-    IF( DBLE( MOVT ) >= DBLE( N_ADJUST * N_PARTICLES ) * R_ACC_T ) THEN
+    IF( DBLE( nMovementTranslationCounter ) >= DBLE( nAdjustmentFrequency * nParticles ) * AcceptanceRatioTranslation ) THEN
 
       ! Acceptance ratio (translation)
-      IF( MOVT > 0 ) THEN
-        RATIO = DBLE( NACCT ) / DBLE( MOVT )
+      IF( nMovementTranslationCounter > 0 ) THEN
+        Ratio = DBLE( nAcceptanceTranslation ) / DBLE( nMovementTranslationCounter )
         ! Translational adjustment
-        IF( RATIO <= R_ACC_T ) THEN
-          DRMAX = 0.95D0 * DRMAX
+        IF( Ratio <= AcceptanceRatioTranslation ) THEN
+          MaxTranslationalDisplacement = 0.95D0 * MaxTranslationalDisplacement
         ELSE
-          DRMAX = 1.05D0 * DRMAX
+          MaxTranslationalDisplacement = 1.05D0 * MaxTranslationalDisplacement
         END IF
         ! Ratio data (translation)
-        WRITE( 30, "(7G0)" ) CYCLES, ",", RATIO, ",", DRMAX, ",", R_ACC_T
-        FLUSH( 30 )
+        IF( iCycle > LastLine(1) ) THEN
+          WRITE( 30, "(7G0)" ) iCycle, ",", Ratio, ",", MaxTranslationalDisplacement, ",", AcceptanceRatioTranslation
+          FLUSH( 30 )
+        END IF
         ! Reset counter
-        NACCT = 0
-        MOVT  = 0
+        nAcceptanceTranslation      = 0
+        nMovementTranslationCounter = 0
       END IF
 
       ! Avoid large translations
-      IF( DRMAX > 5.D0 * MAXVAL( BOXLMC ) ) THEN
-        DRMAX = DRMAX - 2.5D0 * MAXVAL( BOXLMC )
+      BoxEdgeLength(1) = DSQRT( DOT_PRODUCT( BoxLengthMC(1:3), BoxLengthMC(1:3) ) )
+      BoxEdgeLength(2) = DSQRT( DOT_PRODUCT( BoxLengthMC(4:6), BoxLengthMC(4:6) ) )
+      BoxEdgeLength(3) = DSQRT( DOT_PRODUCT( BoxLengthMC(7:9), BoxLengthMC(7:9) ) )
+      IF( MaxTranslationalDisplacement > 2.D0 * MAXVAL( BoxEdgeLength ) ) THEN
+        MaxTranslationalDisplacement = MaxTranslationalDisplacement - MAXVAL( BoxEdgeLength )
       END IF
 
     END IF
 
     ! Adjustment of maximum displacement (rotation)
-    IF( DBLE( MOVR ) >= DBLE( N_ADJUST * N_PARTICLES ) * R_ACC_R ) THEN
+    IF( DBLE( nMovementRotationCounter ) >= DBLE( nAdjustmentFrequency * nParticles ) * AcceptanceRatioRotation ) THEN
 
       ! Acceptance ratio (rotation)
-      IF( MOVR > 0 ) THEN
-        RATIO = DBLE( NACCR ) / DBLE( MOVR )
+      IF( nMovementRotationCounter > 0 ) THEN
+        Ratio = DBLE( nAcceptanceRotation ) / DBLE( nMovementRotationCounter )
         ! Rotational adjustment
-        IF( RATIO <= R_ACC_R ) THEN
-          ANGMAX = 0.95D0 * ANGMAX
+        IF( Ratio <= AcceptanceRatioRotation ) THEN
+          MaxAngularDisplacement = 0.95D0 * MaxAngularDisplacement
         ELSE
-          ANGMAX = 1.05D0 * ANGMAX
+          MaxAngularDisplacement = 1.05D0 * MaxAngularDisplacement
         END IF
         ! Ratio data (rotation)
-        WRITE( 40, "(7G0)" ) CYCLES, ",", RATIO, ",", ANGMAX, ",", R_ACC_R
-        FLUSH( 40 )
+        IF( iCycle > LastLine(2) ) THEN
+          WRITE( 40, "(7G0)" ) iCycle, ",", Ratio, ",", MaxAngularDisplacement, ",", AcceptanceRatioRotation
+          FLUSH( 40 )
+        END IF
         ! Reset counter
-        NACCR = 0
-        MOVR  = 0
+        nAcceptanceRotation      = 0
+        nMovementRotationCounter = 0
       END IF
 
       ! Avoid 4π-rotations
-      IF( ANGMAX > 4.D0 * PI ) THEN
-        ANGMAX = ANGMAX - 2.D0 * PI
+      IF( MaxAngularDisplacement > 4.D0 * cPi ) THEN
+        MaxAngularDisplacement = MaxAngularDisplacement - 2.D0 * cPi
       END IF
 
     END IF
 
-    ! Adjustment of maximum displacement (isotropic volume change)
-    IF( DBLE( MOVVI ) >= DBLE( N_ADJUST ) * R_ACC_VI ) THEN
+    ! Adjustment of maximum displacement (isotropic volume scaling)
+    IF( DBLE( nMovementIsoVolumeChangeCounter ) >= DBLE( nAdjustmentFrequency ) * AcceptanceRatioIsoVolumeChange ) THEN
 
-      IF( MOVVI > 0 ) THEN
-        ! Acceptance ratio (isotropic volume change)
-        RATIO = DBLE( NACCVI ) / DBLE( MOVVI )
+      IF( nMovementIsoVolumeChangeCounter > 0 ) THEN
+        ! Acceptance ratio (isotropic volume scaling)
+        Ratio = DBLE( nAcceptanceIsotropicVolumeChange ) / DBLE( nMovementIsoVolumeChangeCounter )
         ! Volumetric adjustment
-        IF( RATIO <= R_ACC_VI ) THEN
-          DVMAXISO = 0.95D0 * DVMAXISO
+        IF( Ratio <= AcceptanceRatioIsoVolumeChange ) THEN
+          MaxIsoVolumetricDisplacement = 0.95D0 * MaxIsoVolumetricDisplacement
         ELSE
-          DVMAXISO = 1.05D0 * DVMAXISO
+          MaxIsoVolumetricDisplacement = 1.05D0 * MaxIsoVolumetricDisplacement
         END IF
-        ! Ratio data (volume change)
-        IF( MC_ENSEMBLE == "NPT" ) THEN
-          WRITE( 50, "(9G0)" ) CYCLES, ",", RATIO, ",", DVMAXISO, ",", R_ACC_VI, ",", VOL_TYPE
-          FLUSH( 50 )
+        ! Ratio data (volume scaling)
+        IF( EnsembleMC == "NPT" ) THEN
+          IF( iCycle > LastLine(3) ) THEN
+            WRITE( 50, "(9G0)" ) iCycle, ",", Ratio, ",", MaxIsoVolumetricDisplacement, ",", AcceptanceRatioIsoVolumeChange, &
+            &                    ",", VolumeType
+            FLUSH( 50 )
+          END IF
         END IF
         ! Reset counter
-        NACCVI = 0
-        MOVVI  = 0
-      END IF
-
-      ! Ratio data (box properties)
-      IF( MC_ENSEMBLE == "NPT" ) THEN
-        WRITE( 55, "(23G0)" ) CYCLES, ",", DISTORTION, ",", BOXVMC, ",", BOXLMC(1), ",", BOXLMC(2), ",", BOXLMC(3), ",", &
-        &                     BOXLMC(4), ",", BOXLMC(5), ",", BOXLMC(6), ",", BOXLMC(7), ",", BOXLMC(8), ",", BOXLMC(9)
-        FLUSH( 55 )
+        nAcceptanceIsotropicVolumeChange = 0
+        nMovementIsoVolumeChangeCounter  = 0
       END IF
 
     END IF
 
-    ! Adjustment of maximum displacement (anisotropic volume change)
-    IF( DBLE( MOVVA ) >= DBLE( N_ADJUST ) * R_ACC_VA ) THEN
+    ! Adjustment of maximum displacement (anisotropic volume scaling)
+    IF( DBLE( nMovementAnisoVolumeChangeCounter ) >= DBLE( nAdjustmentFrequency ) * AcceptanceRatioAnisoVolumeChange ) THEN
 
-      IF( MOVVA > 0 ) THEN
-        ! Acceptance ratio (isotropic volume change)
-        RATIO = DBLE( NACCVA ) / DBLE( MOVVA )
+      IF( nMovementAnisoVolumeChangeCounter > 0 ) THEN
+        ! Acceptance ratio (isotropic volume scaling)
+        Ratio = DBLE( nAcceptanceAnisotropicVolumeChange ) / DBLE( nMovementAnisoVolumeChangeCounter )
         ! Volumetric adjustment
-        IF( RATIO <= R_ACC_VA ) THEN
-          DVMAXANI = 0.95D0 * DVMAXANI
+        IF( Ratio <= AcceptanceRatioAnisoVolumeChange ) THEN
+          MaxAnisoVolumetricDisplacement = 0.95D0 * MaxAnisoVolumetricDisplacement
         ELSE
-          DVMAXANI = 1.05D0 * DVMAXANI
+          MaxAnisoVolumetricDisplacement = 1.05D0 * MaxAnisoVolumetricDisplacement
         END IF
-        ! Ratio data (volume change)
-        IF( MC_ENSEMBLE == "NPT" ) THEN
-          WRITE( 50, "(9G0)" ) CYCLES, ",", RATIO, ",", DVMAXANI, ",", R_ACC_VA, ",", VOL_TYPE
-          FLUSH( 50 )
+        ! Ratio data (volume scaling)
+        IF( EnsembleMC == "NPT" ) THEN
+          IF( iCycle > LastLine(3) ) THEN
+            WRITE( 50, "(9G0)" ) iCycle, ",", Ratio, ",", MaxAnisoVolumetricDisplacement, ",", AcceptanceRatioAnisoVolumeChange, &
+            &                    ",", VolumeType
+            FLUSH( 50 )
+          END IF
         END IF
         ! Reset counter
-        NACCVA = 0
-        MOVVA  = 0
-      END IF
-
-      ! Ratio data (box properties)
-      IF( MC_ENSEMBLE == "NPT" ) THEN
-        WRITE( 55, "(23G0)" ) CYCLES, ",", DISTORTION, ",", BOXVMC, ",", BOXLMC(1), ",", BOXLMC(2), ",", BOXLMC(3), ",", &
-        &                     BOXLMC(4), ",", BOXLMC(5), ",", BOXLMC(6), ",", BOXLMC(7), ",", BOXLMC(8), ",", BOXLMC(9)
-        FLUSH( 55 )
+        nAcceptanceAnisotropicVolumeChange = 0
+        nMovementAnisoVolumeChangeCounter  = 0
       END IF
 
     END IF
@@ -2493,58 +1150,70 @@ DO CYCLES = 1, MAX_CYCLES
   END IF
 
   ! Order parameter data
-  IF( MOD( CYCLES, N_SAVE ) == 0 ) THEN
+  IF( MOD( iCycle, nSavingFrequency ) == 0 ) THEN
     ! Nematic order parameter (Q-tensor method)
-    CALL NEMATIC_ORDER_PARAMETER( S, EMC )
+    CALL UniaxialNematicOrderParameter( OrderParameterMC, pOrientationMC )
     ! Only production-related data
-    WRITE( 60, "(3G0)" ) CYCLES, ",", S
+    WRITE( 60, "(3G0)" ) iCycle, ",", OrderParameterMC
     FLUSH( 60 )
   END IF
 
   ! Trajectory data
-  IF( TRAJ_CHECK ) THEN
-    IF( MOD ( CYCLES, N_SAVE ) == 0 ) THEN
-      WRITE( 20, "(G0)" ) N_PARTICLES
+  IF( TrajectoryLogical ) THEN
+    IF( MOD ( iCycle, nSavingFrequency ) == 0 ) THEN
+      WRITE( 20, "(G0)" ) nParticles
       WRITE( 20, * ) " "
-      IF( GEOM_SELEC(1) ) THEN
-        DO C = 1, COMPONENTS
-          IF( .NOT. SPHERCOMP(C) ) THEN
-            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * LENGTH(C)
+      IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+        DO cComponent = 1, nComponents
+          IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+            DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+              WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
+              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cLength(cComponent)
             END DO
           ELSE
-            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+            DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+              WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
+              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
             END DO
           END IF
         END DO
-      ELSE IF( GEOM_SELEC(2) ) THEN
-        DO C = 1, COMPONENTS
-          IF( .NOT. SPHERCOMP(C) ) THEN
-            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+      ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+        DO cComponent = 1, nComponents
+          IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+            DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+              WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
+              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          0.5D0 * cDiameter(cComponent), cLength(cComponent)
             END DO
           ELSE
-            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+            DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+              WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
+              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
             END DO
           END IF
         END DO
-      ELSE IF( GEOM_SELEC(3) ) THEN
-        DO C = 1, COMPONENTS
-          IF( .NOT. SPHERCOMP(C) ) THEN
-            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), LENGTH(C)
+      ELSE IF( GeometryType(3) ) THEN ! Cylinders
+        DO cComponent = 1, nComponents
+          IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+            DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+              WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
+              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          0.5D0 * cDiameter(cComponent), cLength(cComponent)
             END DO
           ELSE
-            DO I = SUM( N_COMPONENT(0:(C-1)) ) + 1, SUM( N_COMPONENT(0:C) )
-              WRITE( 20, "(11(G0,1X))" ) INDEX_P(C), RMC(1,I), RMC(2,I), RMC(3,I), QMC(0,I), QMC(1,I), QMC(2,I), QMC(3,I), &
-              &                          0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C), 0.5D0 * DIAMETER(C)
+            DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+              WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
+              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
             END DO
           END IF
         END DO
@@ -2554,9 +1223,80 @@ DO CYCLES = 1, MAX_CYCLES
   END IF
 
   ! Results data (packing fraction, number density, box volume, and pressure)
-  IF( MOD( CYCLES, N_SAVE ) == 0 .AND. MC_ENSEMBLE == "NPT" ) THEN
-    WRITE( 70, "(9G0)" ) CYCLES, ",", PACKING_F, ",", TOTAL_RHO, ",", BOXVMC, ",", PRESS
+  IF( MOD( iCycle, nSavingFrequency ) == 0 .AND. EnsembleMC == "NPT" ) THEN
+    WRITE( 70, "(9G0)" ) iCycle, ",", PackingFraction, ",", TotalNumberDensity, ",", BoxVolumeMC, ",", ReducedPressure
     FLUSH( 70 )
+  END IF
+
+  ! Box properties data
+  IF( MOD( iCycle, nSavingFrequency ) == 0 .AND. EnsembleMC == "NPT" ) THEN
+    WRITE( 55, "(23G0)" ) iCycle, ",", BoxDistortionMC, ",", BoxVolumeMC, ",", BoxLengthMC(1), ",", BoxLengthMC(2), ",", &
+    &                     BoxLengthMC(3), ",", BoxLengthMC(4), ",", BoxLengthMC(5), ",", BoxLengthMC(6), ",", &
+    &                     BoxLengthMC(7), ",", BoxLengthMC(8), ",", BoxLengthMC(9)
+    FLUSH( 55 )
+  END IF
+
+  ! Potential data (equilibration and production)
+  IF( PotentialTypeLogical(2) ) THEN
+    IF( .NOT. PotentialEnergyLogical ) THEN
+      IF( MOD( iCycle, nSavingFrequency ) == 0 ) THEN
+        DO rRange = 1, nRange
+          WRITE( (80 + rRange), "(3G0)" ) iCycle, ",", TotalPotentialEnergyMC(rRange)
+          FLUSH( (80 + rRange) )
+        END DO
+      END IF
+    ! Potential data (production-related only)
+    ELSE IF( PotentialEnergyLogical ) THEN
+      IF( iCycle > nEquilibrationCycles .AND. MOD( iCycle, nSavingFrequency ) == 0 ) THEN
+        DO rRange = 1, nRange
+          WRITE( (80 + rRange), "(3G0)" ) iCycle, ",", TotalPotentialEnergyMC(rRange)
+          FLUSH( (80 + rRange) )
+        END DO
+      END IF
+    END IF
+  END IF
+
+  ! Backup file
+  IF( BackupFileLogical .AND. (MOD( iCycle, nSavingFrequency ) == 0 .OR. iCycle == FirstCycle + 1) ) THEN
+    OPEN( Unit= 105, File= "Backup/"//TRIM( DescriptorDate )//""//TRIM( DescriptorHour )//"_simulation.backup" )
+    WRITE( 105, "(2G0)" ) "Current_Cycle: ", iCycle
+    IF( CellListLogical ) THEN
+      WRITE( 105, "(G0,G0)" ) "Cell_List_Control: ", CellListControl
+      WRITE( 105, "(G0,3(G0,1X))" ) "Current_Number_of_Cells: ", pCells
+      WRITE( 105, * ) pCellHead
+      DO pParticle = 1, nParticles
+        WRITE( 105, * ) pCellList(pParticle), pCellIndex(:,pParticle)
+      END DO
+    END IF
+    DO pParticle = 1, nParticles
+      WRITE( 105, * ) pPositionMC(:,pParticle), pQuaternionMC(:,pParticle), pOrientationMC(:,pParticle)
+    END DO
+    IF( PotentialTypeLogical(2) ) THEN
+      DO rRange = 1, nRange
+        WRITE( 105, * ) TotalPotentialEnergyMC(rRange)
+      END DO
+    END IF
+    IF( CellListLogical ) THEN
+      WRITE( 105, "(G0,9(G0.11,1X))" ) "Old_Box_Length: ", OldBoxLength
+    END IF
+    WRITE( 105, "(G0,9(G0.11,1X))" ) "Box_Length: ", BoxLengthMC
+    WRITE( 105, "(G0,9(G0.11,1X))" ) "Box_Length_Inverse: ", BoxLengthInverseMC
+    WRITE( 105, "(G0,G0.11)" ) "Box_Volume: ", BoxVolumeMC
+    WRITE( 105, "(G0,G0.11)" ) "Box_Distortion: ", BoxDistortionMC
+    WRITE( 105, * ) "Acceptance_Translation: ", nAcceptanceTranslation
+    WRITE( 105, * ) "Acceptance_Rotation: ", nAcceptanceRotation
+    WRITE( 105, * ) "Acceptance_Isotropic_Volume_Change: ", nAcceptanceIsotropicVolumeChange
+    WRITE( 105, * ) "Acceptance_Anisotropic_Volume_Change: ", nAcceptanceAnisotropicVolumeChange
+    WRITE( 105, * ) "Movement_Translation_Counter: ", nMovementTranslationCounter
+    WRITE( 105, * ) "Movement_Rotation_Counter: ", nMovementRotationCounter
+    WRITE( 105, * ) "Movement_Iso_Volume_Change_Counter: ", nMovementIsoVolumeChangeCounter
+    WRITE( 105, * ) "Movement_Aniso_Volume_Change_Counter: ", nMovementAnisoVolumeChangeCounter
+    WRITE( 105, * ) "Max_Translational_Displacement: ", MaxTranslationalDisplacement
+    WRITE( 105, * ) "Max_Angular_Displacement: ", MaxAngularDisplacement
+    WRITE( 105, * ) "Max_Iso_Volumetric_Displacement: ", MaxIsoVolumetricDisplacement
+    WRITE( 105, * ) "Max_Aniso_Volumetric_Displacement: ", MaxAnisoVolumetricDisplacement
+    WRITE( 105, * ) "Seed_Value: ", SeedValue
+    CLOSE( 105 )
   END IF
 
 END DO
@@ -2565,24 +1305,24 @@ END DO
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0)" ) "Monte Carlo simulation finished successfully! See directories for results."
-CALL SLEEP( 1 )
+CALL Sleep( 1 )
 WRITE( *, "(G0)" ) " "
 
 ! Output unit
-IF( TRAJ_CHECK ) THEN
+IF( TrajectoryLogical ) THEN
   CLOSE( 20 )
 END IF
 CLOSE( 30 )
 CLOSE( 40 )
 CLOSE( 60 )
-IF( MC_ENSEMBLE == "NPT" ) THEN
+IF( EnsembleMC == "NPT" ) THEN
   CLOSE( 50 )
   CLOSE( 55 )
   CLOSE( 70 )
 END IF
-IF( POTENTIAL_SELEC(2) ) THEN
-  DO C_LAMB = 1, N_LAMBDA
-    CLOSE ( 80 + C_LAMB )
+IF( PotentialTypeLogical(2) ) THEN
+  DO rRange = 1, nRange
+    CLOSE ( 80 + rRange )
   END DO
 END IF
 
@@ -2592,786 +1332,89 @@ WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"SIMULATION LENGTH"//REPEAT( " ", 1
 WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
 
 ! End simulation timer
-CALL CPU_TIME( STOP_TIMER )
-WRITE( *, "(G0,G0.5,G0)" ) "Elapsed Time: ", (STOP_TIMER - START_TIMER), "s."
-CALL SLEEP( 1 )
+CALL CPU_Time( StopTimer )
+WRITE( *, "(G0,G0.5,G0)" ) "Elapsed Time: ", (StopTimer - StartTimer), "s."
+CALL Sleep( 1 )
 WRITE( *, "(G0)" ) " "
 
 ! Deallocation of arrays
-DEALLOCATE( QMC, RMC, EMC, RMCV )
-DEALLOCATE( V, VMC, VN, VM, DV )
-DEALLOCATE( SWRANGE )
-DEALLOCATE( Q, R, E )
-DEALLOCATE( QPROT, RPROT, EPROT )
+DEALLOCATE( pQuaternionMC, pPositionMC, pOrientationMC, PositionSaveMC )
+IF( PotentialTypeLogical(2) ) THEN
+  DEALLOCATE( TotalPotentialEnergyMC, iNewPotentialEnergy, iOldPotentialEnergy, iPotentialEnergyDifference )
+  DEALLOCATE( cPotentialRange )
+END IF
+IF( CellListLogical ) CALL FinalizeList(  )
 
 ! Calculation of the first- and second-order TPT coefficients
-IF( COEF_CHECK .AND. MC_ENSEMBLE == "NVT" .AND. POTENTIAL_SELEC(2) ) THEN
+IF( PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" .AND. PotentialTypeLogical(2) ) THEN
   ! Status
   WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
-  WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"TPT COEFFICIENTS"//REPEAT( " ", 20 )//CH_VS
+  WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"TPT PARAMETERS"//REPEAT( " ", 20 )//CH_VS
   WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
-  WRITE( *, "(G0)" ) "Initializing calculation of the TPT coefficients..."
+  WRITE( *, "(G0)" ) "Initializing calculation of the TPT parameters..."
   WRITE( *, "(G0)" ) " "
   ! Calculation of the TPT coefficients for every potential range
-  BLOCK_AV_LOOP: DO C_LAMB = 1, N_LAMBDA
+  BlockAveragePotentialRange: DO rRange = 1, nRange
     ! Condition
-    IF( ( MIN_BLOCKS > MAX_BLOCKS ) ) THEN
-      WRITE( *, "(5G0)" ) "Minimum number of blocks (", MIN_BLOCKS, ") greater than the maximum number of blocks (", MAX_BLOCKS, &
+    IF( ( MinBlocks > MaxBlocks ) ) THEN
+      WRITE( *, "(5G0)" ) "Minimum number of blocks (", MinBlocks, ") greater than the maximum number of blocks (", MaxBlocks, &
       &                   "). Skipping..."
       WRITE( *, "(G0)" ) " "
       ! Terminate calculation if min. block greater than max. blocks
-      EXIT BLOCK_AV_LOOP
+      EXIT BlockAveragePotentialRange
     END IF
     ! Status
-    WRITE( *, "(G0,G0.5,G0)", ADVANCE= "NO" ) "Current Potential Range: ", L_RANGE(C_LAMB), ". Calculating..."
-    WRITE( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
+    WRITE( *, "(G0,G0.5,G0)", Advance= "NO" ) "Current Potential Range: ", PotentialRange(rRange), ". Calculating..."
+    WRITE( DescriptorRange, FormatRange ) PotentialRange(rRange)
     ! Initialization
-    FLAG = .FALSE.
+    FlagLogical = .FALSE.
     ! Block-averaging method
-    CALL BLOCK_AVERAGING( FLAG, A1(C_LAMB), A2(C_LAMB), APERT(C_LAMB), DPA1(C_LAMB), DPA2(C_LAMB), DPAPERT(C_LAMB), EXEC_TIME )
+    CALL BlockAverage( FlagLogical, CoefficientTPT1(rRange), CoefficientTPT2(rRange), rFreeEnergy(rRange), &
+    &                  CoefficientTPT1Deviation(rRange), CoefficientTPT2Deviation(rRange), rFreeEnergyDeviation(rRange), &
+    &                  ExecutionTime )
     ! Stop criterion
-    IF( FLAG ) THEN
-      WRITE( *, "(G0)", ADVANCE= "YES" ) " "
-      WRITE( *, "(5G0)" ) "Number of blocks (", MAX_BLOCKS - MIN_BLOCKS, ") exceed the maximum number of blocks (", 10000, &
+    IF( FlagLogical ) THEN
+      WRITE( *, "(G0)", Advance= "YES" ) " "
+      WRITE( *, "(5G0)" ) "Number of blocks (", MaxBlocks - MinBlocks, ") exceed the maximum number of blocks (", 10000, &
       &                   "). Skipping..."
       WRITE( *, "(G0)" ) " "
       ! Terminate calculation if min. block greater than max. blocks
-      EXIT BLOCK_AV_LOOP
+      EXIT BlockAveragePotentialRange
     END IF
     ! Status
-    WRITE( *, "(G0,G0.5,G0)", ADVANCE= "YES" ) " Done in ", EXEC_TIME, "s."
-  END DO BLOCK_AV_LOOP
+    WRITE( *, "(G0,G0.5,G0)", Advance= "YES" ) " Done in ", ExecutionTime, "s."
+  END DO BlockAveragePotentialRange
   ! Subroutine returns no errors
-  IF( .NOT. FLAG .AND. ( MIN_BLOCKS <= MAX_BLOCKS ) ) THEN
-    DO C_LAMB = 1, N_LAMBDA
-      WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
-      OPEN( UNIT= 150, FILE= "Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/" &
-      &                      //TRIM( DESCRIPTOR_HOUR )//"_TPT_coefficients_η"//TRIM( DESCRIPTOR_FILE1 )//"_C" &
-      &                      //TRIM( DESCRIPTOR_FILE2 )//"_"//TRIM( DESCRIPTOR_FILE3 )//".csv")
-      WRITE( 150, "(G0,G0)" ) "# of Particles: ", N_PARTICLES
-      WRITE( 150, "(G0,G0.5)" ) "Reduced Temperature: ", RED_TEMP
-      WRITE( 150, "(G0,G0.5)" ) "Reduced Number Density: ", TOTAL_RHO
-      WRITE( 150, "(G0,G0.5)" ) "Aspect Ratio (L/D): ", ASPECT_RATIO
-      WRITE( 150, "(G0,G0.5)" ) "Attractive Range: ", L_RANGE(C_LAMB)
+  IF( .NOT. FlagLogical .AND. ( MinBlocks <= MaxBlocks ) ) THEN
+    DO rRange = 1, nRange
+      WRITE ( DescriptorRange, FormatRange ) PotentialRange(rRange)
+      OPEN( Unit= 150, File= "Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/" &
+      &                      //TRIM( DescriptorHour )//"_TPT_coefficients_η"//TRIM( DescriptorFileThermoVariable )//"_C" &
+      &                      //TRIM( DescriptorFileComponents )//"_"//TRIM( DescriptorFileGeometry )//".csv")
+      WRITE( 150, "(G0,G0)" ) "# of Particles: ", nParticles
+      WRITE( 150, "(G0,G0.5)" ) "Reduced Temperature: ", ReducedTemperature
+      WRITE( 150, "(G0,G0.5)" ) "Reduced Number Density: ", TotalNumberDensity
+      WRITE( 150, "(G0,G0.5)" ) "Aspect Ratio (L/D): ", cAspectRatio
+      WRITE( 150, "(G0,G0.5)" ) "Attractive Range: ", PotentialRange(rRange)
       WRITE( 150, "(G0)" ) " "
       WRITE( 150, "(11G0)" ) "'1st_Order_TPTCoefficient'", ",", "'1st_Order_TPTCoefficient_STD'", ",", &
       &                      "'2nd_Order_TPTCoefficient'", ",", "'2nd_Order_TPTCoefficient_STD'", ",", &
       &                      "'Perturbed_Helmholtz_FEnergy'", ",", "'Perturbed_Helmholtz_FEnergy_STD'"
-      WRITE( 150, "(G0.7,5(G0,G0.7))" ) A1(C_LAMB), ",", DPA1(C_LAMB), ",", A2(C_LAMB), ",", DPA2(C_LAMB), ",", APERT(C_LAMB), &
-      &                                 ",", DPAPERT(C_LAMB)
+      WRITE( 150, "(G0.7,5(G0,G0.7))" ) CoefficientTPT1(rRange), ",", CoefficientTPT1Deviation(rRange), ",", &
+      &                                 CoefficientTPT2(rRange), ",", CoefficientTPT2Deviation(rRange), ",", &
+      &                                 rFreeEnergy(rRange), ",", rFreeEnergyDeviation(rRange)
       CLOSE( 150 )
     END DO
-    WRITE( *, "(G0)", ADVANCE= "YES" ) " "
+    WRITE( *, "(G0)", Advance= "YES" ) " "
   END IF
 END IF
 
 ! Write down results
-WRITE( *, "(G0)", ADVANCE= "NO" ) "Writing simulation log..."
-CALL SLEEP( 1 )
-
-! Allocation
-ALLOCATE( CHAR_LABEL(72,COMPONENTS) )
-ALLOCATE( CHAR_LABEL_L(1,N_LAMBDA ) )
-
-! Simulation log descriptors
-WRITE( CHAR_LABEL(1,1), "(G0)"    ) COMPONENTS
-WRITE( CHAR_LABEL(2,1), "(G0.5)"  ) PACKING_F
-DO C = 1, COMPONENTS
-  WRITE( CHAR_LABEL(3,C), "(G0.5)"  ) DIAMETER(C)
-  WRITE( CHAR_LABEL(4,C), "(G0.5)"  ) LENGTH(C)
-  WRITE( CHAR_LABEL(5,C), "(G0.5)"  ) ASPECT_RATIO(C)
-  WRITE( CHAR_LABEL(6,C), "(G0.5)"  ) MOLAR_F(C)
-  WRITE( CHAR_LABEL(7,C), "(G0)"    ) N_COMPONENT(C)
-  WRITE( CHAR_LABEL(8,C), "(G0.5)"  ) PARTICLE_VOL(C)
-  WRITE( CHAR_LABEL(9,C), "(G0.5)"  ) RHO_PARTICLE(C)
-END DO
-WRITE( CHAR_LABEL(10,1), "(G0)"   ) N_PARTICLES
-WRITE( CHAR_LABEL(11,1), "(G0.5)" ) TOTAL_VP
-WRITE( CHAR_LABEL(12,1), "(G0.5)" ) TOTAL_RHO
-WRITE( CHAR_LABEL(13,1), "(G0.5)" ) TEMP
-WRITE( CHAR_LABEL(14,1), "(G0.5)" ) PRESS
-WRITE( CHAR_LABEL(15,1), "(G0.5)" ) BOXVMC
-WRITE( CHAR_LABEL(16,1), "(2(E11.4,G0),E11.4)" ) BOXLMC(1), ", ", BOXLMC(2), ", ", BOXLMC(3)
-WRITE( CHAR_LABEL(17,1), "(2(E11.4,G0),E11.4)" ) BOXLMC(4), ", ", BOXLMC(5), ", ", BOXLMC(6)
-WRITE( CHAR_LABEL(18,1), "(2(E11.4,G0),E11.4)" ) BOXLMC(7), ", ", BOXLMC(8), ", ", BOXLMC(9)
-WRITE( CHAR_LABEL(19,1), "(G0)"   ) MAX_CYCLES
-WRITE( CHAR_LABEL(20,1), "(G0)"   ) N_EQUIL
-WRITE( CHAR_LABEL(21,1), "(G0)"   ) MAX_CYCLES - N_EQUIL
-WRITE( CHAR_LABEL(22,1), "(G0)"   ) N_SAVE
-WRITE( CHAR_LABEL(23,1), "(G0)"   ) N_ADJUST
-WRITE( CHAR_LABEL(24,1), "(G0.5)" ) R_ACC_T
-WRITE( CHAR_LABEL(25,1), "(G0.5)" ) R_ACC_R
-WRITE( CHAR_LABEL(26,1), "(G0.5)" ) R_ACC_VI
-WRITE( CHAR_LABEL(54,1), "(G0.5)" ) R_ACC_VA
-WRITE( CHAR_LABEL(60,1), "(G0.5)" ) PROB_MOV
-WRITE( CHAR_LABEL(27,1), "(G0.5)" ) PROB_TRANS
-WRITE( CHAR_LABEL(28,1), "(G0.5)" ) PROB_ROT
-WRITE( CHAR_LABEL(29,1), "(G0.5)" ) PROB_VOL
-WRITE( CHAR_LABEL(30,1), "(G0.5)" ) PROB_VOL_ISO
-WRITE( CHAR_LABEL(55,1), "(G0.5)" ) PROB_VOL_ANISO
-WRITE( CHAR_LABEL(31,1), "(G0.5)" ) MAX_TRANS
-WRITE( CHAR_LABEL(32,1), "(G0.5)" ) MAX_ROT
-WRITE( CHAR_LABEL(33,1), "(G0.5)" ) MAX_VOLI
-WRITE( CHAR_LABEL(56,1), "(G0.5)" ) MAX_VOLA
-WRITE( CHAR_LABEL(34,1), "(G0)"   ) UNROT_AXIS
-WRITE( CHAR_LABEL(35,1), "(G0.5)" ) QUATERNION_ANGLE
-WRITE( CHAR_LABEL(60,1), "(G0.5)" ) BOX_DIST
-WRITE( CHAR_LABEL(61,1), "(G0.5)" ) MAX_LENGTH_RATIO
-WRITE( CHAR_LABEL(62,1), "(G0.5)" ) MAX_ANGLE * 180.D0 / PI
-IF( LRED_SELEC(1) ) THEN
-  WRITE( CHAR_LABEL(63,1), "(G0)" ) "Gottwald"
-ELSE IF( LRED_SELEC(2) ) THEN
-  WRITE( CHAR_LABEL(63,1), "(G0)" ) "Lenstra-Lenstra-Lovász"
-END IF
-WRITE( CHAR_LABEL(36,1), "(G0)"   ) CONFIGURATION
-IF( ( STOP_TIMER - START_TIMER ) < 60.D0 ) THEN
-  WRITE( CHAR_LABEL(37,1), "(2G0)" ) FLOOR( STOP_TIMER - START_TIMER ), "s"
-ELSE IF( ( STOP_TIMER - START_TIMER ) < 3600.D0 ) THEN
-  WRITE( CHAR_LABEL(37,1), "(4G0)" ) FLOOR( ( STOP_TIMER - START_TIMER ) / 60.D0 ), "m:", &
-  &                                  FLOOR( ( STOP_TIMER - START_TIMER ) - 60.D0 * DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / &
-  &                                  60.D0 ) ) ), "s"
-ELSE IF( ( STOP_TIMER - START_TIMER ) < 86400.D0 ) THEN
-  WRITE( CHAR_LABEL(37,1), "(6G0)" ) FLOOR( ( STOP_TIMER - START_TIMER ) / 3.6d3 ), "h:", &
-  &                                  FLOOR( DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 60.D0 ) ) - 60.D0 * &
-  &                                  DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 3.6d3 ) ) ), "m:", &
-  &                                  FLOOR( ( STOP_TIMER - START_TIMER ) - 3600.D0 * DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / &
-  &                                  3.6d3 ) ) - 60.D0 * DBLE( FLOOR( DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 60.D0 ) ) - &
-  &                                  60.D0 * DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 3.6d3 ) ) ) ) ), "s"
-ELSE IF( ( STOP_TIMER - START_TIMER ) >= 86400.D0 ) THEN
-  WRITE( CHAR_LABEL(37,1), "(8G0)" ) FLOOR( ( STOP_TIMER - START_TIMER ) / 864.d2 ), "d:", &
-  &                                  FLOOR( DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 3600.D0 ) ) - 24.D0 * &
-  &                                  DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 864.d2 ) ) ), "h:", &
-  &                                  FLOOR( DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 60.D0 ) ) - 1440.D0 * &
-  &                                  DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 864.d2 ) ) - 60.D0 * DBLE( FLOOR( DBLE( FLOOR( ( &
-  &                                  STOP_TIMER - START_TIMER ) / 3600.D0 ) ) - 24.D0 * DBLE( FLOOR( ( STOP_TIMER - &
-  &                                  START_TIMER ) / 864.d2 ) ) ) ) ), "m:", &
-  &                                  FLOOR( ( STOP_TIMER - START_TIMER ) - 864.D2 * DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / &
-  &                                  864.d2 ) ) - 3600.D0 * DBLE( FLOOR( DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 3600.D0 ) ) - &
-  &                                  24.D0 * DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 864.d2 ) ) ) ) - 60.D0 * &
-  &                                  DBLE( FLOOR( ( ( STOP_TIMER - START_TIMER ) / 60.D0 ) - 1440.D0 * DBLE( FLOOR( ( STOP_TIMER - &
-  &                                  START_TIMER ) / 864.d2 ) ) - 60.D0 * DBLE( FLOOR( DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / &
-  &                                  3600.D0 ) ) - 24.D0 * DBLE( FLOOR( ( STOP_TIMER - START_TIMER ) / 864.d2 ) ) ) ) ) ) ), "s"
-END IF
-FORMAT_SELF = "(I4,G0,I2.2,G0,I2.2,G0,I2.2,G0,I2.2,G0,I2.2)"
-WRITE( CHAR_LABEL(38,1), FORMAT_SELF ) DATE_TIME(1), "/", DATE_TIME(2), "/", DATE_TIME(3), " ", &
-&                                      DATE_TIME(5), ":", DATE_TIME(6), ":", DATE_TIME(7)
-DO C = 1, COMPONENTS
-  WRITE( CHAR_LABEL(39,C), "(G0)" ) C
-END DO
-IF( CONFIG_SELEC(4) ) THEN
-  WRITE( CHAR_LABEL(40,1), "(G0.5)" ) ETA_INI
-  WRITE( CHAR_LABEL(42,1), "(G0.5)" ) PRESS_RND
-  WRITE( CHAR_LABEL(43,1), "(G0)"   ) N_ADJUST_INIT
-  WRITE( CHAR_LABEL(44,1), "(G0.5)" ) DRMAX_INIT
-  WRITE( CHAR_LABEL(45,1), "(G0.5)" ) ANGMAX_INIT
-  WRITE( CHAR_LABEL(46,1), "(G0.5)" ) DVMAXISO_INIT
-  WRITE( CHAR_LABEL(57,1), "(G0.5)" ) DVMAXANISO_INIT
-  WRITE( CHAR_LABEL(47,1), "(G0.5)" ) DVMIN_INIT
-  WRITE( CHAR_LABEL(48,1), "(G0.5)" ) PROB_MOV_INIT
-  WRITE( CHAR_LABEL(49,1), "(G0.5)" ) PROB_VOL_INIT
-  WRITE( CHAR_LABEL(50,1), "(G0.5)" ) PROB_TRANS_INIT
-  WRITE( CHAR_LABEL(51,1), "(G0.5)" ) PROB_ROT_INIT
-  WRITE( CHAR_LABEL(58,1), "(G0.5)" ) PROB_ISO_INIT
-  WRITE( CHAR_LABEL(59,1), "(G0.5)" ) PROB_ANISO_INIT
-END IF
-IF( INIT_CONF ) THEN
-  WRITE( CHAR_LABEL(52,1), "(G0)" ) "[YES]"
-ELSE IF( .NOT. INIT_CONF ) THEN
-  WRITE( CHAR_LABEL(52,1), "(G0)" ) "[NO]"
-END IF
-IF( FSEED ) THEN
-  WRITE( CHAR_LABEL(53,1), "(G0)" ) "[YES]"
-ELSE IF( .NOT. FSEED ) THEN
-  WRITE( CHAR_LABEL(53,1), "(G0)" ) "[NO]"
-END IF
-IF( POTENTIAL_SELEC(1) ) THEN
-  WRITE( CHAR_LABEL(64,1), "(G0)" ) "Purely Repulsive Hard-Core"
-ELSE IF( POTENTIAL_SELEC(2) ) THEN
-  WRITE( CHAR_LABEL(64,1), "(G0)" ) "Spherical Square-Well"
-END IF
-IF( POTENTIAL_SELEC(2) ) THEN
-  WRITE( CHAR_LABEL(65,1), "(G0)"   ) N_LAMBDA
-  DO I = 1, N_LAMBDA
-    WRITE( CHAR_LABEL_L(1,I), "(G0.5)" ) L_RANGE(I)
-  END DO
-  WRITE( CHAR_LABEL(67,1), "(G0.5)" ) RED_TEMP
-  IF( POTENTIAL_CHECK ) THEN
-    WRITE( CHAR_LABEL(68,1), "(G0)" ) "Only Production Cycles"
-  ELSE IF( .NOT. POTENTIAL_CHECK ) THEN
-    WRITE( CHAR_LABEL(68,1), "(G0)" ) "Equilibration and Production Cycles"
-  END IF
-  WRITE( CHAR_LABEL(69,1), "(G0)"   ) MIN_BLOCKS
-  WRITE( CHAR_LABEL(70,1), "(G0)"   ) MAX_BLOCKS
-END IF
-DO C = 1, COMPONENTS
-  WRITE( CHAR_LABEL(71,C), "(G0)"   ) SPHERCOMP(C)
-END DO
-WRITE( CHAR_LABEL(72,1), "(G0)"   ) ISEED
-
-! Log strings
-ALLOCATE( LOG_STRINGS_H(6), LOG_STRINGS_T(78,COMPONENTS), LOG_STRINGS_S(6) )
-ALLOCATE( LOG_STRINGS_L( 1,( INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1 ) ) )
-ALLOCATE( STRSH(6), STRST(78,COMPONENTS), STRSS(6) )
-
-! String name (header)
-LOG_STRINGS_H(1)  = "MONTE CARLO SIMULATION LOG"
-LOG_STRINGS_H(2)  = "NVT/NPT-Monte Carlo algorithm for cylindrycally-symmetric molecules"
-LOG_STRINGS_H(3)  = "Nathan Barros de Souza"
-LOG_STRINGS_H(4)  = "University of Campinas"
-LOG_STRINGS_H(5)  = "School of Chemical Engineering"
-LOG_STRINGS_H(6)  = "Supervisor: Luis Fernando Mercier Franco"
-
-! String name (text)
-LOG_STRINGS_T(1,1) = "Execution Date: "//TRIM( CHAR_LABEL(38,1) )
-LOG_STRINGS_T(2,1) = "Ensemble: "//TRIM( MC_ENSEMBLE )
-LOG_STRINGS_T(3,1) = "Molecular Shape: "//TRIM( GEOMETRY )
-LOG_STRINGS_T(4,1) = "Number of Components: "//TRIM( CHAR_LABEL(1,1) )
-LOG_STRINGS_T(5,1) = "Packing Fraction: "//TRIM( CHAR_LABEL(2,1) )
-DO C = 1, COMPONENTS
-  LOG_STRINGS_T(6,C)  = "● COMPONENT #"//TRIM( CHAR_LABEL(39,C) )
-  IF( SPHERCOMP(C) ) THEN
-    LOG_STRINGS_T(77,C) = "Spherical Component"
-  ELSE
-    LOG_STRINGS_T(77,C) = "Non-Spherical Component"
-  END IF
-  LOG_STRINGS_T(7,C)  = "Diameter: "//TRIM( CHAR_LABEL(3,C) )//"Å"
-  LOG_STRINGS_T(8,C)  = "Length: "//TRIM( CHAR_LABEL(4,C) )//"Å"
-  LOG_STRINGS_T(9,C)  = "Elongation: "//TRIM( CHAR_LABEL(5,C) )
-  LOG_STRINGS_T(10,C) = "Molar Fraction: "//TRIM( CHAR_LABEL(6,C) )
-  LOG_STRINGS_T(11,C) = "Number of Particles: "//TRIM( CHAR_LABEL(7,C) )
-  LOG_STRINGS_T(12,C) = "Particle Volume: "//TRIM( CHAR_LABEL(8,C) )//"Å³"
-  LOG_STRINGS_T(13,C) = "Number Density: "//TRIM( CHAR_LABEL(9,C) )//"Å⁻³"
-END DO
-LOG_STRINGS_T(14,1) = "Total Number of Particles: "//TRIM( CHAR_LABEL(10,1) )
-LOG_STRINGS_T(15,1) = "Total Particle Volume: "//TRIM( CHAR_LABEL(11,1) )//"Å³"
-LOG_STRINGS_T(16,1) = "Total Number Density: "//TRIM( CHAR_LABEL(12,1) )//"Å⁻³"
-LOG_STRINGS_T(17,1) = "Absolute Temperature: "//TRIM( CHAR_LABEL(13,1) )//"K"
-LOG_STRINGS_T(18,1) = "Reduced Pressure: "//TRIM( CHAR_LABEL(14,1) )
-LOG_STRINGS_T(19,1) = "Box Volume: "//TRIM( CHAR_LABEL(15,1) )//"Å³"
-LOG_STRINGS_T(20,1) = "Box Length (Å):"
-LOG_STRINGS_T(21,1) = TRIM( CHAR_LABEL(16,1) )
-LOG_STRINGS_T(22,1) = TRIM( CHAR_LABEL(17,1) )
-LOG_STRINGS_T(23,1) = TRIM( CHAR_LABEL(18,1) )
-LOG_STRINGS_T(24,1) = "Total Number of Cycles: "//TRIM( CHAR_LABEL(19,1) )
-LOG_STRINGS_T(25,1) = "Equilibration Cycles: "//TRIM( CHAR_LABEL(20,1) )
-LOG_STRINGS_T(26,1) = "Production Cycles: "//TRIM( CHAR_LABEL(21,1) )
-LOG_STRINGS_T(27,1) = "Saving Frequency (Cycles): "//TRIM( CHAR_LABEL(22,1) )
-LOG_STRINGS_T(28,1) = "Adjustment Frequency (Cycles): "//TRIM( CHAR_LABEL(23,1) )
-LOG_STRINGS_T(29,1) = "Ratio Threshold (Translation): "//TRIM( CHAR_LABEL(24,1) )
-LOG_STRINGS_T(30,1) = "Ratio Threshold (Rotation): "//TRIM( CHAR_LABEL(25,1) )
-LOG_STRINGS_T(31,1) = "Ratio Threshold (Isotropic): "//TRIM( CHAR_LABEL(26,1) )
-LOG_STRINGS_T(58,1) = "Ratio Threshold (Anisotropic): "//TRIM( CHAR_LABEL(54,1) )
-LOG_STRINGS_T(59,1) = "Probability (Movement): "//TRIM( CHAR_LABEL(60,1) )
-LOG_STRINGS_T(32,1) = "Probability (Translation): "//TRIM( CHAR_LABEL(27,1) )
-LOG_STRINGS_T(33,1) = "Probability (Rotation): "//TRIM( CHAR_LABEL(28,1) )
-LOG_STRINGS_T(34,1) = "Probability (Volume): "//TRIM( CHAR_LABEL(29,1) )
-LOG_STRINGS_T(35,1) = "Probability (Isotropic): "//TRIM( CHAR_LABEL(30,1) )
-LOG_STRINGS_T(60,1) = "Probability (Anisotropic): "//TRIM( CHAR_LABEL(55,1) )
-LOG_STRINGS_T(36,1) = "Initial Maximum Displacement (Translation): "//TRIM( CHAR_LABEL(31,1) )
-LOG_STRINGS_T(37,1) = "Initial Maximum Displacement (Rotation): "//TRIM( CHAR_LABEL(32,1) )
-LOG_STRINGS_T(38,1) = "Initial Maximum Displacement (Isotropic): "//TRIM( CHAR_LABEL(33,1) )
-LOG_STRINGS_T(61,1) = "Initial Maximum Displacement (Anisotropic): "//TRIM( CHAR_LABEL(56,1) )
-LOG_STRINGS_T(65,1) = "Maximum Box Distortion: "//TRIM( CHAR_LABEL(60,1) )
-LOG_STRINGS_T(66,1) = "Maximum Box Length Distortion: "//TRIM( CHAR_LABEL(61,1) )
-LOG_STRINGS_T(67,1) = "Maximum Box Angle Distortion: "//TRIM( CHAR_LABEL(62,1) )//"°"
-LOG_STRINGS_T(68,1) = "Lattice Reduction Algorithm: "//TRIM( CHAR_LABEL(63,1) )
-LOG_STRINGS_T(39,1) = "Unrotated Axis (Initial Configuration): "//TRIM( CHAR_LABEL(34,1) )
-LOG_STRINGS_T(40,1) = "Quaternion Angle (Initial Configuration): "//TRIM( CHAR_LABEL(35,1) )
-LOG_STRINGS_T(41,1) = "● Configuration: "//TRIM( CHAR_LABEL(36,1) )//" Structure"
-LOG_STRINGS_T(42,1) = "Initial Packing Fraction (Random Configuration): "//TRIM( CHAR_LABEL(40,1) )
-LOG_STRINGS_T(44,1) = "Target Reduced Pressure (Random Configuration): "//TRIM( CHAR_LABEL(42,1) )
-LOG_STRINGS_T(45,1) = "Adjustment Frequency (Random Configuration): Every "//TRIM( CHAR_LABEL(43,1) )//" Cycle(s)"
-LOG_STRINGS_T(46,1) = "Maximum Rotation (Random Configuration): "//TRIM( CHAR_LABEL(44,1) )
-LOG_STRINGS_T(47,1) = "Maximum Translation (Random Configuration): "//TRIM( CHAR_LABEL(45,1) )
-LOG_STRINGS_T(48,1) = "Maximum Isotropic Volume Change (Random Configuration): "//TRIM( CHAR_LABEL(46,1) )
-LOG_STRINGS_T(62,1) = "Maximum Anisotropic Volume Change (Random Configuration): "//TRIM( CHAR_LABEL(57,1) )
-LOG_STRINGS_T(49,1) = "Minimum Volume Change (Random Configuration): "//TRIM( CHAR_LABEL(47,1) )
-LOG_STRINGS_T(50,1) = "Movement Probability (Random Configuration): "//TRIM( CHAR_LABEL(48,1) )
-LOG_STRINGS_T(51,1) = "Volume Change Probability (Random Configuration): "//TRIM( CHAR_LABEL(49,1) )
-LOG_STRINGS_T(52,1) = "Translation Probability (Random Configuration): "//TRIM( CHAR_LABEL(50,1) )
-LOG_STRINGS_T(53,1) = "Rotation Probability (Random Configuration): "//TRIM( CHAR_LABEL(51,1) )
-LOG_STRINGS_T(63,1) = "Isotropic Probability (Random Configuration): "//TRIM( CHAR_LABEL(58,1) )
-LOG_STRINGS_T(64,1) = "Anisotropic Probability (Random Configuration): "//TRIM( CHAR_LABEL(59,1) )
-LOG_STRINGS_T(54,1) = "Preset Initial Configuration: "//TRIM( CHAR_LABEL(52,1) )
-IF( TRAJ_CHECK ) THEN
-  LOG_STRINGS_T(55,1) = "Trajectory of particles computed."
-ELSE IF( .NOT. TRAJ_CHECK ) THEN
-  LOG_STRINGS_T(55,1) = "Trajectory of particles not computed."
-END IF
-LOG_STRINGS_T(56,1) = "Fixed seed: "//TRIM( CHAR_LABEL(53,1) )
-LOG_STRINGS_T(57,1) = "Simulation length: "//TRIM( CHAR_LABEL(37,1) )
-LOG_STRINGS_T(69,1) = "● Potential Type: "//TRIM( CHAR_LABEL(64,1) )//" Potential"
-LOG_STRINGS_T(70,1) = "Number of Attractive Range Points: "//TRIM( CHAR_LABEL(65,1) )
-IF( N_LAMBDA >= 4 ) THEN
-  REMAINDER = MOD( N_LAMBDA, 4 )
-ELSE
-  REMAINDER = N_LAMBDA
-END IF
-IF( N_LAMBDA >= 4 .AND. REMAINDER == 0 ) THEN
-  DO I = 1, INT( DBLE( N_LAMBDA ) / 4.D0 ) - 1
-    LOG_STRINGS_L(1,I) = TRIM( CHAR_LABEL_L(1,4*I-3) )//", "//TRIM( CHAR_LABEL_L(1,4*I-2) )//", "// &
-    &                    TRIM( CHAR_LABEL_L(1,4*I-1) )//", "//TRIM( CHAR_LABEL_L(1,4*I-0) )//", "
-  END DO
-  I = INT( DBLE( N_LAMBDA ) / 4.D0 )
-  LOG_STRINGS_L(1,I) = TRIM( CHAR_LABEL_L(1,4*I-3) )//", "//TRIM( CHAR_LABEL_L(1,4*I-2) )//", "// &
-  &                    TRIM( CHAR_LABEL_L(1,4*I-1) )//", "//TRIM( CHAR_LABEL_L(1,4*I-0) )
-ELSE IF( N_LAMBDA >= 4 .AND. REMAINDER /= 0 ) THEN
-  DO I = 1, INT( DBLE( N_LAMBDA ) / 4.D0 )
-    LOG_STRINGS_L(1,I) = TRIM( CHAR_LABEL_L(1,4*I-3) )//", "//TRIM( CHAR_LABEL_L(1,4*I-2) )//", "// &
-    &                    TRIM( CHAR_LABEL_L(1,4*I-1) )//", "//TRIM( CHAR_LABEL_L(1,4*I-0) )//", "
-  END DO
-END IF
-IF( N_LAMBDA < 4 .OR. (N_LAMBDA >= 4 .AND. REMAINDER /= 0) ) THEN
-  IF( REMAINDER == 1 ) THEN
-    LOG_STRINGS_L(1,INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1) = TRIM( CHAR_LABEL_L(1,N_LAMBDA-REMAINDER+1) )
-  ELSE IF( REMAINDER == 2 ) THEN
-    LOG_STRINGS_L(1,INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1) = TRIM( CHAR_LABEL_L(1,N_LAMBDA-REMAINDER+1) )//", "// &
-    &                                                     TRIM( CHAR_LABEL_L(1,N_LAMBDA-REMAINDER+2) )
-  ELSE IF( REMAINDER == 3 ) THEN
-    LOG_STRINGS_L(1,INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1) = TRIM( CHAR_LABEL_L(1,N_LAMBDA-REMAINDER+1) )//", "// &
-    &                                                     TRIM( CHAR_LABEL_L(1,N_LAMBDA-REMAINDER+2) )//", "// &
-    &                                                     TRIM( CHAR_LABEL_L(1,N_LAMBDA-REMAINDER+3) )
-  END IF
-END IF
-LOG_STRINGS_T(71,1) = "Attractive Range Points:"
-LOG_STRINGS_T(72,1) = "Reduced Temperature: "//TRIM( CHAR_LABEL(67,1) )
-LOG_STRINGS_T(73,1) = "Potential Files: "//TRIM( CHAR_LABEL(68,1) )
-IF( COEF_CHECK ) THEN
-  LOG_STRINGS_T(74,1) = "Perturbation coefficients computed."
-ELSE IF( .NOT. COEF_CHECK ) THEN
-  LOG_STRINGS_T(74,1) = "Perturbation coefficients not computed."
-END IF
-LOG_STRINGS_T(75,1) = "Minimum Number of Blocks (Block Averaging): "//TRIM( CHAR_LABEL(69,1) )
-LOG_STRINGS_T(76,1) = "Maximum Number of Blocks (Block Averaging): "//TRIM( CHAR_LABEL(70,1) )
-LOG_STRINGS_T(78,1) = "Seed Value: "//TRIM( CHAR_LABEL(72,1) )
-
-! String name (subtitle)
-IF( COMPONENTS > 1 ) THEN
-  LOG_STRINGS_S(1) = "PARAMETERS OF THE COMPONENTS"
-ELSE IF( COMPONENTS == 1 ) THEN
-  LOG_STRINGS_S(1) = "PARAMETERS OF THE COMPONENT"
-END IF
-LOG_STRINGS_S(2) = "PARAMETERS OF THE SYSTEM"
-LOG_STRINGS_S(3) = "PARAMETERS OF THE SIMULATION"
-LOG_STRINGS_S(4) = "PARAMETERS OF THE INITIAL CONFIGURATION"
-LOG_STRINGS_S(5) = "OTHER PARAMETERS"
-LOG_STRINGS_S(6) = "PARAMETERS OF THE POTENTIAL"
-
-! String size
-DO I = 1, 6
-  STRSH(I) = ( 70.D0 - DBLE( LEN( TRIM( LOG_STRINGS_H(I) ) ) ) ) * 0.5D0
-END DO
-DO I = 1, 78
-  DO C = 1, COMPONENTS
-    STRST(I,C) = ( 69 - LEN( TRIM( LOG_STRINGS_T(I,C) ) ) )
-  END DO
-END DO
-DO I = 1, 6
-  STRSS(I) = ( 70.D0 - DBLE( LEN( TRIM( LOG_STRINGS_S(I) ) ) ) ) * 0.5D0
-END DO
-
-! *********************************************************************************************** !
-! File inquiry                                                                                    !
-! *********************************************************************************************** !
-INQUIRE( FILE= "Simulation_Log.txt", EXIST= FILE_EXIST )
-
-! *********************************************************************************************** !
-! Simulation log                                                                                  !
-! *********************************************************************************************** !
-IF( .NOT. FILE_EXIST ) THEN
-  OPEN( UNIT= 95, FILE= "Simulation_Log.txt" )
-  WRITE( 95, "(G0)" ) CH_UL//REPEAT( CH_HS, 70 )//CH_UR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(1) ) )//TRIM( LOG_STRINGS_H(1) )//REPEAT( " ", CEILING( STRSH(1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(2) ) )//TRIM( LOG_STRINGS_H(2) )//REPEAT( " ", CEILING( STRSH(2) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(3) ) )//TRIM( LOG_STRINGS_H(3) )//REPEAT( " ", CEILING( STRSH(3) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(4) ) )//TRIM( LOG_STRINGS_H(4) )//REPEAT( " ", CEILING( STRSH(4) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(5) ) )//TRIM( LOG_STRINGS_H(5) )//REPEAT( " ", CEILING( STRSH(5) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSH(6) ) )//TRIM( LOG_STRINGS_H(6) )//REPEAT( " ", CEILING( STRSH(6) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VL//REPEAT( CH_HS, 70 )//CH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(1,1) )//REPEAT( " ", NINT( STRST(1,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(2,1) )//REPEAT( " ", NINT( STRST(2,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(3,1) )//REPEAT( " ", NINT( STRST(3,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(4,1) )//REPEAT( " ", NINT( STRST(4,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(5,1) )//REPEAT( " ", NINT( STRST(5,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
-  IF( COMPONENTS > 1 ) THEN
-    WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(1) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(1) )// &
-    &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(1) - 1 ) )//SH_VR
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
-    &                   SS_BR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    DO C = 1, COMPONENTS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(6,C) )//REPEAT( " ", NINT( STRST(6,C) ) + 2 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(7,C) )//REPEAT( " ", NINT( STRST(7,C) ) + 1 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(8,C) )//REPEAT( " ", NINT( STRST(8,C) ) + 1 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(9,C) )//REPEAT( " ", NINT( STRST(9,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(10,C) )//REPEAT( " ", NINT( STRST(10,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(11,C) )//REPEAT( " ", NINT( STRST(11,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(12,C) )//REPEAT( " ", NINT( STRST(12,C) ) + 2 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(13,C) )//REPEAT( " ", NINT( STRST(13,C) ) + 4 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    END DO
-  ELSE IF( COMPONENTS == 1 ) THEN
-    WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(1) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(1) )// &
-    &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(1) - 1 ) )//SH_VR
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
-    &                   SS_BR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(7,1) )//REPEAT( " ", NINT( STRST(7,1) ) + 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(8,1) )//REPEAT( " ", NINT( STRST(8,1) ) + 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(9,1) )//REPEAT( " ", NINT( STRST(9,1) ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(10,1) )//REPEAT( " ", NINT( STRST(10,1) ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(11,1) )//REPEAT( " ", NINT( STRST(11,1) ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(12,1) )//REPEAT( " ", NINT( STRST(12,1) ) + 2 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(13,1) )//REPEAT( " ", NINT( STRST(13,1) ) + 4 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(2) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(2) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(2) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(2) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(2) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(2) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(2) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(2) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(2) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(14,1) )//REPEAT( " ", NINT( STRST(14,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(15,1) )//REPEAT( " ", NINT( STRST(15,1) ) + 2 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(16,1) )//REPEAT( " ", NINT( STRST(16,1) ) + 4 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(17,1) )//REPEAT( " ", NINT( STRST(17,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(18,1) )//REPEAT( " ", NINT( STRST(18,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(19,1) )//REPEAT( " ", NINT( STRST(19,1) ) + 2 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )// &
-  &                   SS_UL//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(21,1) ) ) )// &
-  &                   SS_UR//REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )//SS_VS//TRIM( LOG_STRINGS_T(21,1) )//SS_VS// &
-  &                   REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(20,1) )//REPEAT( " ", 1 )//SS_VS//TRIM( LOG_STRINGS_T(22,1) )// &
-  &                   SS_VS//REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )//SS_VS//TRIM( LOG_STRINGS_T(23,1) )//SS_VS// &
-  &                   REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )// &
-  &                   SS_BL//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(21,1) ) ) )// &
-  &                   SS_BR//REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(3) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(3) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(3) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(3) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(3) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(3) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(3) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(3) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(3) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(24,1) )//REPEAT( " ", NINT( STRST(24,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(25,1) )//REPEAT( " ", NINT( STRST(25,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(26,1) )//REPEAT( " ", NINT( STRST(26,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(27,1) )//REPEAT( " ", NINT( STRST(27,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(28,1) )//REPEAT( " ", NINT( STRST(28,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(29,1) )//REPEAT( " ", NINT( STRST(29,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(30,1) )//REPEAT( " ", NINT( STRST(30,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(31,1) )//REPEAT( " ", NINT( STRST(31,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(58,1) )//REPEAT( " ", NINT( STRST(58,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(59,1) )//REPEAT( " ", NINT( STRST(59,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(32,1) )//REPEAT( " ", NINT( STRST(32,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(33,1) )//REPEAT( " ", NINT( STRST(33,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(34,1) )//REPEAT( " ", NINT( STRST(34,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(35,1) )//REPEAT( " ", NINT( STRST(35,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(60,1) )//REPEAT( " ", NINT( STRST(60,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(36,1) )//REPEAT( " ", NINT( STRST(36,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(37,1) )//REPEAT( " ", NINT( STRST(37,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(38,1) )//REPEAT( " ", NINT( STRST(38,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(61,1) )//REPEAT( " ", NINT( STRST(61,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(65,1) )//REPEAT( " ", NINT( STRST(65,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(66,1) )//REPEAT( " ", NINT( STRST(66,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(67,1) )//REPEAT( " ", NINT( STRST(67,1) ) + 1 )//CH_VS
-  IF( LRED_SELEC(1) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(68,1) )//REPEAT( " ", NINT( STRST(68,1) ) )//CH_VS
-  ELSE IF( LRED_SELEC(2) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(68,1) )//REPEAT( " ", NINT( STRST(68,1) ) + 1 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(4) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(4) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(4) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(4) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(4) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(4) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(4) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(4) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(4) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(39,1) )//REPEAT( " ", NINT( STRST(39,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(40,1) )//REPEAT( " ", NINT( STRST(40,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(41,1) )//REPEAT( " ", NINT( STRST(41,1) ) + 2 )//CH_VS
-  IF( CONFIG_SELEC(4) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(42,1) )//REPEAT( " ", NINT( STRST(42,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(44,1) )//REPEAT( " ", NINT( STRST(44,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(45,1) )//REPEAT( " ", NINT( STRST(45,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(46,1) )//REPEAT( " ", NINT( STRST(46,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(47,1) )//REPEAT( " ", NINT( STRST(47,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(48,1) )//REPEAT( " ", NINT( STRST(48,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(62,1) )//REPEAT( " ", NINT( STRST(62,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(49,1) )//REPEAT( " ", NINT( STRST(49,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(50,1) )//REPEAT( " ", NINT( STRST(50,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(51,1) )//REPEAT( " ", NINT( STRST(51,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(52,1) )//REPEAT( " ", NINT( STRST(52,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(53,1) )//REPEAT( " ", NINT( STRST(53,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(63,1) )//REPEAT( " ", NINT( STRST(63,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(64,1) )//REPEAT( " ", NINT( STRST(64,1) ) - 1 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(54,1) )//REPEAT( " ", NINT( STRST(54,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(6) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(6) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(6) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(6) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(6) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(6) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(6) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(6) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(6) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(69,1) )//REPEAT( " ", NINT( STRST(69,1) ) + 2 )//CH_VS
-  IF( POTENTIAL_SELEC(2) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(70,1) )//REPEAT( " ", NINT( STRST(70,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(71,1) )//REPEAT( " ", NINT( STRST(71,1) ) - 1 )//CH_VS
-    IF( N_LAMBDA == 4 ) THEN
-      DO I = 1, INT( DBLE( N_LAMBDA ) / 4.D0 )
-        WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 36 )//CH_VS
-      END DO
-    ELSE IF( N_LAMBDA /= 4 ) THEN
-      DO I = 1, INT( DBLE( N_LAMBDA ) / 4.D0 )
-        IF( I == INT( DBLE( N_LAMBDA ) / 4.D0 ) .AND. REMAINDER == 0 ) THEN
-          WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 36 )//CH_VS
-        ELSE
-          WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 35 )//CH_VS
-        END IF
-      END DO
-    END IF
-    IF( REMAINDER /= 0 ) THEN
-      I = INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1
-      REMAINDER = 4 - REMAINDER
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 36 + (8 * REMAINDER) )//CH_VS
-    END IF
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(72,1) )//REPEAT( " ", NINT( STRST(72,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(73,1) )//REPEAT( " ", NINT( STRST(73,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(74,1) )//REPEAT( " ", NINT( STRST(74,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(75,1) )//REPEAT( " ", NINT( STRST(75,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(76,1) )//REPEAT( " ", NINT( STRST(76,1) ) - 1 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(5) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(5) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(5) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(5) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(5) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(5) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(5) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(5) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(5) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(55,1) )//REPEAT( " ", NINT( STRST(55,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(56,1) )//REPEAT( " ", NINT( STRST(56,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(78,1) )//REPEAT( " ", NINT( STRST(78,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(57,1) )//REPEAT( " ", NINT( STRST(57,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_BL//REPEAT( CH_HS, 70 )//CH_BR
-  CLOSE( 95 )
-! *********************************************************************************************** !
-! Simulation log (appending)                                                                      !
-! *********************************************************************************************** !
-ELSE IF( FILE_EXIST ) THEN
-  OPEN( UNIT= 95, FILE= "Simulation_Log.txt", POSITION= "APPEND" )
-  WRITE( 95, "(G0)" ) REPEAT( " ", 1 )//REPEAT( C_FUL, 70 )//REPEAT( " ", 1 )
-  WRITE( 95, "(G0)" ) CH_UL//REPEAT( CH_HS, 70 )//CH_UR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(1,1) )//REPEAT( " ", NINT( STRST(1,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(2,1) )//REPEAT( " ", NINT( STRST(2,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(3,1) )//REPEAT( " ", NINT( STRST(3,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(4,1) )//REPEAT( " ", NINT( STRST(4,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(5,1) )//REPEAT( " ", NINT( STRST(5,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
-  IF( COMPONENTS > 1 ) THEN
-    WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(1) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(1) )// &
-    &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(1) - 1 ) )//SH_VR
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
-    &                   SS_BR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    DO C = 1, COMPONENTS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(6,C) )//REPEAT( " ", NINT( STRST(6,C) ) + 2 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(7,C) )//REPEAT( " ", NINT( STRST(7,C) ) + 1 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(8,C) )//REPEAT( " ", NINT( STRST(8,C) ) + 1 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(9,C) )//REPEAT( " ", NINT( STRST(9,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(10,C) )//REPEAT( " ", NINT( STRST(10,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(11,C) )//REPEAT( " ", NINT( STRST(11,C) ) - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(12,C) )//REPEAT( " ", NINT( STRST(12,C) ) + 2 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(13,C) )//REPEAT( " ", NINT( STRST(13,C) ) + 4 - 1 )//CH_VS
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    END DO
-  ELSE IF( COMPONENTS == 1 ) THEN
-    WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(1) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(1) )// &
-    &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(1) - 1 ) )//SH_VR
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(1) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(1) ) ) )// &
-    &                   SS_BR//REPEAT( " ", CEILING( STRSS(1) - 1 ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(77,C) )//REPEAT( " ", NINT( STRST(77,C) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(7,1) )//REPEAT( " ", NINT( STRST(7,1) ) + 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(8,1) )//REPEAT( " ", NINT( STRST(8,1) ) + 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(9,1) )//REPEAT( " ", NINT( STRST(9,1) ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(10,1) )//REPEAT( " ", NINT( STRST(10,1) ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(11,1) )//REPEAT( " ", NINT( STRST(11,1) ) )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(12,1) )//REPEAT( " ", NINT( STRST(12,1) ) + 2 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(13,1) )//REPEAT( " ", NINT( STRST(13,1) ) + 4 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(2) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(2) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(2) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(2) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(2) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(2) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(2) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(2) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(2) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(14,1) )//REPEAT( " ", NINT( STRST(14,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(15,1) )//REPEAT( " ", NINT( STRST(15,1) ) + 2 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(16,1) )//REPEAT( " ", NINT( STRST(16,1) ) + 4 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(17,1) )//REPEAT( " ", NINT( STRST(17,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(18,1) )//REPEAT( " ", NINT( STRST(18,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(19,1) )//REPEAT( " ", NINT( STRST(19,1) ) + 2 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )// &
-  &                   SS_UL//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(21,1) ) ) )// &
-  &                   SS_UR//REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )//SS_VS//TRIM( LOG_STRINGS_T(21,1) )//SS_VS// &
-  &                   REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(20,1) )//REPEAT( " ", 1 )//SS_VS//TRIM( LOG_STRINGS_T(22,1) )// &
-  &                   SS_VS//REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )//SS_VS//TRIM( LOG_STRINGS_T(23,1) )//SS_VS// &
-  &                   REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + 1 )// &
-  &                   SS_BL//REPEAT( " ", LEN( TRIM( LOG_STRINGS_T(21,1) ) ) )// &
-  &                   SS_BR//REPEAT( " ", 67 - ( LEN( TRIM( LOG_STRINGS_T(20,1) ) ) + LEN( TRIM( LOG_STRINGS_T(21,1) ) ) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(3) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(3) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(3) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(3) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(3) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(3) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(3) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(3) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(3) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(24,1) )//REPEAT( " ", NINT( STRST(24,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(25,1) )//REPEAT( " ", NINT( STRST(25,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(26,1) )//REPEAT( " ", NINT( STRST(26,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(27,1) )//REPEAT( " ", NINT( STRST(27,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(28,1) )//REPEAT( " ", NINT( STRST(28,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(29,1) )//REPEAT( " ", NINT( STRST(29,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(30,1) )//REPEAT( " ", NINT( STRST(30,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(31,1) )//REPEAT( " ", NINT( STRST(31,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(58,1) )//REPEAT( " ", NINT( STRST(58,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(59,1) )//REPEAT( " ", NINT( STRST(59,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(32,1) )//REPEAT( " ", NINT( STRST(32,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(33,1) )//REPEAT( " ", NINT( STRST(33,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(34,1) )//REPEAT( " ", NINT( STRST(34,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(35,1) )//REPEAT( " ", NINT( STRST(35,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(60,1) )//REPEAT( " ", NINT( STRST(60,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(36,1) )//REPEAT( " ", NINT( STRST(36,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(37,1) )//REPEAT( " ", NINT( STRST(37,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(38,1) )//REPEAT( " ", NINT( STRST(38,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(61,1) )//REPEAT( " ", NINT( STRST(61,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(65,1) )//REPEAT( " ", NINT( STRST(65,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(66,1) )//REPEAT( " ", NINT( STRST(66,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(67,1) )//REPEAT( " ", NINT( STRST(67,1) ) + 1 )//CH_VS
-  IF( LRED_SELEC(1) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(68,1) )//REPEAT( " ", NINT( STRST(68,1) ) )//CH_VS
-  ELSE IF( LRED_SELEC(2) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(68,1) )//REPEAT( " ", NINT( STRST(68,1) ) + 1 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(4) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(4) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(4) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(4) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(4) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(4) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(4) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(4) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(4) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(39,1) )//REPEAT( " ", NINT( STRST(39,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(40,1) )//REPEAT( " ", NINT( STRST(40,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(41,1) )//REPEAT( " ", NINT( STRST(41,1) ) + 2 )//CH_VS
-  IF( CONFIG_SELEC(4) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(42,1) )//REPEAT( " ", NINT( STRST(42,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(44,1) )//REPEAT( " ", NINT( STRST(44,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(45,1) )//REPEAT( " ", NINT( STRST(45,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(46,1) )//REPEAT( " ", NINT( STRST(46,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(47,1) )//REPEAT( " ", NINT( STRST(47,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(48,1) )//REPEAT( " ", NINT( STRST(48,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(62,1) )//REPEAT( " ", NINT( STRST(62,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(49,1) )//REPEAT( " ", NINT( STRST(49,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(50,1) )//REPEAT( " ", NINT( STRST(50,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(51,1) )//REPEAT( " ", NINT( STRST(51,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(52,1) )//REPEAT( " ", NINT( STRST(52,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(53,1) )//REPEAT( " ", NINT( STRST(53,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(63,1) )//REPEAT( " ", NINT( STRST(63,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(64,1) )//REPEAT( " ", NINT( STRST(64,1) ) - 1 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(54,1) )//REPEAT( " ", NINT( STRST(54,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(6) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(6) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(6) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(6) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(6) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(6) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(6) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(6) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(6) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(69,1) )//REPEAT( " ", NINT( STRST(69,1) ) + 2 )//CH_VS
-  IF( POTENTIAL_SELEC(2) ) THEN
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(70,1) )//REPEAT( " ", NINT( STRST(70,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(71,1) )//REPEAT( " ", NINT( STRST(71,1) ) - 1 )//CH_VS
-    IF( N_LAMBDA == 4 ) THEN
-      DO I = 1, INT( DBLE( N_LAMBDA ) / 4.D0 )
-        WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 36 )//CH_VS
-      END DO
-    ELSE IF( N_LAMBDA /= 4 ) THEN
-      DO I = 1, INT( DBLE( N_LAMBDA ) / 4.D0 )
-        IF( I == INT( DBLE( N_LAMBDA ) / 4.D0 ) .AND. REMAINDER == 0 ) THEN
-          WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 36 )//CH_VS
-        ELSE
-          WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 35 )//CH_VS
-        END IF
-      END DO
-    END IF
-    IF( REMAINDER /= 0 ) THEN
-      I = INT( DBLE( N_LAMBDA ) / 4.D0 ) + 1
-      REMAINDER = 4 - REMAINDER
-      WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 4 )//TRIM( LOG_STRINGS_L(1,I) )//REPEAT( " ", 36 + (8 * REMAINDER) )//CH_VS
-    END IF
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(72,1) )//REPEAT( " ", NINT( STRST(72,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(73,1) )//REPEAT( " ", NINT( STRST(73,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(74,1) )//REPEAT( " ", NINT( STRST(74,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(75,1) )//REPEAT( " ", NINT( STRST(75,1) ) - 1 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( LOG_STRINGS_T(76,1) )//REPEAT( " ", NINT( STRST(76,1) ) - 1 )//CH_VS
-  END IF
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(5) - 1 ) )//SS_UL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(5) ) ) )// &
-  &                   SS_UR//REPEAT( " ", CEILING( STRSS(5) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) SH_VL//REPEAT( SS_HS, FLOOR( STRSS(5) - 1 ) )//SS_VL//TRIM( LOG_STRINGS_S(5) )// &
-  &                   SS_VR//REPEAT( SS_HS, CEILING( STRSS(5) - 1 ) )//SH_VR
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( STRSS(5) - 1 ) )//SS_BL//REPEAT( SS_HS, LEN( TRIM( LOG_STRINGS_S(5) ) ) )// &
-  &                   SS_BR//REPEAT( " ", CEILING( STRSS(5) - 1 ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(55,1) )//REPEAT( " ", NINT( STRST(55,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(56,1) )//REPEAT( " ", NINT( STRST(56,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(78,1) )//REPEAT( " ", NINT( STRST(78,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-  WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( LOG_STRINGS_T(57,1) )//REPEAT( " ", NINT( STRST(57,1) ) )//CH_VS
-  WRITE( 95, "(G0)" ) CH_BL//REPEAT( CH_HS, 70 )//CH_BR
-  CLOSE( 95 )
-END IF
+WRITE( *, "(G0)", Advance= "NO" ) "Writing simulation log..."
+CALL Sleep( 1 )
+CALL SimulationLog( BoxVolumeMC, BoxLengthMC, StopTimer - StartTimer, DateTime )
 
 ! Status
-WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+WRITE( *, "(G0)", Advance= "YES" ) " Done!"
 
-END PROGRAM MAIN
+END PROGRAM Main

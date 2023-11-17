@@ -3,7 +3,7 @@
 !           This module defines the variables used by the main program and most of the            !
 !         subroutines and functions. A brief description is presented for each variable.          !
 !                                                                                                 !
-! Version number: 1.1.0                                                                           !
+! Version number: 1.2.1                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 25th, 2023                                        !
+!                                       October 31st, 2023                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -23,175 +23,163 @@
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
+MODULE GlobalVar
 
-MODULE GLOBALVAR
-
-! Use kind REAL64 and INT64
-USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: REAL64, INT64
+! Use kind Real64 and Int64
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: Real64, Int64
 
 IMPLICIT NONE
 
 ! *********************************************************************************************** !
-! INTEGER VARIABLES -*- THIS IS SINGLE PRECISION -*-                                              !
+! INTEGER PARAMETER                                                                               !
 ! *********************************************************************************************** !
-INTEGER, DIMENSION( 8 ) :: DATE_TIME ! Computer clock (date and time)
+INTEGER( Kind= Int64 ), PARAMETER :: HalfNeighboursControl = 1 ! Checks whether a cell and its 26 surrounding cells are searched or just its 13 neighbour cells
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (GENERAL)                                                                     !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: SEED           ! Random number generator seed
-INTEGER( KIND= INT64 ) :: N_PARTICLES    ! Number of particles
-INTEGER( KIND= INT64 ) :: COMPONENTS     ! Number of components
-INTEGER( KIND= INT64 ) :: N_LAMBDA       ! Number of attractive range parameters
+INTEGER( Kind= Int64 )                 :: SeedValue   ! Random number generator seed
+INTEGER( Kind= Int64 )                 :: nParticles  ! Number of particles
+INTEGER( Kind= Int64 )                 :: nComponents ! Number of components
+INTEGER( Kind= Int64 )                 :: nRange      ! Number of attractive range parameters
+INTEGER( Kind= Int64 )                 :: InitialSeed ! Initial seed
+INTEGER( Kind= Int64 ), DIMENSION( 3 ) :: pCells      ! Number of cells
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (BLOCK-AVERAGING PARAMETERS)                                                  !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: MIN_BLOCKS ! Minimum number of blocks
-INTEGER( KIND= INT64 ) :: MAX_BLOCKS ! Maximum number of blocks
+INTEGER( Kind= Int64 ) :: MinBlocks ! Minimum number of blocks
+INTEGER( Kind= Int64 ) :: MaxBlocks ! Maximum number of blocks
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (MONTE CARLO PARAMETERS)                                                      !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: MAX_CYCLES    ! Total number of cycles
-INTEGER( KIND= INT64 ) :: N_EQUIL       ! Number of equilibration cycles
-INTEGER( KIND= INT64 ) :: N_SAVE        ! Saving frequency
-INTEGER( KIND= INT64 ) :: N_ADJUST      ! Adjustment frequency
-INTEGER( KIND= INT64 ) :: N_ADJUST_INIT ! Adjustment frequency (initial configuration)
-INTEGER( KIND= INT64 ) :: MAX_ATTEMPTS  ! Maximum number of attempts for the hit-and-miss algorithm
+INTEGER( Kind= Int64 ) :: MaxSimulationCycles     ! Total number of simulation cycles
+INTEGER( Kind= Int64 ) :: nEquilibrationCycles    ! Number of equilibration cycles
+INTEGER( Kind= Int64 ) :: nSavingFrequency        ! Saving frequency
+INTEGER( Kind= Int64 ) :: nAdjustmentFrequency    ! Adjustment frequency
+INTEGER( Kind= Int64 ) :: nAdjustmentRandomConfig ! Adjustment frequency (initial configuration)
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (ALLOCATABLE)                                                                 !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ), DIMENSION( : ), ALLOCATABLE :: N_COMPONENT ! Number of particles of a component
-INTEGER( KIND= INT64 ), DIMENSION( : ), ALLOCATABLE :: INDEX_P     ! Molecule index
+INTEGER( Kind= Int64 ), DIMENSION( : ),       ALLOCATABLE :: cParticles  ! Number of particles of a component
+INTEGER( Kind= Int64 ), DIMENSION( : ),       ALLOCATABLE :: pComponents ! Component index of a particle
+INTEGER( Kind= Int64 ), DIMENSION( : ),       ALLOCATABLE :: cIndex      ! Molecule index
+INTEGER( Kind= Int64 ), DIMENSION( : ),       ALLOCATABLE :: pCellList   ! Cell list
+INTEGER( Kind= Int64 ), DIMENSION( :, : ),    ALLOCATABLE :: pCellIndex  ! 3D-cell index of each particle
+INTEGER( Kind= Int64 ), DIMENSION( :, :, : ), ALLOCATABLE :: pCellHead   ! Cell head
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (GENERAL)                                                                        !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                 :: QUATERNION_ANGLE   ! Quaternion angle [real part, W] (for the initial configuration only)
-REAL( KIND= REAL64 )                 :: ETA_INI            ! Packing fraction (for the initial configuration only)
-REAL( KIND= REAL64 )                 :: PRESS_RND          ! Reduced pressure (for the initial configuration only)
-REAL( KIND= REAL64 )                 :: TOTAL_RHO          ! Total number density (reduced)
-REAL( KIND= REAL64 )                 :: TOTAL_VP           ! Total particle volume (reduced)
-REAL( KIND= REAL64 )                 :: TEMP               ! Absolute temperature
-REAL( KIND= REAL64 )                 :: RED_TEMP           ! Reduced temperature
-REAL( KIND= REAL64 )                 :: PRESS              ! Reduced pressure
-REAL( KIND= REAL64 )                 :: BOX_VOLUME, BOXVMC ! Reduced volume of the simulation box
-REAL( KIND= REAL64 )                 :: CHECK_ROOT         ! Checks the cube root for the number of particles, N, in each crystalline structure
-REAL( KIND= REAL64 )                 :: RANDOM_N           ! Random number from a pseudorandom number generator subroutine
-REAL( KIND= REAL64 )                 :: RANDOM_ANGLE       ! Random angle
-REAL( KIND= REAL64 )                 :: TOTAL_MOLAR_F      ! Total molar fraction
-REAL( KIND= REAL64 )                 :: START_TIMER        ! Start timer of Monte Carlo simulation
-REAL( KIND= REAL64 )                 :: STOP_TIMER         ! Stop timer of Monte Carlo simulation
-REAL( KIND= REAL64 )                 :: PACKING_F          ! Packing fraction
-REAL( KIND= REAL64 )                 :: MAXARG             ! Largest exponential argument (see Supplementary Material of Abreu and Escobedo, J. Chem. Phys. 124)
-REAL( KIND= REAL64 )                 :: BETA_ENERGY        ! Boltzmann factor argument, -βU
-REAL( KIND= REAL64 )                 :: MAX_LENGTH_RATIO   ! Maximum length ratio of simulation box during anisotropic volume changes
-REAL( KIND= REAL64 )                 :: MAX_ANGLE          ! Maximum angle between box vectors during anisotropic volume changes
-REAL( KIND= REAL64 )                 :: ANYNUMBER          ! Dummy (number)
-REAL( KIND= REAL64 ), DIMENSION( 9 ) :: BOX_LENGTH         ! Length (x,y,z) of the simulation box
-REAL( KIND= REAL64 ), DIMENSION( 9 ) :: BOX_LENGTH_I       ! Length (x,y,z) of simulation box (inverse)
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: AXISX              ! Body-fixed axis of rotation along x-direction
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: AXISY              ! Body-fixed axis of rotation along y-direction
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: AXISZ              ! Body-fixed axis of rotation along z-direction
-REAL( KIND= REAL64 ), DIMENSION( 3 ) :: AXISN              ! Body-fixed axis of rotation (for the initial configuration only)
+REAL( Kind= Real64 )                 :: QuaternionAngle                     ! Quaternion angle [real part, W] (for the initial configuration only)
+REAL( Kind= Real64 )                 :: PressureRandomConfig                ! Reduced pressure (for the initial configuration only)
+REAL( Kind= Real64 )                 :: TotalNumberDensity                  ! Total number density
+REAL( Kind= Real64 )                 :: TotalParticleVolume                 ! Total particle volume
+REAL( Kind= Real64 )                 :: AbsoluteTemperature                 ! Absolute temperature
+REAL( Kind= Real64 )                 :: ReducedTemperature                  ! Reduced temperature
+REAL( Kind= Real64 )                 :: ReducedPressure                     ! Reduced pressure
+REAL( Kind= Real64 )                 :: cLargestSphereDiameter              ! Diameter of the largest circumscribing sphere
+REAL( Kind= Real64 )                 :: BoxVolume                           ! Volume of the simulation box
+REAL( Kind= Real64 )                 :: RandomNumber                        ! Random number from a pseudorandom number generator subroutine
+REAL( Kind= Real64 )                 :: PackingFraction                     ! Packing fraction
+REAL( Kind= Real64 )                 :: BoxEdgeMaxRatio                     ! Maximum length ratio of simulation box during anisotropic volume changes
+REAL( Kind= Real64 )                 :: BoxVectorMaxAngle                   ! Maximum angle between box vectors during anisotropic volume changes
+REAL( Kind= Real64 )                 :: PackingFractionInitialConfiguration ! Packing fraction (for the initial configuration only)
+REAL( Kind= Real64 ), DIMENSION( 9 ) :: BoxLength                           ! Length (x,y,z) of the simulation box
+REAL( Kind= Real64 ), DIMENSION( 9 ) :: BoxLengthInverse                    ! Length (x,y,z) of simulation box (inverse)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (MONTE CARLO PARAMETERS)                                                         !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ) :: MAX_TRANS       ! User maximum displacement [+/-] (Translation)
-REAL( KIND= REAL64 ) :: MAX_ROT         ! User maximum displacement [+/-] (Rotation)
-REAL( KIND= REAL64 ) :: MAX_VOLI        ! User maximum displacement [+/-] (Isotropic Volume Change)
-REAL( KIND= REAL64 ) :: MAX_VOLA        ! User maximum displacement [+/-] (Anisotropic Volume Change)
-REAL( KIND= REAL64 ) :: DRMAX           ! Maximum displacement [+/-] (Translation)
-REAL( KIND= REAL64 ) :: ANGMAX          ! Maximum displacement [+/-] (Rotation)
-REAL( KIND= REAL64 ) :: DVMAXISO        ! Maximum displacement [+/-] (Isotropic volume change)
-REAL( KIND= REAL64 ) :: DVMAXANI        ! Maximum displacement [+/-] (Anisotropic volume change)
-REAL( KIND= REAL64 ) :: PROB_MOV        ! Movement probability
-REAL( KIND= REAL64 ) :: PROB_TRANS      ! Movement probability (Translation)
-REAL( KIND= REAL64 ) :: PROB_ROT        ! Movement probability (Rotation)
-REAL( KIND= REAL64 ) :: PROB_VOL        ! Volume change probability
-REAL( KIND= REAL64 ) :: PROB_VOL_ISO    ! Volume change probability (Isotropic)
-REAL( KIND= REAL64 ) :: PROB_VOL_ANISO  ! Volume change probability (Anisotropic)
-REAL( KIND= REAL64 ) :: PROB_MOV_INIT   ! Movement probability for the initial configuration
-REAL( KIND= REAL64 ) :: PROB_TRANS_INIT ! Movement probability for the initial configuration (Translation)
-REAL( KIND= REAL64 ) :: PROB_ROT_INIT   ! Movement probability for the initial configuration (Rotation)
-REAL( KIND= REAL64 ) :: PROB_VOL_INIT   ! Volume change probability for the initial configuration
-REAL( KIND= REAL64 ) :: PROB_ISO_INIT   ! Volume change probability for the initial configuration (Isotropic)
-REAL( KIND= REAL64 ) :: PROB_ANISO_INIT ! Volume change probability for the initial configuration (Anisotropic)
-REAL( KIND= REAL64 ) :: DRMAX_INIT      ! Maximum displacement [+/-] (Translation)
-REAL( KIND= REAL64 ) :: ANGMAX_INIT     ! Maximum displacement [+/-] (Rotation)
-REAL( KIND= REAL64 ) :: DVMAXISO_INIT   ! Maximum displacement [+/-] (Isotropic Volume Change)
-REAL( KIND= REAL64 ) :: DVMAXANISO_INIT ! Maximum displacement [+/-] (Anisotropic Volume Change)
-REAL( KIND= REAL64 ) :: DVMIN_INIT      ! Minimum displacement [+]   (Volume)
-REAL( KIND= REAL64 ) :: R_ACC_T         ! Acceptance ratio threshold (Translation)
-REAL( KIND= REAL64 ) :: R_ACC_R         ! Acceptance ratio threshold (Rotation)
-REAL( KIND= REAL64 ) :: R_ACC_VI        ! Acceptance ratio threshold (Isotropic volume change)
-REAL( KIND= REAL64 ) :: R_ACC_VA        ! Acceptance ratio threshold (Anisotropic volume change)
-REAL( KIND= REAL64 ) :: BOX_DIST        ! Maximum box distortion before lattice reduction
+REAL( Kind= Real64 ) :: UserMaxTranslationalDisplacement           ! User maximum displacement [+/-] (Translation)
+REAL( Kind= Real64 ) :: UserMaxRotationalDisplacement              ! User maximum displacement [+/-] (Rotation)
+REAL( Kind= Real64 ) :: UserMaxIsoVolumetricDisplacement           ! User maximum displacement [+/-] (Isotropic Volume Scaling)
+REAL( Kind= Real64 ) :: UserMaxAnisoVolumetricDisplacement         ! User maximum displacement [+/-] (Anisotropic Volume Scaling)
+REAL( Kind= Real64 ) :: MovementProbability                        ! Movement probability
+REAL( Kind= Real64 ) :: TranslationalProbability                   ! Movement probability (Translation)
+REAL( Kind= Real64 ) :: RotationalProbability                      ! Movement probability (Rotation)
+REAL( Kind= Real64 ) :: VolumeChangeProbability                    ! Volume scaling probability
+REAL( Kind= Real64 ) :: IsoVolumetricProbability                   ! Volume scaling probability (Isotropic)
+REAL( Kind= Real64 ) :: AnisoVolumetricProbability                 ! Volume scaling probability (Anisotropic)
+REAL( Kind= Real64 ) :: MovementProbabilityRandomConfig            ! Movement probability for the initial configuration
+REAL( Kind= Real64 ) :: TranslationalProbabilityRandomConfig       ! Movement probability for the initial configuration (Translation)
+REAL( Kind= Real64 ) :: RotationalProbabilityRandomConfig          ! Movement probability for the initial configuration (Rotation)
+REAL( Kind= Real64 ) :: VolumeChangeProbabilityRandomConfig        ! Volume scaling probability for the initial configuration
+REAL( Kind= Real64 ) :: IsoVolumetricProbabilityRandomConfig       ! Volume scaling probability for the initial configuration (Isotropic)
+REAL( Kind= Real64 ) :: AnisoVolumetricProbabilityRandomConfig     ! Volume scaling probability for the initial configuration (Anisotropic)
+REAL( Kind= Real64 ) :: MaxTranslationalDisplacementRandomConfig   ! Maximum displacement [+/-] (Translation)
+REAL( Kind= Real64 ) :: MaxAngularDisplacementRandomConfig         ! Maximum displacement [+/-] (Rotation)
+REAL( Kind= Real64 ) :: MaxIsoVolumetricDisplacementRandomConfig   ! Maximum displacement [+/-] (Isotropic volume scaling)
+REAL( Kind= Real64 ) :: MaxAnisoVolumetricDisplacementRandomConfig ! Maximum displacement [+/-] (Anisotropic volume scaling)
+REAL( Kind= Real64 ) :: MinVolumetricDisplacementRandomConfig      ! Minimum displacement [+]   (Volume)
+REAL( Kind= Real64 ) :: AcceptanceRatioTranslation                 ! Acceptance ratio threshold (Translation)
+REAL( Kind= Real64 ) :: AcceptanceRatioRotation                    ! Acceptance ratio threshold (Rotation)
+REAL( Kind= Real64 ) :: AcceptanceRatioIsoVolumeChange             ! Acceptance ratio threshold (Isotropic volume scaling)
+REAL( Kind= Real64 ) :: AcceptanceRatioAnisoVolumeChange           ! Acceptance ratio threshold (Anisotropic volume scaling)
+REAL( Kind= Real64 ) :: MaxBoxDistortion                           ! Maximum box distortion before performing a lattice reduction
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (ALLOCATABLE)                                                                    !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: DIAMETER      ! Diameter
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: LENGTH        ! Length
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: MOLAR_F       ! Molar fraction
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: PARTICLE_VOL  ! Particle volume of component c
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: RHO_PARTICLE  ! Number density of component c
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: ASPECT_RATIO  ! Aspect ratio of component c
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: SIGSPHERE     ! Diameter of a sphere with same volume of the nonspherical geometry of component c
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: V, VMC        ! Potential energy array
-REAL( KIND= REAL64 ), DIMENSION( : ),    ALLOCATABLE :: L_RANGE       ! Attractive range parameter
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: Q, QMC        ! Rotation quaternion array
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: R, RMC        ! Position array
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: E, EMC        ! Orientation array
-REAL( KIND= REAL64 ), DIMENSION( :, : ), ALLOCATABLE :: SWRANGE       ! Effective range of attraction
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cDiameter                    ! Diameter of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cLength                      ! Length of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cMolarFraction               ! Molar fraction of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cMolecularVolume             ! Particle volume of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cNumberDensity               ! Number density of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cAspectRatio                 ! Aspect ratio of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: cDiameterEquivalentSphere    ! Diameter of a sphere with same volume of the nonspherical geometry of component c
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: TotalPotentialEnergy         ! Total potential energy
+REAL( Kind= Real64 ), DIMENSION( : ),    ALLOCATABLE :: PotentialRange               ! Attractive range parameter
+REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: pQuaternion, pQuaternionMC   ! Quaternion array of particles
+REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: pPosition, pPositionMC       ! Position array of particles
+REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: pOrientation, pOrientationMC ! Orientation array of particles
+REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: cPotentialRange              ! Effective range of attraction of component c
 
 ! *********************************************************************************************** !
 ! REAL PARAMETERS                                                                                 !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 ), PARAMETER :: PI = 4.D0 * DATAN ( 1.D0 ) ! Pi number
-REAL( KIND= REAL64 ), PARAMETER :: C_BOLTZMANN = 1.380649D-23 ! Boltzmann constant
+REAL( Kind= Real64 ), PARAMETER                 :: cPi = 4.D0 * DATAN( 1.D0 ) ! Pi number
+REAL( Kind= Real64 ), PARAMETER                 :: cBoltzmann = 1.380649D-23  ! Boltzmann constant
+REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER :: xAxis = [1.D0,0.D0,0.D0]   ! Body-fixed axis of rotation along x-direction
+REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER :: yAxis = [0.D0,1.D0,0.D0]   ! Body-fixed axis of rotation along y-direction
+REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER :: zAxis = [0.D0,0.D0,1.D0]   ! Body-fixed axis of rotation along z-direction
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 14 ) :: CODE_DESCRIPTOR  ! Descriptor for output file (initial configuration)
-CHARACTER( LEN= 02 ) :: VOL_TYPE         ! Expansion/Compression type
-CHARACTER( LEN= 10 ) :: DESCRIPTOR_FILE1 ! Descriptor for output file
-CHARACTER( LEN= 10 ) :: DESCRIPTOR_FILE2 ! Descriptor for output file
-CHARACTER( LEN= 10 ) :: DESCRIPTOR_FILE3 ! Descriptor for output file
-CHARACTER( LEN= 10 ) :: DESCRIPTOR_HOUR  ! Descriptor for output file
-CHARACTER( LEN= 10 ) :: DESCRIPTOR_DATE  ! Descriptor for output folder
-CHARACTER( LEN= 10 ) :: DESCRIPTOR_LAMB  ! Descriptor for output folder
-CHARACTER( LEN= 32 ) :: FORMAT_FILE1     ! String format for output file
-CHARACTER( LEN= 32 ) :: FORMAT_FILE2     ! String format for output file
-CHARACTER( LEN= 32 ) :: FORMAT_FILE3     ! String format for output file
-CHARACTER( LEN= 32 ) :: FORMAT_HOUR      ! String format for output file
-CHARACTER( LEN= 32 ) :: FORMAT_DATE      ! String format for output folder
-CHARACTER( LEN= 32 ) :: FORMAT_LAMB      ! String format for output folder
-CHARACTER( LEN= 64 ) :: FORMAT_SELF      ! String format (general)
-CHARACTER( LEN= 01 ) :: TRAJ_INQ         ! Trajectory output inquiry
-CHARACTER( LEN= 03 ) :: CONFIG_INQ       ! Molecular structure inquiry
-CHARACTER( LEN= 03 ) :: GEOM_INQ         ! Molecular geometry inquiry
-CHARACTER( LEN= 01 ) :: POT_INQ          ! Potential output inquiry
-CHARACTER( LEN= 01 ) :: COEF_INQ         ! Coefficient output inquiry
-CHARACTER( LEN= 32 ) :: GET              ! Variable names (.ini input files)
-CHARACTER( LEN= 32 ) :: CONFIGURATION    ! Molecular structure
-CHARACTER( LEN= 03 ) :: LRTYPE           ! Lattice reduction type
-CHARACTER( LEN= 32 ) :: POTENTIAL_TYPE   ! Potential type
-CHARACTER( LEN= 32 ) :: GEOMETRY         ! Molecular geometry (extended)
-CHARACTER( LEN= 03 ) :: GEO_ACRONYM      ! Molecular geometry (acronym)
-CHARACTER( LEN= 01 ) :: UNROT_AXIS       ! Unrotated axis inquiry
-CHARACTER( LEN= 03 ) :: MC_ENSEMBLE      ! Monte Carlo Ensemble
-CHARACTER( LEN= 01 ) :: SEED_INQ         ! Fixed/random seed inquiry
-CHARACTER( LEN= 01 ) :: DUMMY            ! Dummy (character)
+CHARACTER( LEN= 10 ) :: DescriptorFileThermoVariable   ! Descriptor for output file
+CHARACTER( LEN= 10 ) :: DescriptorFileComponents       ! Descriptor for output file
+CHARACTER( LEN= 10 ) :: DescriptorFileGeometry         ! Descriptor for output file
+CHARACTER( LEN= 10 ) :: DescriptorHour                 ! Descriptor for output file
+CHARACTER( LEN= 10 ) :: DescriptorDate                 ! Descriptor for output folder
+CHARACTER( LEN= 10 ) :: DescriptorRange                ! Descriptor for output folder
+CHARACTER( LEN= 32 ) :: FormatFileThermoVariable       ! String format for output file
+CHARACTER( LEN= 32 ) :: FormatFileComponents           ! String format for output file
+CHARACTER( LEN= 32 ) :: FormatFileGeometry             ! String format for output file
+CHARACTER( LEN= 32 ) :: FormatRange                    ! String format for output folder
+CHARACTER( LEN= 01 ) :: TrajectoryInquiry              ! Trajectory output inquiry
+CHARACTER( LEN= 03 ) :: ConfigurationInquiry           ! Molecular structure inquiry
+CHARACTER( LEN= 03 ) :: GeometryInquiry                ! Molecular geometry inquiry
+CHARACTER( LEN= 01 ) :: PotentialEnergyInquiry         ! Potential output inquiry
+CHARACTER( LEN= 01 ) :: PerturbationCoefficientInquiry ! Coefficient output inquiry
+CHARACTER( LEN= 01 ) :: BackupFileInquiry              ! Backup file output inquiry
+CHARACTER( LEN= 01 ) :: RestoreBackupFileInquiry       ! Backup file restoration inquiry
+CHARACTER( LEN= 32 ) :: InitialConfiguration           ! Molecular structure
+CHARACTER( LEN= 03 ) :: LatticeReductionType           ! Lattice reduction type
+CHARACTER( LEN= 32 ) :: PotentialType                  ! Potential type
+CHARACTER( LEN= 32 ) :: MolecularGeometry              ! Molecular geometry (extended)
+CHARACTER( LEN= 03 ) :: GeometryAcronym                ! Molecular geometry (acronym)
+CHARACTER( LEN= 01 ) :: BodyFixedAxisInquiry           ! Body-fixed axis inquiry
+CHARACTER( LEN= 03 ) :: EnsembleMC                     ! Monte Carlo ensemble
+CHARACTER( LEN= 01 ) :: SeedTypeInquiry                ! Fixed/random seed inquiry
+CHARACTER( LEN= 01 ) :: Dummy                          ! Dummy (character)
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS (ALLOCATABLE)                                                                 !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 01 ), DIMENSION( : ), ALLOCATABLE :: SPHCOMP_INQ ! Spherical component inquiry
+CHARACTER( LEN= 01 ), DIMENSION( : ), ALLOCATABLE :: SphericalComponentInquiry ! Spherical component inquiry
 
 ! *********************************************************************************************** !
 ! CHARACTER PARAMETERS                                                                            !
@@ -219,22 +207,24 @@ CHARACTER( LEN= 3 ), PARAMETER :: C_FUL = "█" ! Box drawing symbol
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL                 :: FILE_EXIST      ! Checks whether a file exists or not
-LOGICAL                 :: TRAJ_CHECK      ! Checks whether the trajectory file will be written out
-LOGICAL                 :: POTENTIAL_CHECK ! Checks whether the potential file will be written out for production-related cycles or for all cycles
-LOGICAL                 :: COEF_CHECK      ! Checks whether the perturbation coefficients will be calculated
-LOGICAL                 :: INIT_CONF       ! Checks whether the initial configuration will be read from an external file
-LOGICAL                 :: FSEED           ! Checks whether the seed for the random number generator will be fixed or random
-LOGICAL, DIMENSION( 5 ) :: CONFIG_SELEC    ! Checks the selected molecular configuration
-LOGICAL, DIMENSION( 3 ) :: GEOM_SELEC      ! Checks the selected molecular geometry
-LOGICAL, DIMENSION( 2 ) :: LRED_SELEC      ! Lattice reduction selection
-LOGICAL, DIMENSION( 3 ) :: AXIS_SELEC      ! Checks the selected unrotated reference axis
-LOGICAL, DIMENSION( 5 ) :: POTENTIAL_SELEC ! Checks the selected potential type
+LOGICAL                 :: TrajectoryLogical              ! Checks whether the trajectory file will be written out
+LOGICAL                 :: PotentialEnergyLogical         ! Checks whether the potential file will be written out for production-related cycles or for all cycles
+LOGICAL                 :: PerturbationCoefficientLogical ! Checks whether the perturbation coefficients will be calculated
+LOGICAL                 :: BackupFileLogical              ! Checks whether a backup file will be generated
+LOGICAL                 :: RestoreBackupFileLogical       ! Checks whether a backup file will be used to restore previous simulations
+LOGICAL                 :: PresetInitialConfiguration     ! Checks whether the initial configuration will be read from an external file
+LOGICAL                 :: FixedSeedLogical               ! Checks whether the seed for the random number generator will be fixed or random
+LOGICAL                 :: CellListLogical                ! Checks whether a cell list will be used to compute the potential (NVT only) or search for overlaps
+LOGICAL                 :: CellListControl                ! Toggles control of cell list
+LOGICAL, DIMENSION( 5 ) :: ConfigurationSelection         ! Checks the selected molecular configuration
+LOGICAL, DIMENSION( 3 ) :: GeometryType                   ! Checks the selected molecular geometry
+LOGICAL, DIMENSION( 2 ) :: LatticeReductionTypeLogical    ! Lattice reduction selection
+LOGICAL, DIMENSION( 3 ) :: AxisSelection                  ! Checks the selected unrotated reference axis
+LOGICAL, DIMENSION( 5 ) :: PotentialTypeLogical           ! Checks the selected potential type
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES (ALLOCATABLE)                                                                 !
 ! *********************************************************************************************** !
-LOGICAL, DIMENSION( : ), ALLOCATABLE :: LFEXIST   ! Checks whether the attractive parameter subfolders exist or not
-LOGICAL, DIMENSION( : ), ALLOCATABLE :: SPHERCOMP ! Checks whether the component is spherical or not
+LOGICAL, DIMENSION( : ), ALLOCATABLE :: SphericalComponentLogical ! Checks whether the component is spherical or not
 
-END MODULE GLOBALVAR
+END MODULE GlobalVar

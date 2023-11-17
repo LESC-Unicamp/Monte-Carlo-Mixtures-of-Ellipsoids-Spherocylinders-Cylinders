@@ -6,6 +6,16 @@
 Nathan Barros de Souza<br>
 Luís Fernando Mercier Franco<br></p>
 
+**Version 1.2.1**
+
+- Added a cell lists feature to optimize simulation performance;
+
+- Added a backup feature to the simulation segment.
+
+**Version 1.1.1**
+
+- Improved readability of the code.
+
 **Version 1.1.0**
 
 - Fixed an issue when attempting to perform anisotropic volume changes;

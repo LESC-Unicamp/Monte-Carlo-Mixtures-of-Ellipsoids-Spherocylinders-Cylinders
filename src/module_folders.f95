@@ -8,7 +8,7 @@
 !                  The code below is meant for Ubuntu 20.04 operational systems.                  !
 !                   We have not provided an alternative code for Windows users.                   !
 !                                                                                                 !
-! Version number: 1.1.0                                                                           !
+! Version number: 1.2.1                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -16,337 +16,419 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                        August 25th, 2023                                        !
+!                                       October 31st, 2023                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
-MODULE FOLDERS
+MODULE Folders
 
 ! Uses one module: global variables
-USE GLOBALVAR
+USE GlobalVar
 
 IMPLICIT NONE
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL, DIMENSION( 7 ) :: FEXIST  ! Checks whether folder exists or not
-LOGICAL, DIMENSION( 9 ) :: DFEXIST ! Checks whether date folders exist or not
-LOGICAL, DIMENSION( 5 ) :: SFEXIST ! Checks whether subfolder exists or not
+LOGICAL :: FolderExist     ! Checks whether folder exists or not
+LOGICAL :: DateFolderExist ! Checks whether date folders exist or not
+LOGICAL :: SubfolderExist  ! Checks whether subfolder exists or not
+LOGICAL :: AdvanceLine     ! Checks whether subfolder exists or not
 
 CONTAINS
 
 ! *********************************************************************************************** !
 !                             Initialization of parental directories                              !
 ! *********************************************************************************************** !
-SUBROUTINE INITFOLDER(  )
+SUBROUTINE InitialConfigurationFolders(  )
 
 IMPLICIT NONE
 
 ! Inquires whether a folder exists and stores the inquiry result in a logical variable
-INQUIRE( FILE= "Initial_Configuration", EXIST= FEXIST(1) )
+INQUIRE( File= "Initial_Configuration/", Exist= FolderExist )
 
-! *********************************************************************************************** !
-! Initial configuration folder (holds information on the initial molecular structure)             !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(1) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating initial configuration folder..."
-  CALL SYSTEM( "mkdir Initial_Configuration" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Initial configuration folder (holds information on the initial molecular structure)
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating initial configuration folder..."
+  CALL System( "mkdir Initial_Configuration/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Inquires whether a subfolder exists and stores the inquiry result in a logical variable         !
-! *********************************************************************************************** !
-!  The initial molecular structure at 'OVITO' subfolder is properly formatted to be analyzed      !
-!  by that software.                                                                              !
-! *********************************************************************************************** !
-INQUIRE( FILE= "Initial_Configuration/OVITO/", EXIST= SFEXIST(1) )
-
-! *********************************************************************************************** !
-! Initial configuration subfolder (OVITO)                                                         !
-! *********************************************************************************************** !
-IF( .NOT. SFEXIST(1) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating initial configuration subfolder..."
-  CALL SYSTEM( "mkdir Initial_Configuration/OVITO/" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Inquires whether a subfolder exists or not
+INQUIRE( File= "Initial_Configuration/OVITO/", Exist= SubfolderExist )
+! Initial configuration subfolder (OVITO)
+IF( .NOT. SubfolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating initial configuration subfolder..."
+  CALL System( "mkdir Initial_Configuration/OVITO/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! Inquires whether the date subfolder exists and stores the inquiry result in a logical variable
-INQUIRE( FILE= "Initial_Configuration/OVITO/"//TRIM( DESCRIPTOR_DATE )//"/", EXIST= DFEXIST(1) )
-
-! *********************************************************************************************** !
-! Date subfolder                                                                                  !
-! *********************************************************************************************** !
-IF( .NOT. DFEXIST(1) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating date subfolder..."
-  CALL SYSTEM( "mkdir Initial_Configuration/OVITO/"//TRIM( DESCRIPTOR_DATE )//"/" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Inquires whether the date subfolder exists or not
+INQUIRE( File= "Initial_Configuration/OVITO/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+! Date subfolder
+IF( .NOT. DateFolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolder..."
+  CALL System( "mkdir Initial_Configuration/OVITO/"//TRIM( DescriptorDate )//"/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
 RETURN
 
-END SUBROUTINE INITFOLDER
+END SUBROUTINE InitialConfigurationFolders
 
 ! *********************************************************************************************** !
 !                             Initialization of parental directories                              !
 ! *********************************************************************************************** !
-SUBROUTINE INQUIRE_FOLDERS(  )
+SUBROUTINE InquireFolders(  )
 
 IMPLICIT NONE
 
-! Inquires whether a folder exists and stores the inquiry result in a logical variable
-INQUIRE( FILE= "Trajectories", EXIST= FEXIST(2) )
-INQUIRE( FILE= "Ratio", EXIST= FEXIST(3) )
-INQUIRE( FILE= "Order_Parameter", EXIST= FEXIST(4) )
-INQUIRE( FILE= "Results", EXIST= FEXIST(5) )
-INQUIRE( FILE= "Potential", EXIST= FEXIST(6) )
-INQUIRE( FILE= "Perturbed_Coefficient", EXIST= FEXIST(7) )
+! Initialization
+AdvanceLine = .FALSE.
 
-! *********************************************************************************************** !
-! Trajectory folder (holds information on orientation and position of particles)                  !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(2) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating trajectory folder..."
-  CALL SYSTEM( "mkdir Trajectories" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Trajectory folder (holds information on orientation and position of particles)
+INQUIRE( File= "Trajectories/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating trajectory folder..."
+  CALL System( "mkdir Trajectories/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Ratio folder (holds information on the equilibration cycles)                                    !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(3) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating ratio folder..."
-  CALL SYSTEM( "mkdir Ratio" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Ratio folder (holds information on the equilibration cycles)
+INQUIRE( File= "Ratio/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating ratio folder..."
+  CALL System( "mkdir Ratio/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! Inquires whether a subfolder exists and stores the inquiry result in a logical variable
-INQUIRE( FILE= "Ratio/Translation/", EXIST= SFEXIST(2) )
-INQUIRE( FILE= "Ratio/Rotation/", EXIST= SFEXIST(3) )
-INQUIRE( FILE= "Ratio/Volume/", EXIST= SFEXIST(4) )
-INQUIRE( FILE= "Ratio/Box/", EXIST= SFEXIST(5) )
-
-! *********************************************************************************************** !
-! Ratio subfolders                                                                                !
-! *********************************************************************************************** !
-IF( .NOT. SFEXIST(2) .OR. .NOT. SFEXIST(3) .OR. .NOT. SFEXIST(4) .OR. .NOT. SFEXIST(5) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating ratio subfolders..."
-END IF
-IF( .NOT. SFEXIST(2) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Translation/" )
-END IF
-IF( .NOT. SFEXIST(3) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Rotation/" )
-END IF
-IF( .NOT. SFEXIST(4) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Volume/" )
-END IF
-IF( .NOT. SFEXIST(5) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Box/" )
-END IF
-IF( .NOT. SFEXIST(2) .OR. .NOT. SFEXIST(3) .OR. .NOT. SFEXIST(4) .OR. .NOT. SFEXIST(5) ) THEN
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Box folder (holds information on the box properties)
+INQUIRE( File= "Box/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating box folder..."
+  CALL System( "mkdir Box/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Order parameter folder (holds information on the nematic order parameter)                       !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(4) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating order parameter folder..."
-  CALL SYSTEM( "mkdir Order_Parameter" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Order parameter folder (holds information on the nematic order parameter)
+INQUIRE( File= "Order_Parameter/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating order parameter folder..."
+  CALL System( "mkdir Order_Parameter/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Results folder (holds information on the packing fraction and the simulation box)               !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(5) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating results folder..."
-  CALL SYSTEM( "mkdir Results" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Results folder (holds information on the packing fraction and the simulation box)
+INQUIRE( File= "Results/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating results folder..."
+  CALL System( "mkdir Results/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Potential folder (holds information on the potential energy of the system)                      !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(6) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating potential folder..."
-  CALL SYSTEM( "mkdir Potential" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Potential folder (holds information on the potential energy of the system)
+INQUIRE( File= "Potential_Energy/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating potential energy folder..."
+  CALL System( "mkdir Potential_Energy/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
-! *********************************************************************************************** !
-! Perturbed coefficient folder (holds information on the perturbation coefficients)               !
-! *********************************************************************************************** !
-IF( .NOT. FEXIST(7) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating perturbed coefficient folder..."
-  CALL SYSTEM( "mkdir Perturbed_Coefficient" )
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+! Perturbed coefficient folder (holds information on the perturbation coefficients)
+INQUIRE( File= "Perturbed_Coefficient/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating perturbed coefficient folder..."
+  CALL System( "mkdir Perturbed_Coefficient/" )
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
+
+! Inquires whether a subfolder exists or not
+INQUIRE( File= "Ratio/Translation/", Exist= SubfolderExist )
+IF( .NOT. SubfolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating ratio subfolders..."
+  AdvanceLine = .TRUE.
+ELSE
+  INQUIRE( File= "Ratio/Rotation/", Exist= SubfolderExist )
+  IF( .NOT. SubfolderExist ) THEN
+    WRITE( *, "(G0)", Advance= "NO" ) "Creating ratio subfolders..."
+    AdvanceLine = .TRUE.
+  ELSE
+    INQUIRE( File= "Ratio/Volume/", Exist= SubfolderExist )
+    IF( .NOT. SubfolderExist ) THEN
+      WRITE( *, "(G0)", Advance= "NO" ) "Creating ratio subfolders..."
+      AdvanceLine = .TRUE.      
+    END IF
+  END IF
+END IF
+
+! Translational ratio subfolder
+INQUIRE( File= "Ratio/Translation/", Exist= SubfolderExist )
+IF( .NOT. SubfolderExist ) THEN
+  CALL System( "mkdir Ratio/Translation/" )
+END IF
+
+! Rotational ratio subfolder
+INQUIRE( File= "Ratio/Rotation/", Exist= SubfolderExist )
+IF( .NOT. SubfolderExist ) THEN
+  CALL System( "mkdir Ratio/Rotation/" )
+END IF
+
+! Volumetric ratio subfolder
+INQUIRE( File= "Ratio/Volume/", Exist= SubfolderExist )
+IF( .NOT. SubfolderExist ) THEN
+  CALL System( "mkdir Ratio/Volume/" )
+END IF
+
+! Skip line
+IF( AdvanceLine ) THEN
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
 RETURN
 
-END SUBROUTINE INQUIRE_FOLDERS
+END SUBROUTINE InquireFolders
 
 ! *********************************************************************************************** !
 !                                Initialization of date subfolders                                !
 ! *********************************************************************************************** !
-SUBROUTINE DATE_FOLDERS(  )
+SUBROUTINE DateFolders(  )
 
 IMPLICIT NONE
 
-! Inquires whether the date subfolder exists and stores the inquiry result in a logical variable
-INQUIRE( FILE= "Trajectories/"//TRIM( DESCRIPTOR_DATE )//"/", EXIST= DFEXIST(1) )
-INQUIRE( FILE= "Ratio/Translation/"//TRIM( DESCRIPTOR_DATE )//"/", EXIST= DFEXIST(2) )
-INQUIRE( FILE= "Ratio/Rotation/"//TRIM( DESCRIPTOR_DATE )//"/", EXIST= DFEXIST(3) )
-INQUIRE( FILE= "Ratio/Volume/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(4) )
-INQUIRE( FILE= "Ratio/Box/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(5) )
-INQUIRE( FILE= "Order_Parameter/"//TRIM( DESCRIPTOR_DATE )//"/", EXIST= DFEXIST(6) )
-INQUIRE( FILE= "Results/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(7) )
-INQUIRE( FILE= "Potential/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(8) )
-INQUIRE( FILE= "Perturbed_Coefficient/"//TRIM(DESCRIPTOR_DATE)//"/", EXIST= DFEXIST(9) )
+! Initialization
+AdvanceLine = .FALSE.
 
-! *********************************************************************************************** !
-! Date subfolders                                                                                 !
-! *********************************************************************************************** !
-IF( .NOT. DFEXIST(1) .OR. .NOT. DFEXIST(2) .OR. .NOT. DFEXIST(3) .OR. .NOT. DFEXIST(4) .OR. .NOT. DFEXIST(5) .OR. &
-&   .NOT. DFEXIST(6) .OR. .NOT. DFEXIST(7) .OR. .NOT. DFEXIST(8) .OR. .NOT. DFEXIST(9) ) THEN
-  WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating date subfolders..."
+! Inquires whether the date subfolder exists or not
+INQUIRE( File= "Trajectories/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+  AdvanceLine = .TRUE.
+ELSE
+  INQUIRE( File= "Ratio/Translation/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+  IF( .NOT. DateFolderExist ) THEN
+    WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+    AdvanceLine = .TRUE.
+  ELSE
+    INQUIRE( File= "Ratio/Rotation/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+    IF( .NOT. DateFolderExist ) THEN
+      WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+      AdvanceLine = .TRUE.
+    ELSE
+      INQUIRE( File= "Ratio/Volume/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+      IF( .NOT. DateFolderExist ) THEN
+        WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+        AdvanceLine = .TRUE.
+      ELSE
+        INQUIRE( File= "Box/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+        IF( .NOT. DateFolderExist ) THEN
+          WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+          AdvanceLine = .TRUE.
+        ELSE
+          INQUIRE( File= "Order_Parameter/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+          IF( .NOT. DateFolderExist ) THEN
+            WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+            AdvanceLine = .TRUE.
+          ELSE
+            INQUIRE( File= "Results/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+            IF( .NOT. DateFolderExist ) THEN
+              WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+              AdvanceLine = .TRUE.
+            ELSE
+              INQUIRE( File= "Potential_Energy/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+              IF( .NOT. DateFolderExist ) THEN
+                WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+                AdvanceLine = .TRUE.
+              ELSE
+                INQUIRE( File= "Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+                IF( .NOT. DateFolderExist ) THEN
+                  WRITE( *, "(G0)", Advance= "NO" ) "Creating date subfolders..."
+                  AdvanceLine = .TRUE.
+                END IF
+              END IF
+            END IF
+          END IF
+        END IF
+      END IF
+    END IF
+  END IF
 END IF
-IF( .NOT. DFEXIST(1) ) THEN
-  CALL SYSTEM( "mkdir Trajectories/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Trajectory date subfolder
+INQUIRE( File= "Trajectories/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Trajectories/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(2) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Translation/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Ratios date subfolder
+INQUIRE( File= "Ratio/Translation/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Ratio/Translation/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(3) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Rotation/"//TRIM( DESCRIPTOR_DATE )//"/" )
+INQUIRE( File= "Ratio/Rotation/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Ratio/Rotation/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(4) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Volume/"//TRIM( DESCRIPTOR_DATE )//"/" )
+INQUIRE( File= "Ratio/Volume/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Ratio/Volume/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(5) ) THEN
-  CALL SYSTEM( "mkdir Ratio/Box/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Box date subfolder
+INQUIRE( File= "Box/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Box/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(6) ) THEN
-  CALL SYSTEM( "mkdir Order_Parameter/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Order parameter date subfolder
+INQUIRE( File= "Order_Parameter/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Order_Parameter/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(7) ) THEN
-  CALL SYSTEM( "mkdir Results/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Results date subfolder
+INQUIRE( File= "Results/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Results/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(8) ) THEN
-  CALL SYSTEM( "mkdir Potential/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Potential date subfolder
+INQUIRE( File= "Potential_Energy/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Potential_Energy/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(9) ) THEN
-  CALL SYSTEM( "mkdir Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/" )
+
+! Perturbed coefficient date subfolder
+INQUIRE( File= "Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/", Exist= DateFolderExist )
+IF( .NOT. DateFolderExist ) THEN
+  CALL System( "mkdir Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/" )
 END IF
-IF( .NOT. DFEXIST(1) .OR. .NOT. DFEXIST(2) .OR. .NOT. DFEXIST(3) .OR. .NOT. DFEXIST(4) .OR. .NOT. DFEXIST(5) .OR. &
-&   .NOT. DFEXIST(6) .OR. .NOT. DFEXIST(7) .OR. .NOT. DFEXIST(8) .OR. .NOT. DFEXIST(9) ) THEN
-  CALL SLEEP( 1 )
-  WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
+
+! Skip line
+IF( AdvanceLine ) THEN
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
 END IF
 
 RETURN
 
-END SUBROUTINE DATE_FOLDERS
+END SUBROUTINE DateFolders
 
 ! *********************************************************************************************** !
 !                        Initialization of attractive parameter subfolders                        !
 ! *********************************************************************************************** !
-SUBROUTINE LAMBDA_FOLDERS(  )
+SUBROUTINE RangeFolders(  )
 
 IMPLICIT NONE
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
-INTEGER( KIND= INT64 ) :: C_LAMB ! Counter
+INTEGER( Kind= Int64 ) :: rRange ! Counter
+
+! Initialization
+AdvanceLine = .FALSE.
 
 ! Subfolder descriptor format
-FORMAT_LAMB = "(G0.5)"
+FormatRange = "(G0.5)"
 
-! Initialization
-LFEXIST = .FALSE.
+! Inquires whether the date subfolder exists or not
+DO rRange = 1, nRange
+  WRITE ( DescriptorRange, FormatRange ) PotentialRange(rRange)
+  INQUIRE( File= "Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/", Exist= SubfolderExist )
+  IF( .NOT. SubfolderExist ) THEN
+    WRITE( *, "(G0)", Advance= "NO" ) "Creating potential energy subfolders..."
+    AdvanceLine = .TRUE.
+    EXIT
+  END IF
+END DO
 
 ! Attractive range subfolders
-DO C_LAMB = 1, N_LAMBDA
-  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
-  INQUIRE( FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", EXIST= LFEXIST(C_LAMB) )
-  IF( .NOT. LFEXIST(C_LAMB) ) THEN
-    WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating potential subfolders..."
-    EXIT
+DO rRange = 1, nRange
+  WRITE ( DescriptorRange, FormatRange ) PotentialRange(rRange)
+  INQUIRE( File= "Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/", Exist= SubfolderExist )
+  IF( .NOT. SubfolderExist ) THEN
+    CALL System( "mkdir Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/" )
   END IF
 END DO
-LFEXIST = .FALSE.
-DO C_LAMB = 1, N_LAMBDA
-  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
-  INQUIRE( FILE= "Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", EXIST= LFEXIST(C_LAMB) )
-  IF( .NOT. LFEXIST(C_LAMB) ) THEN
-    CALL SYSTEM ( "mkdir Potential/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/" )
-  END IF
-END DO
-DO C_LAMB = 1, N_LAMBDA
-  IF( .NOT. LFEXIST(C_LAMB) ) THEN
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
-    WRITE( *, "(G0)" ) " "
-    EXIT
-  END IF
-END DO
+
+IF( AdvanceLine ) THEN
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
 
 ! Initialization
-LFEXIST = .FALSE.
+AdvanceLine = .FALSE.
+
+! Inquires whether the date subfolder exists or not
+DO rRange = 1, nRange
+  WRITE ( DescriptorRange, FormatRange ) PotentialRange(rRange)
+  INQUIRE( File= "Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/", Exist= SubfolderExist )
+  IF( .NOT. SubfolderExist ) THEN
+    WRITE( *, "(G0)", Advance= "NO" ) "Creating perturbation coefficients subfolders..."
+    AdvanceLine = .TRUE.
+    EXIT
+  END IF
+END DO
 
 ! Perturbation coefficients subfolder
-DO C_LAMB = 1, N_LAMBDA
-  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
-  INQUIRE( FILE= "Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", &
-  &        EXIST= LFEXIST(C_LAMB) )
-  IF( .NOT. LFEXIST(C_LAMB) ) THEN
-    WRITE( *, "(G0)", ADVANCE= "NO" ) "Creating perturbation coefficients subfolders..."
-    EXIT
-  END IF
-END DO
-LFEXIST = .FALSE.
-DO C_LAMB = 1, N_LAMBDA
-  WRITE ( DESCRIPTOR_LAMB, FORMAT_LAMB ) L_RANGE(C_LAMB)
-  INQUIRE( FILE= "Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/", &
-  &        EXIST= LFEXIST(C_LAMB) )
-  IF( .NOT. LFEXIST(C_LAMB) ) THEN
-    CALL SYSTEM( "mkdir Perturbed_Coefficient/"//TRIM( DESCRIPTOR_DATE )//"/Lambda_"//TRIM( DESCRIPTOR_LAMB )//"/" )
-  END IF
-END DO
-DO C_LAMB = 1, N_LAMBDA
-  IF( .NOT. LFEXIST(C_LAMB) ) THEN
-    CALL SLEEP( 1 )
-    WRITE( *, "(G0)", ADVANCE= "YES" ) " Done!"
-    WRITE( *, "(G0)" ) " "
-    EXIT
+DO rRange = 1, nRange
+  WRITE ( DescriptorRange, FormatRange ) PotentialRange(rRange)
+  INQUIRE( File= "Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/", Exist= SubfolderExist )
+  IF( .NOT. SubfolderExist ) THEN
+    CALL System( "mkdir Perturbed_Coefficient/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/" )
   END IF
 END DO
 
-END SUBROUTINE LAMBDA_FOLDERS
+IF( AdvanceLine ) THEN
+  CALL Sleep( 1 )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
 
-END MODULE FOLDERS
+END SUBROUTINE RangeFolders
+
+! *********************************************************************************************** !
+!                               Initialization of the backup folder                               !
+! *********************************************************************************************** !
+SUBROUTINE BackupFolder(  )
+
+IMPLICIT NONE
+
+! Inquires whether the backup folder exists or not
+INQUIRE( File= "Backup/", Exist= FolderExist )
+IF( .NOT. FolderExist ) THEN
+  WRITE( *, "(G0)", Advance= "NO" ) "Creating backup folder..."
+  CALL System( "mkdir Backup/" )
+  WRITE( *, "(G0)", Advance= "YES" ) " Done!"
+  WRITE( *, "(G0)" ) " "
+END IF
+
+RETURN
+
+END SUBROUTINE BackupFolder
+
+END MODULE Folders
