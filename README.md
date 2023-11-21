@@ -394,11 +394,11 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  The <code>Backup/</code> directory stores the preset initial configuration file. It also contains the <code>OVITO/</code> subdirectory, which holds preformatted information on the position and orientation of particles, as well as their molecular geometry, that can be visualized directly on <a href="https://www.ovito.org/">OVITO</a> software. The <code>OVITO/</code> subdirectory also contains an 'RND' configuration file that is constantly updated to allow you to keep up with the development of the random configuration.
+  The <code>Backup/</code> directory stores the backup files of the current simulation. These files hold information on system variables (number of components, number of particles, etc.) and on simulation variables (particles' positions and orientations, box properties, cell list properties, etc.). The backup files are written out every <code>saving_frequency</code> cycles.
 </p>
 
 <p align="justify">
-  The <code>Box/</code> folder holds information on the box volume and box length, including the current distortion of the simulation box (only valid for <i>NPT</i>-simulations). This property is written out every <code>saving_frequency</code> cycles.
+  The <code>Box/</code> directory stores information on the box volume and box length, including the current distortion of the simulation box (only valid for <i>NPT</i>-simulations). This property is written out every <code>saving_frequency</code> cycles.
 </p>
 
 <p align="justify">
