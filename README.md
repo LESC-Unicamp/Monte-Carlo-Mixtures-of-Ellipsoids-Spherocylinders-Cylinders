@@ -122,7 +122,9 @@ The following features are supported in the current version:
 5. Force Fields
     - Spherical Square Well (perturbed system only*)
 
-<sub>*This means that the potential does not affect the molecular configuration of the system, which is solely defined by the purely repulsive hard-core potential.</sub>
+6. Cell Lists
+
+<sub>*This means that the potential does not affect the molecular configuration of the system, which is solely defined by the purely repulsive hard-core potential. This is used for the evaluation of thermodynamic perturbation theories.</sub>
 
 ## <a name="language"></a>Language
 <p align="justify">
