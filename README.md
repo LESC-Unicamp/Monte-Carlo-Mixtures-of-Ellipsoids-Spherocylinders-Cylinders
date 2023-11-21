@@ -390,7 +390,15 @@ The following features are supported in the current version:
 ## <a name="filesandfolders"></a>Files and Folders
 
 <p align="justify">
-  The program organizes the output files and directories automatically. It creates <b>7</b> directories in total. To better organize the output files, all directories (or subdirectories) contains a date subfolder, corresponding to the starting date/hour of the simulation.
+  The program organizes the output files and directories automatically. It creates <b>9</b> directories in total. To better organize the output files, all directories (or subdirectories) contains a date subfolder, corresponding to the starting date/hour of the simulation.
+</p>
+
+<p align="justify">
+  The <code>Backup/</code> directory stores the preset initial configuration file. It also contains the <code>OVITO/</code> subdirectory, which holds preformatted information on the position and orientation of particles, as well as their molecular geometry, that can be visualized directly on <a href="https://www.ovito.org/">OVITO</a> software. The <code>OVITO/</code> subdirectory also contains an 'RND' configuration file that is constantly updated to allow you to keep up with the development of the random configuration.
+</p>
+
+<p align="justify">
+  The <code>Box/</code> folder holds information on the box volume and box length, including the current distortion of the simulation box (only valid for <i>NPT</i>-simulations). This property is written out every <code>saving_frequency</code> cycles.
 </p>
 
 <p align="justify">
@@ -410,7 +418,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  The <code>Ratio/</code> directory stores information on equilibration cycles (acceptance ratio, maximum displacements, etc.). This information is sorted out into four subfolders: the <code>Rotation/</code> subfolder holds information on rotational moves; the <code>Translation/</code> subfolder holds information on translational moves; the <code>Volume/</code> subfolder holds information on volumetric moves (only valid for <i>NPT</i>-simulations); and the <code>Box/</code> subfolder holds information on the box volume and box length, including the current distortion of the simulation box (only valid for <i>NPT</i>-simulations). These properties are only written out every <code>adjustment_frequency</code> equilibration cycles.
+  The <code>Ratio/</code> directory stores information on equilibration cycles (acceptance ratio, maximum displacements, etc.). This information is sorted out into three subfolders: the <code>Rotation/</code> subfolder holds information on rotational moves; the <code>Translation/</code> subfolder holds information on translational moves; and the <code>Volume/</code> subfolder holds information on volumetric moves (only valid for <i>NPT</i>-simulations). These properties are only written out every <code>adjustment_frequency</code> equilibration cycles.
 </p>
   
 <p align="justify">
