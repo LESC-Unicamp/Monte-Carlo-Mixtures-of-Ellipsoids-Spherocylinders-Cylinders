@@ -877,7 +877,7 @@ INTEGER( Kind= Int64 ) :: OverlappingParticles   ! Counter of overlapping partic
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (PARAMETER)                                                                   !
 ! *********************************************************************************************** !
-INTEGER( Kind= Int64 ), PARAMETER :: FixPFraction   = 1 ! Control variable for the algorithm that fixes the packing fraction of the system
+INTEGER( Kind= Int64 ), PARAMETER :: FixPFraction = 1 ! Control variable for the algorithm that fixes the packing fraction of the system
 
 ! *********************************************************************************************** !
 ! INTEGER VARIABLES (MONTE CARLO PARAMETERS)                                                      !
@@ -910,6 +910,7 @@ REAL( Kind= Real64 )                           :: MaxTranslationalDisplacement  
 REAL( Kind= Real64 )                           :: MaxAngularDisplacement           ! Maximum displacement [+/-] (Rotation)
 REAL( Kind= Real64 )                           :: MaxIsoVolumetricDisplacement     ! Maximum displacement [+/-] (Isotropic volume scaling)
 REAL( Kind= Real64 )                           :: MaxAnisoVolumetricDisplacement   ! Maximum displacement [+/-] (Anisotropic volume scaling)
+REAL( Kind= Real64 )                           :: ScalingBoxVolume                 ! Scaled volume of the simulation box
 REAL( Kind= Real64 ), DIMENSION( 3 )           :: BoxCutoff                        ! Box cutoff (x-, y-, and z-directions)
 REAL( Kind= Real64 ), DIMENSION( 9 )           :: BoxLengthNVT                     ! Box length (NVT simulation)
 REAL( Kind= Real64 ), DIMENSION( 9 )           :: BoxLengthInverseNVT              ! Inverse of box length (NVT simulation)
@@ -2020,8 +2021,18 @@ nMovementRotationCounter     = 0                                        ! Rotati
 nAttempts                    = 0                                        ! Number of attempts                    (initial value)
 MovementTranslationLogical   = .FALSE.                                  ! Translational move selector           (initial value)
 MovementRotationLogical      = .FALSE.                                  ! Rotational move selector              (initial value)
-MaxAngularDisplacement       = MaxAngularDisplacementRandomConfig       ! Maximum rotational displacement       (initial value)
 MaxTranslationalDisplacement = MaxTranslationalDisplacementRandomConfig ! Maximum translational displacement    (initial value)
+MaxAngularDisplacement       = MaxAngularDisplacementRandomConfig       ! Maximum rotational displacement       (initial value)
+
+! Scaled box volume
+ScalingBoxVolume = PackingFractionNPT / PackingFraction
+ScalingBoxVolume = ScalingBoxVolume ** ( 1.D0 / 3.D0 )
+
+! Scaled box length
+BoxLength = BoxLengthMC * ScalingBoxVolume
+
+! Inverse of box length
+CALL InverseMatrixCofactorVec( BoxLength, BoxLengthInverse, BoxVolume )
 
 ! Fix packing fraction with a volume expansion
 IF( PackingFractionNPT >= PackingFraction ) THEN
@@ -2032,6 +2043,8 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
   &                                  " obtained in the NPT simulation to the target value of ", PackingFraction, "..."
   WRITE( *, "(G0)" ) " "
   CALL Sleep( 1 )
+
+  read(*,*) dummy
 
   ! Open initial configuration file
   OPEN( Unit= 55, File= "Initial_Configuration/OVITO/"//TRIM( DescriptorDate )//"/initconf_rnd_"// &
@@ -2055,14 +2068,6 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       CALL MatrixVectorMultiplication( BoxLength, ScalingDistanceUnitBox, pPosition(:,pParticle) )
     END DO
 
-    ! Initialize cell list
-    IF( CellListLogical ) THEN
-      BoxCutoff(1) = cLargestSphereDiameter / BoxLength(1)
-      BoxCutoff(2) = cLargestSphereDiameter / BoxLength(5)
-      BoxCutoff(3) = cLargestSphereDiameter / BoxLength(9)
-      CALL MakeList( BoxCutoff, pPosition, BoxLengthInverse, FixPFraction )
-    END IF
-
     ! Initialization
     Overlap = .FALSE.
 
@@ -2073,15 +2078,7 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
     CALL ProgressBarRandomConfigPackingFractionCorrection( nAttempts )
 
     ! Overlap check after expansion/compression of the simulation box
-    IF( .NOT. CellListControl ) THEN
-      ! Whole system
-      CALL FullOverlapCheck( ContactDistance, BoxLength, BoxLengthInverse, Overlap )
-    ELSE
-      ! Linked lists
-      CALL FullListOverlapCheck( ContactDistance, BoxLength, BoxLengthInverse, Overlap )
-      ! In case the number of cells in one direction (x, y, or z) becomes less than 3
-      IF( .NOT. CellListControl ) CALL FullOverlapCheck( ContactDistance, BoxLength, BoxLengthInverse, Overlap )
-    END IF
+    CALL FullOverlapCheckFixPFraction( ContactDistance, BoxLength, BoxLengthInverse, Overlap )
 
     ! Initial configuration (partial)
     WRITE( 55, "(G0)" ) nParticles
@@ -2090,16 +2087,16 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-            &              pQuaternionMC(0,iParticle), pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), &
-            &              pQuaternionMC(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            &              pQuaternion(0,iParticle), pQuaternion(1,iParticle), pQuaternion(2,iParticle), &
+            &              pQuaternion(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-            &              pQuaternionMC(0,iParticle), pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), &
-            &              pQuaternionMC(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            &              pQuaternion(0,iParticle), pQuaternion(1,iParticle), pQuaternion(2,iParticle), &
+            &              pQuaternion(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
           END DO
         END IF
@@ -2108,16 +2105,16 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-            &              pQuaternionMC(0,iParticle), pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), &
-            &              pQuaternionMC(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            &              pQuaternion(0,iParticle), pQuaternion(1,iParticle), pQuaternion(2,iParticle), &
+            &              pQuaternion(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-            &              pQuaternionMC(0,iParticle), pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), &
-            &              pQuaternionMC(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            &              pQuaternion(0,iParticle), pQuaternion(1,iParticle), pQuaternion(2,iParticle), &
+            &              pQuaternion(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
           END DO
         END IF
@@ -2126,16 +2123,16 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-            &              pQuaternionMC(0,iParticle), pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), &
-            &              pQuaternionMC(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            &              pQuaternion(0,iParticle), pQuaternion(1,iParticle), pQuaternion(2,iParticle), &
+            &              pQuaternion(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-            &              pQuaternionMC(0,iParticle), pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), &
-            &              pQuaternionMC(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            &              pQuaternion(0,iParticle), pQuaternion(1,iParticle), pQuaternion(2,iParticle), &
+            &              pQuaternion(3,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
           END DO
         END IF
@@ -2244,15 +2241,8 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
         END IF
 
         ! Overlap check after displacement of a particle
-        IF( .NOT. CellListControl ) THEN
-          ! Whole system
-          CALL ParticleOverlapCheck( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, ContactDistance, &
-          &                          BoxLengthMC, BoxLengthInverseMC, Overlap )
-        ELSE
-          ! Linked lists
-          CALL ListOverlapCheck( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, ContactDistance, &
-          &                      BoxLengthMC, BoxLengthInverseMC, Overlap, .FALSE. )
-        END IF
+        CALL ParticleOverlapCheck( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, ContactDistance, &
+        &                          BoxLengthMC, BoxLengthInverseMC, Overlap )
 
         ! Acceptance criterion
         IF( .NOT. Overlap ) THEN
@@ -2262,7 +2252,6 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
           pOrientationMC(:,iParticle) = iNewOrientation(:) ! Update orientation
           ! Displacement counter update
           IF( MovementTranslationLogical ) THEN
-            IF( CellListControl ) CALL ParticleTranslationNVT( iParticle, ScalingDistanceUnitBox ) ! Update cell
             nAcceptanceTranslation = nAcceptanceTranslation + 1 ! Translational move counter
           ELSE IF ( MovementRotationLogical ) THEN
             nAcceptanceRotation = nAcceptanceRotation + 1 ! Rotational move counter

@@ -943,6 +943,281 @@ RETURN ! No overlaps detected
 END SUBROUTINE FullOverlapCheck
 
 ! *********************************************************************************************** !
+!          This subroutine checks if a random volume scaling (isotropic or anisotropic)           !
+!                               causes any overlaps among particles                               !
+! *********************************************************************************************** !
+SUBROUTINE FullOverlapCheckFixPFraction( ContactDistance, CurrentBoxLength, CurrentBoxLengthInverse, Overlap )
+
+! Uses one module: overlap check algorithms
+USE OverlapCheckAlgorithms, ONLY: OverlapCheckEOR, OverlapCheckSPC, OverlapCheckCYL, OverlapCheckCYLSPH
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! INTEGER VARIABLES                                                                               !
+! *********************************************************************************************** !
+INTEGER( Kind= Int64 ) :: iParticle, jParticle   ! Counters (particle)
+INTEGER( Kind= Int64 ) :: iComponent, jComponent ! Counters (component)
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( Kind= Real64 )                           :: SquaredDistance               ! Magnitude of the vector distance between particles i and j (squared)
+REAL( Kind= Real64 )                           :: ContactDistance               ! Contact distance (Perram-Wertheim or Vega-Lago methods)
+REAL( Kind= Real64 )                           :: SquaredCutoffDistance         ! Cutoff distance (squared)
+REAL( Kind= Real64 ), DIMENSION( 3 )           :: VectorDistance                ! Vector distance between particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )           :: iPosition, jPosition          ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )           :: iOrientation, jOrientation    ! Orientation of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )           :: ScalingDistanceUnitBox        ! Scaled position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 9 )           :: CurrentBoxLength              ! Box length
+REAL( Kind= Real64 ), DIMENSION( 9 )           :: CurrentBoxLengthInverse       ! Box length (inverse)
+REAL( Kind= Real64 ), DIMENSION( 0:3 )         :: iQuaternion, jQuaternion      ! Quaternions of particles i and j
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES                                                                               !
+! *********************************************************************************************** !
+LOGICAL :: Overlap     ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: OverlapSPC  ! Detects overlap between two spherocylinders: TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: ParallelSPC ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
+
+! Initialization
+Overlap     = .FALSE.
+OverlapSPC  = .FALSE.
+ParallelSPC = .FALSE.
+
+! Initialization
+Overlap = .FALSE.
+
+! Anisomorphic components
+DO iComponent = 1, nComponents - 1
+  DO jComponent = iComponent + 1, nComponents
+    ! First loop represents all particles with indexes i of component Ci
+    DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+      ! Second loop represents all particles with indexes j of component Cj
+      DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
+        ! Position of particle i
+        iPosition(1) = pPosition(1,iParticle)
+        iPosition(2) = pPosition(2,iParticle)
+        iPosition(3) = pPosition(3,iParticle)
+        ! Position of particle j
+        jPosition(1) = pPosition(1,jParticle)
+        jPosition(2) = pPosition(2,jParticle)
+        jPosition(3) = pPosition(3,jParticle)
+        ! Orientation of particle i
+        iOrientation(1) = pOrientation(1,iParticle)
+        iOrientation(2) = pOrientation(2,iParticle)
+        iOrientation(3) = pOrientation(3,iParticle)
+        ! Orientation of particle j
+        jOrientation(1) = pOrientation(1,jParticle)
+        jOrientation(2) = pOrientation(2,jParticle)
+        jOrientation(3) = pOrientation(3,jParticle)
+        ! Quaternion of particle i
+        iQuaternion(0) = pQuaternion(0,iParticle)
+        iQuaternion(1) = pQuaternion(1,iParticle)
+        iQuaternion(2) = pQuaternion(2,iParticle)
+        iQuaternion(3) = pQuaternion(3,iParticle)
+        ! Quaternion of particle j
+        jQuaternion(0) = pQuaternion(0,jParticle)
+        jQuaternion(1) = pQuaternion(1,jParticle)
+        jQuaternion(2) = pQuaternion(2,jParticle)
+        jQuaternion(3) = pQuaternion(3,jParticle)
+        ! Vector distance between particles i and j
+        VectorDistance(1) = jPosition(1) - iPosition(1)
+        VectorDistance(2) = jPosition(2) - iPosition(2)
+        VectorDistance(3) = jPosition(3) - iPosition(3)
+        ! Minimum image convention
+        CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+        ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+        CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+        ! Magnitude of the vector distance (squared)
+        SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+        ! Cutoff distance (squared)
+        SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
+        SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
+        ! Preliminary test (circumscribing spheres)
+        IF( SquaredDistance <= SquaredCutoffDistance ) THEN
+          ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
+          IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+            CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
+            &                     ContactDistance, Overlap )
+            ! Overlap criterion
+            IF( Overlap ) THEN
+              ! Overlap detected
+              RETURN
+            END IF
+          ! Overlap test for spherocylinders (Vega-Lago method)
+          ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+            CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
+            &                     ContactDistance, ParallelSPC, Overlap )
+            ! Overlap criterion
+            IF( Overlap ) THEN
+              ! Overlap detected
+              RETURN
+            END IF
+          ! Overlap test for cylinders and/or spheres
+          ELSE IF( GeometryType(3) ) THEN ! Cylinders
+            IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
+              ! Initialization
+              OverlapSPC = .FALSE.
+              ! Preliminary test (circumscribing spherocylinders)
+              CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
+              &                     ContactDistance, ParallelSPC, OverlapSPC )
+              ! Overlap criterion
+              IF( OverlapSPC ) THEN
+                ! Apply periodic boundary conditions on the position of particle j
+                jPosition(1) = iPosition(1) + VectorDistance(1)
+                jPosition(2) = iPosition(2) + VectorDistance(2)
+                jPosition(3) = iPosition(3) + VectorDistance(3)
+                ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+                CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
+                &                     iComponent, jComponent, ParallelSPC, Overlap )
+                ! Overlap criterion
+                IF( Overlap ) THEN
+                  ! Overlap detected
+                  RETURN
+                END IF
+              END IF
+            ! Overlap test for cylinders and spheres
+            ELSE IF( .NOT. SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
+              ! Apply periodic boundary conditions on the position of particle j
+              jPosition(1) = iPosition(1) + VectorDistance(1)
+              jPosition(2) = iPosition(2) + VectorDistance(2)
+              jPosition(3) = iPosition(3) + VectorDistance(3)
+              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, Overlap )
+              IF( Overlap ) THEN
+                ! Overlap detected
+                RETURN
+              END IF
+            ! Overlap test for cylinders and spheres
+            ELSE IF( SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
+              ! Apply periodic boundary conditions on the position of particle j
+              jPosition(1) = iPosition(1) + VectorDistance(1)
+              jPosition(2) = iPosition(2) + VectorDistance(2)
+              jPosition(3) = iPosition(3) + VectorDistance(3)
+              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, Overlap )
+              IF( Overlap ) THEN
+                ! Overlap detected
+                RETURN
+              END IF
+            ! Overlap test for spheres
+            ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
+              ! Overlap detected
+              Overlap = .TRUE.
+              RETURN
+            END IF
+          END IF
+        END IF
+      END DO
+    END DO
+  END DO
+END DO
+
+! Isomorphic components
+DO iComponent = 1, nComponents
+  jComponent = iComponent
+  ! First loop represents a particle with an index i of component Ci
+  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) ) - 1
+    ! Second loop represents all other particles with indexes j > i of component Cj = Ci
+    DO jParticle = iParticle + 1, SUM( cParticles(0:iComponent) )
+      ! Position of particle i
+      iPosition(1) = pPosition(1,iParticle)
+      iPosition(2) = pPosition(2,iParticle)
+      iPosition(3) = pPosition(3,iParticle)
+      ! Position of particle j
+      jPosition(1) = pPosition(1,jParticle)
+      jPosition(2) = pPosition(2,jParticle)
+      jPosition(3) = pPosition(3,jParticle)
+      ! Orientation of particle i
+      iOrientation(1) = pOrientation(1,iParticle)
+      iOrientation(2) = pOrientation(2,iParticle)
+      iOrientation(3) = pOrientation(3,iParticle)
+      ! Orientation of particle j
+      jOrientation(1) = pOrientation(1,jParticle)
+      jOrientation(2) = pOrientation(2,jParticle)
+      jOrientation(3) = pOrientation(3,jParticle)
+      ! Quaternion of particle i
+      iQuaternion(0) = pQuaternion(0,iParticle)
+      iQuaternion(1) = pQuaternion(1,iParticle)
+      iQuaternion(2) = pQuaternion(2,iParticle)
+      iQuaternion(3) = pQuaternion(3,iParticle)
+      ! Quaternion of particle j
+      jQuaternion(0) = pQuaternion(0,jParticle)
+      jQuaternion(1) = pQuaternion(1,jParticle)
+      jQuaternion(2) = pQuaternion(2,jParticle)
+      jQuaternion(3) = pQuaternion(3,jParticle)
+      ! Vector distance between particles i and j
+      VectorDistance(1) = jPosition(1) - iPosition(1)
+      VectorDistance(2) = jPosition(2) - iPosition(2)
+      VectorDistance(3) = jPosition(3) - iPosition(3)
+      ! Minimum image convention
+      CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+      ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+      CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+      ! Magnitude of the vector distance (squared)
+      SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+      ! Cutoff distance (squared)
+      SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
+      SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
+      ! Preliminary test (circumscribing spheres)
+      IF( SquaredDistance <= SquaredCutoffDistance ) THEN
+        ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
+        IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+          CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
+          &                     ContactDistance, Overlap )
+          ! Overlap criterion
+          IF( Overlap ) THEN
+            ! Overlap detected
+            RETURN
+          END IF
+        ! Overlap test for spherocylinders (Vega-Lago method)
+        ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+          CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
+          &                     ContactDistance, ParallelSPC, Overlap )
+          ! Overlap criterion
+          IF( Overlap ) THEN
+            ! Overlap detected
+            RETURN
+          END IF
+        ! Overlap test for cylinders or spheres
+        ELSE IF( GeometryType(3) ) THEN ! Cylinders
+          IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
+            ! Initialization
+            OverlapSPC = .FALSE.
+            ! Preliminary test (circumscribing spherocylinders)
+            CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
+            &                     ContactDistance, ParallelSPC, OverlapSPC )
+            ! Overlap criterion
+            IF( OverlapSPC ) THEN
+              ! Apply periodic boundary conditions on the position of particle j
+              jPosition(1) = iPosition(1) + VectorDistance(1)
+              jPosition(2) = iPosition(2) + VectorDistance(2)
+              jPosition(3) = iPosition(3) + VectorDistance(3)
+              ! Overlap test for cylinders (modified algorithm of Lopes et al.)
+              CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
+              &                     iComponent, jComponent, ParallelSPC, Overlap )
+              ! Overlap criterion
+              IF( Overlap ) THEN
+                ! Overlap detected
+                RETURN
+              END IF
+            END IF
+          ! Overlap test for spheres
+          ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
+            ! Overlap detected
+            Overlap = .TRUE.
+            RETURN
+          END IF
+        END IF
+      END IF
+    END DO
+  END DO
+END DO
+
+RETURN ! No overlaps detected
+
+END SUBROUTINE FullOverlapCheckFixPFraction
+
+! *********************************************************************************************** !
 !    This subroutine uses lists to check if a random volume scaling (isotropic or anisotropic)    !
 !                               causes any overlaps among particles                               !
 ! *********************************************************************************************** !
