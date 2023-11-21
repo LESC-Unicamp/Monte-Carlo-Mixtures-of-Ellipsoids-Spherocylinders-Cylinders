@@ -16,7 +16,7 @@ Luís Fernando Mercier Franco<br></p>
 
 - Improved readability of the code.
 
-- The 'Box/' subfolder is now a proper folder that holds information on box properties, such as dimensions, volume, and distortion. Valid only for the <i>NPT</i>-simulation. 
+- The <code>Box/</code> subfolder is now a proper folder that holds information on box properties, such as dimensions, volume, and distortion. Valid only for the <i>NPT</i>-simulation. 
 
 **Version 1.1.0**
 
