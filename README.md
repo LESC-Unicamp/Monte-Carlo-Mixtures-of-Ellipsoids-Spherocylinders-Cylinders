@@ -31,7 +31,7 @@
                         |  ██████/  | ██ \  ██   /██████  |  ██████/  | ██  | ██  | ██ \/  | ██  | ██
                          \______/   |__/  \__/  |______/   \______/   |__/  |__/  |__/     |__/  |__/
 ```
-<p align="right"><b><sub>Version: 1.2.1</sub></b></p>
+<p align="right"><b><sub><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/CHANGELOG.md">Version: 1.2.1</a></sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
