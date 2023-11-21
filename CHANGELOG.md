@@ -8,7 +8,7 @@ Luís Fernando Mercier Franco<br></p>
 
 **Version 1.2.1**
 
-- Added a cell lists feature to optimize simulation performance;
+- Added a cell lists feature to optimize simulation performance. Check this <a href="https://github.com/Allen-Tildesley/examples/blob/master/link_list_module.f90">repository</a> for more information;
 
 - Added a backup feature to the simulation segment.
 
