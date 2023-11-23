@@ -970,10 +970,10 @@ iClosestReferencePosition = DDistanceDLambda * iOrientation
 jClosestReferencePosition = DDistanceDmu * jOrientation
 
 ! Position of the point of closest approach on the axis of cylinder i
-iClosestPosition = iPosition + iClosestReferencePosition
+iClosestPosition = jPosition + iClosestReferencePosition
 
 ! Position of the point of closest approach on the axis of cylinder j
-jClosestPosition = jPosition + jClosestReferencePosition
+jClosestPosition = iPosition + jClosestReferencePosition
 
 ! Vector distance between the points of closest approach on the axes of cylinders i and j
 ClosestVectorDistance = iClosestPosition - jClosestPosition
