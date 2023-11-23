@@ -974,8 +974,10 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     IF( .NOT. CheckBoxDistortion ) THEN
 
       ! Enthalpy (weighing function)
-      EnthalpyChange = ( ReducedPressure * ( NewBoxVolume - OldBoxVolume ) ) - ( DBLE( nParticles + 1 ) * &
-      &                DLOG( NewBoxVolume / OldBoxVolume ) )
+      IF( MovementIsoVolumeChangeLogical )   EnthalpyChange = ( ReducedPressure * ( NewBoxVolume - OldBoxVolume ) ) - &
+      &                                                       ( DBLE( nParticles + 1 ) * DLOG( NewBoxVolume / OldBoxVolume ) )
+      IF( MovementAnisoVolumeChangeLogical ) EnthalpyChange = ( ReducedPressure * ( NewBoxVolume - OldBoxVolume ) ) - &
+      &                                                       ( DBLE( nParticles ) * DLOG( NewBoxVolume / OldBoxVolume ) )
 
       ! Random number
       CALL RandomNumberGenLCG(  )
