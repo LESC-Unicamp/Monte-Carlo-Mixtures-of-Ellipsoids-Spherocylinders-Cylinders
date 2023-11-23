@@ -1410,7 +1410,7 @@ IF( CellListLogical .AND. PotentialTypeLogical(2) ) CALL FinalizeListPotential( 
 IF( PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" .AND. PotentialTypeLogical(2) ) THEN
   ! Status
   WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
-  WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 19 )//"TPT PARAMETERS"//REPEAT( " ", 20 )//CH_VS
+  WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 20 )//"TPT PARAMETERS"//REPEAT( " ", 21 )//CH_VS
   WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
   WRITE( *, "(G0)" ) "Initializing calculation of the TPT parameters..."
   WRITE( *, "(G0)" ) " "
