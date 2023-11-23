@@ -976,7 +976,7 @@ iClosestPosition = iPosition + iClosestReferencePosition
 jClosestPosition = jPosition + jClosestReferencePosition
 
 ! Vector distance between the points of closest approach on the axes of cylinders i and j
-ClosestVectorDistance = iClosestPosition - jClosestPosition
+ClosestVectorDistance = jClosestPosition - iClosestPosition
 
 ! Vector distance between the points of closest approach on the axes of cylinders i and j (squared)
 SquaredClosestVectorDistance = DOT_PRODUCT( ClosestVectorDistance, ClosestVectorDistance )
