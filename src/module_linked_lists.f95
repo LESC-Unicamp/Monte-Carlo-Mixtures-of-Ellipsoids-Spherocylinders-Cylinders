@@ -151,12 +151,10 @@ IF( pCells(1) /= SIZE( pCellHead, Dim= 1 ) .OR. pCells(2) /= SIZE( pCellHead, Di
   ! Recreate list
   DEALLOCATE( pCellHead )
   ALLOCATE( pCellHead(0:(pCells(1)-1),0:(pCells(2)-1),0:(pCells(3)-1)) )
-  ! Initialize head of the list (0 means the list is exhausted)
-  pCellHead = 0
 END IF
 
-! No need to recreate lists
-IF( ANY( pCellHead /= 0 ) ) RETURN
+! Re-initialize head of the list (0 means the list is exhausted)
+pCellHead = 0
 
 ! Allocate particles to cells
 DO pParticle = 1, nParticles
@@ -216,12 +214,10 @@ IF( pCellsPotential(1) /= SIZE( pCellHeadPotential, Dim= 1 ) .OR. pCellsPotentia
   ! Recreate list
   DEALLOCATE( pCellHeadPotential )
   ALLOCATE( pCellHeadPotential(0:(pCellsPotential(1)-1),0:(pCellsPotential(2)-1),0:(pCellsPotential(3)-1)) )
-  ! Initialize head of the list (0 means the list is exhausted)
-  pCellHeadPotential = 0
 END IF
 
-! No need to recreate lists
-IF( ANY( pCellHeadPotential /= 0 ) ) RETURN
+! Re-initialize head of the list (0 means the list is exhausted)
+pCellHeadPotential = 0
 
 ! Allocate particles to cells
 DO pParticle = 1, nParticles
