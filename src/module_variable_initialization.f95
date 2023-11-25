@@ -697,8 +697,8 @@ IF( EnsembleMC == "NPT" ) THEN
   WRITE( *, "(G0,G0.5)" ) "Reduced Pressure: ", ReducedPressure
   WRITE( *, "(G0)" ) " "
   WRITE( *, "(G0,G0.5,G0)" ) "Real Pressure: ", (ReducedPressure * cBoltzmann * AbsoluteTemperature) / 1.D-30 / 1.D6, "MPa"
+  WRITE( *, "(G0)" ) " "
 END IF
-WRITE( *, "(G0)" ) " "
 
 ! Initial configuration variables
 OPEN( Unit= 100, File= "ini_config.ini", Action= "READ" )
