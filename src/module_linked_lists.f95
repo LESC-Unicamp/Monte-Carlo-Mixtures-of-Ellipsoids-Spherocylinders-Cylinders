@@ -518,7 +518,7 @@ END SUBROUTINE MoveParticleListPotential
 !              This subroutine checks whether translating a particle i will move it               !
 !                              from its current cell to another cell                              !
 ! *********************************************************************************************** !
-SUBROUTINE ParticleTranslationNVT( pParticle, ScalingDistanceUnitBox )
+SUBROUTINE ParticleTranslationNVT( pParticle, ScalingDistanceUnitBox, ControlInitConfig )
 
 IMPLICIT NONE
 
@@ -532,15 +532,20 @@ INTEGER( Kind= Int64 ), DIMENSION( 3 ) :: iCellIndexPotential ! 3D index of cell
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( Kind= Real64 ), DIMENSION( 3 ) :: ScalingDistanceUnitBox
+REAL( Kind= Real64 ), DIMENSION( 3 ) :: ScalingDistanceUnitBox ! Scaled distance (unit box)
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES                                                                               !
+! *********************************************************************************************** !
+LOGICAL :: ControlInitConfig ! Enable/disable potential check for this subroutine
 
 ! New cell index
 iCellIndex(:) = CellIndex( ScalingDistanceUnitBox )
-IF( PotentialTypeLogical(2) ) iCellIndexPotential(:) = CellIndexPotential( ScalingDistanceUnitBox )
+IF( PotentialTypeLogical(2) .AND. ControlInitConfig ) iCellIndexPotential(:) = CellIndexPotential( ScalingDistanceUnitBox )
 
 ! Move particle from a cell to another cell, only if necessary
 CALL MoveParticleList( pParticle, iCellIndex(:) )
-IF( PotentialTypeLogical(2) ) CALL MoveParticleListPotential( pParticle, iCellIndexPotential(:) )
+IF( PotentialTypeLogical(2) .AND. ControlInitConfig ) CALL MoveParticleListPotential( pParticle, iCellIndexPotential(:) )
 
 RETURN
 
@@ -550,7 +555,7 @@ END SUBROUTINE ParticleTranslationNVT
 !            This subroutine checks whether changing the volume of the simulation box             !
 !                   changes the number of cells in the x-, y-, or z-directions                    !
 ! *********************************************************************************************** !
-SUBROUTINE BoxCheckNPT( Position, bLengthOld, bLengthNew, bLengthInverseNew )
+SUBROUTINE BoxCheckNPT( Position, bLengthOld, bLengthNew, bLengthInverseNew, ControlInitConfig )
 
 IMPLICIT NONE
 
@@ -569,6 +574,11 @@ REAL( Kind= Real64 ), DIMENSION( 9 )             :: bLengthNew        ! New leng
 REAL( Kind= Real64 ), DIMENSION( 9 )             :: bLengthOld        ! Old length of the box
 REAL( Kind= Real64 ), DIMENSION( 9 )             :: bLengthInverseNew ! New length of the box (inverse)
 REAL( Kind= Real64 ), DIMENSION( 3, nParticles ) :: Position          ! Position of particles
+
+! *********************************************************************************************** !
+! LOGICAL VARIABLES                                                                               !
+! *********************************************************************************************** !
+LOGICAL :: ControlInitConfig ! Enable/disable potential check for this subroutine
 
 ! Box cutoff
 BoxCutoffOld(1) = cLargestSphereDiameter / bLengthOld(1)
@@ -590,7 +600,7 @@ pCellsNew = FLOOR( 1.D0 / BoxCutoffNew )
 IF( ANY( pCellsNew /= pCellsOld ) ) CALL MakeList( BoxCutoffNew, Position, bLengthInverseNew )
 
 ! Potential only
-IF( PotentialTypeLogical(2) ) THEN
+IF( PotentialTypeLogical(2) .AND. ControlInitConfig ) THEN
   ! Box cutoff
   BoxCutoffOld(1) = cLargestSphericalWell / bLengthOld(1)
   BoxCutoffOld(2) = cLargestSphericalWell / bLengthOld(5)
