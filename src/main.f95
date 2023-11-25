@@ -705,7 +705,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
 
   ! Prepare simulation box for single-particle moves
   IF( CellListLogical .AND. (MovementAnisoVolumeChangeLogical .OR. MovementIsoVolumeChangeLogical) ) THEN ! Check cells only after a volume change
-    CALL BoxCheckNPT( pPositionMC, OldBoxLength, BoxLengthMC, BoxLengthInverseMC )
+    CALL BoxCheckNPT( pPositionMC, OldBoxLength, BoxLengthMC, BoxLengthInverseMC, .TRUE. )
   END IF
 
   ! Generates a random number for the NPT-simulation
@@ -853,7 +853,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         END IF
         ! Displacement counter update
         IF( MovementTranslationLogical ) THEN
-          IF( CellListControl ) CALL ParticleTranslationNVT( iParticle, ScalingDistanceUnitBox ) ! Update cell
+          IF( CellListControl ) CALL ParticleTranslationNVT( iParticle, ScalingDistanceUnitBox, .TRUE. ) ! Update cell
           nAcceptanceTranslation = nAcceptanceTranslation + 1 ! Translational move counter
         ELSE IF ( MovementRotationLogical ) THEN
           nAcceptanceRotation = nAcceptanceRotation + 1 ! Rotational move counter
