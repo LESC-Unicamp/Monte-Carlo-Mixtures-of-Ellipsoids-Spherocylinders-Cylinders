@@ -1143,10 +1143,11 @@ IF( PotentialTypeLogical(2) ) THEN
     WRITE( *, "(G0)" ) "Perturbation Coefficients: [YES]"
     WRITE( *, "(2G0)" ) "Minimum Number of Blocks (Block Averaging): ", MinBlocks
     WRITE( *, "(2G0)" ) "Maximum Number of Blocks (Block Averaging): ", MaxBlocks
+    WRITE( *, "(G0)" ) " "
   ELSE IF( .NOT. PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" ) THEN
     WRITE( *, "(G0)" ) "Perturbation Coefficients: [NO]"
+    WRITE( *, "(G0)" ) " "
   END IF
-  WRITE( *, "(G0)" ) " "
 END IF
 
 ! Summary
