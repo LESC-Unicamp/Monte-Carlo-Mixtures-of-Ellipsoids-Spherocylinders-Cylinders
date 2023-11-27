@@ -145,6 +145,7 @@ CHARACTER( LEN= 32 ) :: FormatHour             ! String format for output file
 CHARACTER( LEN= 32 ) :: FormatDate             ! String format for output folder
 CHARACTER( LEN= 14 ) :: DescriptorBackupFile   ! Descriptor for output file
 CHARACTER( LEN= 20 ) :: DescriptorBackupString ! Descriptor for backup variable
+CHARACTER( LEN= 20 ) :: DescriptorString       ! Descriptor for strings
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
