@@ -1139,11 +1139,11 @@ IF( PotentialTypeLogical(2) ) THEN
     WRITE( *, "(G0)" ) "Potential Files: Equilibration and Production"
   END IF
   WRITE( *, "(G0)" ) " "
-  IF( PerturbationCoefficientLogical ) THEN
+  IF( PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" ) THEN
     WRITE( *, "(G0)" ) "Perturbation Coefficients: [YES]"
     WRITE( *, "(2G0)" ) "Minimum Number of Blocks (Block Averaging): ", MinBlocks
     WRITE( *, "(2G0)" ) "Maximum Number of Blocks (Block Averaging): ", MaxBlocks
-  ELSE IF( .NOT. PerturbationCoefficientLogical ) THEN
+  ELSE IF( .NOT. PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" ) THEN
     WRITE( *, "(G0)" ) "Perturbation Coefficients: [NO]"
   END IF
   WRITE( *, "(G0)" ) " "
