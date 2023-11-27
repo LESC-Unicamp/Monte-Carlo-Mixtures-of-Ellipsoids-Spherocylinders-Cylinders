@@ -1457,7 +1457,9 @@ IF( PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" .AND. PotentialType
       WRITE( 150, "(G0,G0)" ) "# of Particles: ", nParticles
       WRITE( 150, "(G0,G0.5)" ) "Reduced Temperature: ", ReducedTemperature
       WRITE( 150, "(G0,G0.5)" ) "Reduced Number Density: ", TotalNumberDensity
-      WRITE( 150, "(G0,G0.5)" ) "Aspect Ratio (L/D): ", cAspectRatio
+      WRITE( DescriptorBackupString, "(G0)" ) nComponents
+      DescriptorString = "(G0,"//TRIM( DescriptorString )//"(G0.5,1X)"//")"
+      WRITE( 150, DescriptorString ) "Aspect Ratio (L/D): ", cAspectRatio
       WRITE( 150, "(G0,G0.5)" ) "Attractive Range: ", PotentialRange(rRange)
       WRITE( 150, "(G0)" ) " "
       WRITE( 150, "(11G0)" ) "'1st_Order_TPTCoefficient'", ",", "'1st_Order_TPTCoefficient_STD'", ",", &
