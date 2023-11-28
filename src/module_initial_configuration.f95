@@ -481,6 +481,31 @@ ELSE IF( ConfigurationInquiry == "PB" ) THEN
 END IF
 READ( 10, * ) Dummy, PackingFraction
 READ( 10, * ) Dummy, nComponents
+! Deallocate
+IF( ALLOCATED( SphericalComponentInquiry ) ) DEALLOCATE( SphericalComponentInquiry )
+IF( ALLOCATED( SphericalComponentLogical ) ) DEALLOCATE( SphericalComponentLogical )
+IF( ALLOCATED( cDiameter ) ) DEALLOCATE( cDiameter )
+IF( ALLOCATED( cLength ) ) DEALLOCATE( cLength )
+IF( ALLOCATED( cAspectRatio ) ) DEALLOCATE( cAspectRatio )
+IF( ALLOCATED( cMolarFraction ) ) DEALLOCATE( cMolarFraction )
+IF( ALLOCATED( cParticles ) ) DEALLOCATE( cParticles )
+IF( ALLOCATED( cMolecularVolume ) ) DEALLOCATE( cMolecularVolume )
+IF( ALLOCATED( cNumberDensity ) ) DEALLOCATE( cNumberDensity )
+IF( ALLOCATED( cIndex ) ) DEALLOCATE( cIndex )
+IF( ALLOCATED( cPotentialRange ) ) DEALLOCATE( cPotentialRange )
+IF( ALLOCATED( cCircumscribingSphereDiameter ) ) DEALLOCATE( cCircumscribingSphereDiameter )
+IF( ALLOCATED( cDiameterEquivalentSphere ) ) DEALLOCATE( cDiameterEquivalentSphere )
+! Reallocate
+ALLOCATE( cDiameter(nComponents), cLength(nComponents), cAspectRatio(nComponents), cMolecularVolume(nComponents) )
+ALLOCATE( cParticles(0:nComponents), cMolarFraction(nComponents), cNumberDensity(nComponents) )
+ALLOCATE( cCircumscribingSphereDiameter(nComponents) )
+ALLOCATE( cDiameterEquivalentSphere(nComponents) )
+ALLOCATE( SphericalComponentInquiry(nComponents) )
+ALLOCATE( SphericalComponentLogical(nComponents) )
+ALLOCATE( cIndex(nComponents) )
+ALLOCATE( cPotentialRange(nComponents,nRange) )
+! Resume
+cParticles = 0
 DO cComponent = 1, nComponents
   READ( 10, * ) Dummy, SphericalComponentInquiry(cComponent)
   IF( SphericalComponentInquiry(cComponent) == "T" ) THEN
@@ -502,6 +527,20 @@ DO cComponent = 1, nComponents
   READ( 10, * ) Dummy, cMolarFraction(cComponent)
 END DO
 READ( 10, * ) Dummy, nParticles
+! Deallocate
+IF( ALLOCATED( pComponents ) ) DEALLOCATE( pComponents )
+IF( ALLOCATED( pQuaternion ) ) DEALLOCATE( pQuaternion )
+IF( ALLOCATED( pQuaternionMC ) ) DEALLOCATE( pQuaternionMC )
+IF( ALLOCATED( pPosition ) ) DEALLOCATE( pPosition )
+IF( ALLOCATED( pPositionMC ) ) DEALLOCATE( pPositionMC )
+IF( ALLOCATED( pOrientation ) ) DEALLOCATE( pOrientation )
+IF( ALLOCATED( pOrientationMC ) ) DEALLOCATE( pOrientationMC )
+! Reallocate
+ALLOCATE( pComponents(nParticles) )
+ALLOCATE( pQuaternion(0:3,nParticles), pQuaternionMC(0:3,nParticles) )
+ALLOCATE( pPosition(3,nParticles), pPositionMC(3,nParticles) )
+ALLOCATE( pOrientation(3,nParticles), pOrientationMC(3,nParticles) )
+! Resume
 READ( 10, * ) Dummy, TotalParticleVolume, Dummy
 DO cComponent = 1, nComponents
   READ( 10, * ) Dummy, cParticles(cComponent)
@@ -523,12 +562,88 @@ READ( 10, * ) Dummy, TotalNumberDensity, Dummy
 READ( 10, * ) Dummy, AbsoluteTemperature, Dummy
 READ( 10, * ) Dummy, ReducedPressure
 DO cComponent = 1, nComponents
+  cIndex(cComponent) = cComponent
+END DO
+DO cComponent = 1, nComponents
   DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
     READ( 10, * ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
     &             pQuaternion(0,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle)
   END DO
 END DO
 CLOSE( 10 )
+
+! Diameter of circumscribing sphere
+IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      IF( cAspectRatio(cComponent) > 0.D0 .AND. cAspectRatio(cComponent) < 1.D0 ) THEN
+        cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent)
+      ELSE IF( cAspectRatio(cComponent) > 1.D0 ) THEN
+        cCircumscribingSphereDiameter(cComponent) = cLength(cComponent)
+      END IF
+    ELSE
+      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent)
+    END IF
+  END DO
+ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent) + cLength(cComponent)
+    ELSE
+      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent)
+    END IF
+  END DO
+ELSE IF( GeometryType(3) ) THEN ! Cylinders
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent) + cLength(cComponent)
+    ELSE
+      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent)
+    END IF
+  END DO
+END IF
+
+! Hard-core volumetric relation (EOR/SPC/HC and SPHERES)
+IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) * ( ( cAspectRatio(cComponent) ) ** ( 1.D0 / 3.D0 ) ) ! Ellipsoids of revolution
+    ELSE
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) ! Spheres
+    END IF
+  END DO
+ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) * ( ( 1.D0 + ( 1.5D0 * cAspectRatio(cComponent) ) ) ** &
+      &                                       ( 1.D0 / 3.D0 ) ) ! Spherocylinders
+    ELSE
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) ! Spheres
+    END IF
+  END DO
+ELSE IF( GeometryType(3) ) THEN ! Cylinders
+  DO cComponent = 1, nComponents
+    IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) * ( ( 1.5D0 * cAspectRatio(cComponent) ) ** ( 1.D0 / 3.D0 ) ) ! Cylinders
+    ELSE
+      cDiameterEquivalentSphere(cComponent) = cDiameter(cComponent) ! Spheres
+    END IF
+  END DO
+END IF
+
+! Effective range of attraction
+IF( PotentialTypeLogical(2) ) THEN
+  DO cComponent = 1, nComponents
+    cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
+  END DO
+END IF
+
+! Component index of a particle
+DO cComponent = 1, nComponents
+  DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+    pComponents(pParticle) = cComponent
+  END DO
+END DO
 
 ! Summary (for preset initial configuration)
 WRITE( *, "(G0)" ) " "
