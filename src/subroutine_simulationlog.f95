@@ -446,8 +446,8 @@ IF( .NOT. FileExist ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( StringsSizeSubtitle(1) - 1 ) )//SS_BL//REPEAT( SS_HS, &
     &                   LEN( TRIM( StringsSubtitle(1) ) ) )//SS_BR//REPEAT( " ", CEILING( StringsSizeSubtitle(1) - 1 ) )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(77,cComponent) )//REPEAT( " ", &
-    &                   NINT( StringsSizeText(77,cComponent) ) - 1 )//CH_VS
+    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(77,1) )//REPEAT( " ", &
+    &                   NINT( StringsSizeText(77,1) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(7,1) )//REPEAT( " ", &
     &                   NINT( StringsSizeText(7,1) ) + 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(8,1) )//REPEAT( " ", &
@@ -658,8 +658,8 @@ ELSE IF( FileExist ) THEN
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", FLOOR( StringsSizeSubtitle(1) - 1 ) )//SS_BL//REPEAT( SS_HS, &
     &                   LEN( TRIM( StringsSubtitle(1) ) ) )// SS_BR//REPEAT( " ", CEILING( StringsSizeSubtitle(1) - 1 ) )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(77,cComponent) )//REPEAT( " ", &
-    &                   NINT( StringsSizeText(77,cComponent) ) - 1 )//CH_VS
+    WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(77,1) )//REPEAT( " ", &
+    &                   NINT( StringsSizeText(77,1) ) - 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(7,1) )//REPEAT( " ", &
     &                   NINT( StringsSizeText(7,1) ) + 1 )//CH_VS
     WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(8,1) )//REPEAT( " ", &
