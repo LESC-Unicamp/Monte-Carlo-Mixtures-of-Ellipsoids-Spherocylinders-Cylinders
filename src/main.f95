@@ -540,7 +540,7 @@ WRITE( *, "(G0)" ) " "
 IF( .NOT. RestoreBackupFileLogical ) THEN
   IF( PotentialTypeLogical(2) ) THEN
     WRITE( *, "(G0)", Advance= "NO" ) "Computing total potential energy of the initial configuration..."
-    IF( .NOT. CellListControl ) THEN
+    IF( .NOT. CellListControlPotential ) THEN
       ! Whole system
       CALL ComputeTotalPotentialEnergy(  )
     ELSE
