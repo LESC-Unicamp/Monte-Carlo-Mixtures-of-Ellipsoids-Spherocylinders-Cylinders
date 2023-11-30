@@ -832,7 +832,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         pOrientationMC(:,iParticle) = iNewOrientation(:) ! Update orientation
         ! Update total potential energy
         IF( PotentialTypeLogical(2) ) THEN
-          IF( .NOT. CellListControl ) THEN ! Whole system
+          IF( .NOT. CellListControlPotential ) THEN ! Whole system
             ! Computation of potential energy of particle i (microstate m)
             CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
             &                                    BoxLengthInverseMC )
@@ -854,7 +854,8 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         END IF
         ! Displacement counter update
         IF( MovementTranslationLogical ) THEN
-          IF( CellListControl ) CALL ParticleTranslationNVT( iParticle, ScalingDistanceUnitBox, .TRUE. ) ! Update cell
+          IF( CellListControl .OR. CellListControlPotential ) CALL ParticleTranslationNVT( iParticle, ScalingDistanceUnitBox, &
+          &                                                                                .TRUE. ) ! Update cell
           nAcceptanceTranslation = nAcceptanceTranslation + 1 ! Translational move counter
         ELSE IF ( MovementRotationLogical ) THEN
           nAcceptanceRotation = nAcceptanceRotation + 1 ! Rotational move counter
