@@ -540,12 +540,14 @@ REAL( Kind= Real64 ), DIMENSION( 3 ) :: ScalingDistanceUnitBox ! Scaled distance
 LOGICAL :: ControlInitConfig ! Enable/disable potential check for this subroutine
 
 ! New cell index
-iCellIndex(:) = CellIndex( ScalingDistanceUnitBox )
-IF( PotentialTypeLogical(2) .AND. ControlInitConfig ) iCellIndexPotential(:) = CellIndexPotential( ScalingDistanceUnitBox )
+IF( CellListControl ) iCellIndex(:) = CellIndex( ScalingDistanceUnitBox )
+IF( PotentialTypeLogical(2) .AND. ControlInitConfig .AND. CellListControlPotential ) iCellIndexPotential(:) = &
+&   CellIndexPotential( ScalingDistanceUnitBox )
 
 ! Move particle from a cell to another cell, only if necessary
-CALL MoveParticleList( pParticle, iCellIndex(:) )
-IF( PotentialTypeLogical(2) .AND. ControlInitConfig ) CALL MoveParticleListPotential( pParticle, iCellIndexPotential(:) )
+IF( CellListControl ) CALL MoveParticleList( pParticle, iCellIndex(:) )
+IF( PotentialTypeLogical(2) .AND. ControlInitConfig .AND. CellListControlPotential ) CALL MoveParticleListPotential( pParticle, &
+&   iCellIndexPotential(:) )
 
 RETURN
 
