@@ -529,20 +529,11 @@ IF( nParticles < 2 ) THEN
   WRITE( *, "(3G0)" ) "The number of particles [", nParticles, "] cannot be less than 2. Exiting... "
   CALL Exit(  )
 END IF
-! Allocation
-ALLOCATE( pComponents(nParticles) )
 
 ! Number of particles of component i
 cParticles = 0
 DO cComponent = 1, nComponents
   cParticles(cComponent) = NINT( cMolarFraction(cComponent) * DBLE(nParticles) )
-END DO
-
-! Component index of a particle
-DO cComponent = 1, nComponents
-  DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-    pComponents(pParticle) = cComponent
-  END DO
 END DO
 
 ! Particle volume
@@ -616,6 +607,16 @@ WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0,G0.5,G0)" ) "Total Number Density: ", TotalNumberDensity, "Å⁻³"
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0,G0.5,G0)" ) "Total Molecular Volume: ", TotalParticleVolume, "Å³"
+
+! Allocation
+ALLOCATE( pComponents(nParticles) )
+
+! Component index of a particle
+DO cComponent = 1, nComponents
+  DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
+    pComponents(pParticle) = cComponent
+  END DO
+END DO
 
 ! Cube root check
 pLoop: DO
