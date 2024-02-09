@@ -10,7 +10,7 @@ Luís Fernando Mercier Franco<br></p>
 
 - Improved readability and performance of the code;
 
-- Removed the LCG generator of random numbers. User can now choose between Fortran's own random number generator (intrinsic routine called <code>RANDOM_NUMBER</code>) or a generator based on bitwise operations (Golden sampling scheme).
+- Removed the LCG generator of random numbers. User can now choose between Fortran's own random number generator (intrinsic routine called <code>RANDOM_NUMBER</code>) or a generator based on bitwise operations (Golden sampling scheme). Check <a href="https://github.com/MaginnGroup/Cassandra/blob/master/Src/random_generators.f90">Cassandra's repository</a> for more information.
 
 **Version 1.2.1**
 
