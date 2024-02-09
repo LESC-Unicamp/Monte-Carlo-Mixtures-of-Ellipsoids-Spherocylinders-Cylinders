@@ -6,6 +6,12 @@
 Nathan Barros de Souza<br>
 Luís Fernando Mercier Franco<br></p>
 
+**Version 1.3.1**
+
+- Improved readability and performance of the code;
+
+- Removed the LCG generator of random numbers. User can now choose Fortran's own random number generator (intrinsic routine <code>RANDOM_NUMBER</code>) or a generator based on bitwise operations.
+
 **Version 1.2.1**
 
 - Added a cell lists feature to optimize simulation performance. Check this <a href="https://github.com/Allen-Tildesley/examples/blob/master/link_list_module.f90">repository</a> for more information;
