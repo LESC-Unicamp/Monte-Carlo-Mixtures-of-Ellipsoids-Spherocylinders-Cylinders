@@ -251,8 +251,10 @@ The following features are supported in the current version:
 | Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as <i>N</i> attempts to displace a random particle in the system or a single attempt to change the volume of the box | Any positive, non-zero <code>INTEGER</code> number |
 | Number of equilibration cycles | <code>equilibration_cycles</code> | Used to define the number of equilibration cycles within the maximum number of cycles | Any positive, non-zero <code>INTEGER</code> number less than the maximum number of cycles |
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
-| Adjustment frequency | <code>adjustment_frequency</code> | Used to define how often displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number<br> See the observation note below for more information |
-| Adjustment frequency<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd</code> | Used to define how often displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
+| Adjustment frequency<br> (movement) | <code>adjustment_frequency_movement</code> | Used to define how often movement displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number |
+| Adjustment frequency<br> (volume change) | <code>adjustment_frequency_volume</code> | Used to define how often volumetric displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number |
+| Adjustment frequency<br> (movement)<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd_mov</code> | Used to define how often movement displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
+| Adjustment frequency<br> (volume)<br> (<code>RND</code> only) | <code>adjustment_frequency_rnd_vol</code> | Used to define how often volumetric displacement adjustments are carried out (random configuration only) | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the displacements will be adjusted every simulation cycle |
 | Maximum translational displacement | <code>max_translational_displc</code> | Used to define the maximum translational displacement \[+/-\] in Å | Any non-zero <code>FLOAT</code> number |
 | Maximum translational displacement<br> (<code>RND</code> only) | <code>max_translational_displc_rnd</code> | Used to define the maximum translational displacement \[+/-\] in Å (random configuration only) | Any non-zero <code>FLOAT</code> number |
 | Maximum rotational displacement | <code>max_rotational_displc</code> | Used to define the maximum rotational displacement \[+/-\] in radians | Any non-zero <code>FLOAT</code> number |
@@ -273,14 +275,7 @@ The following features are supported in the current version:
 </p>
 
 <p align="justify">
-  <b>OBS. II</b>: <i>Adjustment frequency</i>: Let's call the number of trialed moves <b>n_trialed</b>, the acceptance ratio of that move <b>acc_ratio</b>, the number of particles <b>N</b>, and the adjustment frequency <b>n_adjust</b>.
-</p>
-
-- For translational and rotational movements, adjustments to the maximum displacements only take effect when <br><b>n_trialed</b> ≥ (<b>N</b> * <b>n_adjust</b>) * <b>acc_ratio</b>.
-- For isotropic and anisotropic volume changes, adjustments to the maximum displacements only take effect when <br><b>n_trialed</b> ≥ <b>n_adjust</b> * <b>acc_ratio</b>.
-
-<p align="justify">
-  <b>OBS. III</b>: The box distortion is defined as the product of the total surface area and perimeter of the box divided by its volume. We normalize the box distortion factor by dividing it by 72, which corresponds to minimum box distortion possible (perfect cube). In that case, 1 is a perfect cube and higher values represent triclinic or non-cubic orthorhombic structures.
+  <b>OBS. II</b>: The box distortion is defined as the product of the total surface area and perimeter of the box divided by its volume. We normalize the box distortion factor by dividing it by 72, which corresponds to minimum box distortion possible (perfect cube). In that case, 1 is a perfect cube and higher values represent triclinic or non-cubic orthorhombic structures.
 </p>
 
 ### The Potential File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_potential.ini"><sub>ini_potential.ini</sub></a>
