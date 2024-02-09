@@ -10,7 +10,7 @@ Luís Fernando Mercier Franco<br></p>
 
 - Improved readability and performance of the code;
 
-- Removed the LCG generator of random numbers. User can now choose Fortran's own random number generator (intrinsic routine <code>RANDOM_NUMBER</code>) or a generator based on bitwise operations.
+- Removed the LCG generator of random numbers. User can now choose between Fortran's own random number generator (intrinsic routine called <code>RANDOM_NUMBER</code>) or a generator based on bitwise operations (Golden sampling scheme).
 
 **Version 1.2.1**
 
