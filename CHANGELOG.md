@@ -1,5 +1,5 @@
 # <p align="center">NPT/NVT-Monte Carlo Simulation of Mixtures of <br>Anisomorphic Hard Convex Bodies: <br>Ellipsoids of revolution, Spherocylinders, and Cylinders</p>
-<p align="right"><b><sub>Version: 1.2.1</sub></b></p>
+<p align="right"><b><sub>Version: 1.3.1</sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
