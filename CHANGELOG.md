@@ -10,7 +10,7 @@ Luís Fernando Mercier Franco<br></p>
 
 - Improved readability and performance of the code;
 
-- The intermolecular potentials can now be applied to the reference system;
+- The intermolecular potentials can now be applied to the reference system.
 
 **Version 1.3.0**
 
