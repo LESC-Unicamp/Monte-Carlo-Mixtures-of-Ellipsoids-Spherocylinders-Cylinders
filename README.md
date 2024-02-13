@@ -31,7 +31,7 @@
                         |  ██████/  | ██ \  ██   /██████  |  ██████/  | ██  | ██  | ██ \/  | ██  | ██
                          \______/   |__/  \__/  |______/   \______/   |__/  |__/  |__/     |__/  |__/
 ```
-<p align="right"><b><sub><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/CHANGELOG.md">Version: 1.2.1</a></sub></b></p>
+<p align="right"><b><sub><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/CHANGELOG.md">Version: 1.3.1</a></sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
@@ -113,18 +113,19 @@ The following features are supported in the current version:
     - Translation
     - Rotation (Quaternion Algebra)
     - Cubic Expansions/Compressions (Isotropic)
-    - Triclinic Expansions/Compressions (Anisotropic)
+    - Orthorhombic Expansions/Compressions (Anisotropic)
+    - Triclinic Deformations
 
 4. Lattice Reduction Algorithms
     - <a href="https://doi.org/10.1063/1.1901585">Gottwald</a>
     - <a href="https://doi.org/10.1007/BF01457454">Lenstra-Lenstra-Lovász</a>
 
 5. Force Fields
-    - Spherical Square Well (perturbed system only*)
+    - Spherical Square Well (both perturbed and reference system only*)
 
 6. Cell Lists
 
-<sub>*This means that the potential does not affect the molecular configuration of the system, which is solely defined by the purely repulsive hard-core potential. This is used for the evaluation of thermodynamic perturbation theories.</sub>
+<sub>*<b>Version 1.3.1</b>.</sub>
 
 ## <a name="language"></a>Language
 <p align="justify">
