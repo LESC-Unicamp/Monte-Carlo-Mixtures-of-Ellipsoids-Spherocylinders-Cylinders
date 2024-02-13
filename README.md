@@ -121,7 +121,7 @@ The following features are supported in the current version:
     - <a href="https://doi.org/10.1007/BF01457454">Lenstra-Lenstra-Lovász</a>
 
 5. Force Fields
-    - Spherical Square Well (both perturbed and reference system only*)
+    - Spherical Square Well (both perturbed and reference system*)
 
 6. Cell Lists
 
