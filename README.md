@@ -307,6 +307,10 @@ The following features are supported in the current version:
   <b>OBS. II</b>: The block-average parameters are used by a block-average subroutine that computes the perturbation coefficients from the potential dataset.
 </p>
 
+<p align="justify">
+  <b>OBS. III</b>: If the square well potential is chosen for the reference system, then only one potential range will be allowed.
+</p>
+
 ### The Probabilities File<br><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/bin/ini_probabilities.ini"><sub>ini_probabilities.ini</sub></a>
 
 <p align="justify">
