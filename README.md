@@ -138,7 +138,7 @@ The following features are supported in the current version:
 </p>
 
 ```
-> git clone https://github.com/LESC-Unicamp/monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders
+> git clone https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders
 ```
 
 <p align="justify">
@@ -146,7 +146,7 @@ The following features are supported in the current version:
 </p>
 
 ```
-> cd monte_carlo_mixtures_ellipsoids_spherocylinders_cylinders/src/
+> cd Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/src/
 ```
 
 <p align="justify">
