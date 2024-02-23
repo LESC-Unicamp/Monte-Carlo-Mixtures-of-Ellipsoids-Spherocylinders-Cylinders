@@ -1059,38 +1059,16 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     ! Box not too distorted
     IF( .NOT. CheckBoxDistortion ) THEN
 
-      IF( .NOT. FullPotentialTypeLogical(1) ) THEN
-        IF( .NOT. CellListControlPotential ) THEN
-          ! Whole system
-          CALL ComputeTotalPotentialEnergy( NewBoxLength, NewBoxLengthInverse, NewPotentialEnergy )
-        ELSE
-          ! Linked lists
-          CALL ListComputeTotalPotentialEnergy( NewBoxLength, NewBoxLengthInverse, NewPotentialEnergy, HalfNeighboursControl )
-          ! In case the number of cells in one direction (x, y, or z) becomes less than 3
-          IF( .NOT. CellListControlPotential ) CALL ComputeTotalPotentialEnergy( NewBoxLength, NewBoxLengthInverse, &
-          &                                                                      NewPotentialEnergy )
-        END IF
-        ! Energy change
-        EnergyChange = NewPotentialEnergy - OldPotentialEnergy
-      END IF
-
       ! Enthalpy (weighing function)
       IF( MovementIsoVolumeChangeLogical )    EnthalpyChange = ( ReducedPressure * ( NewBoxVolume - OldBoxVolume ) ) - &
       &                                                        ( DBLE( nParticles + 1 ) * DLOG( NewBoxVolume / OldBoxVolume ) )
       IF( MovementAnisoVolumeChangeLogical )  EnthalpyChange = ( ReducedPressure * ( NewBoxVolume - OldBoxVolume ) ) - &
       &                                                        ( DBLE( nParticles ) * DLOG( NewBoxVolume / OldBoxVolume ) )
-      IF( .NOT. FullPotentialTypeLogical(1) ) EnthalpyChange = EnthalpyChange + EnergyChange / ReducedTemperature
 
-      ! Random number
-      IF( RNGeneratorLogical(1) ) CALL Random_Number( RandomNumber )
-      IF( RNGeneratorLogical(2) ) CALL RandomNumberGenBitwise(  )
-
-      ! Enthalpy change criterion
-      IF( DEXP( - EnthalpyChange ) >= RandomNumber ) THEN
-
+      ! Compute potential
+      IF( .NOT. FullPotentialTypeLogical(1) ) THEN
         ! System configuration update
         PositionSaveMC = pPositionMC ! Old configuration
-
         ! Isotropic volume scaling
         IF( MovementIsoVolumeChangeLogical ) THEN
           ! Rescale positions of all particles accordingly
@@ -1106,6 +1084,51 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
             ! New real coordinates using the new box length
             CALL MatrixVectorMultiplication( NewBoxLength, ScalingDistanceUnitBox, pPositionMC(:,pParticle) )
           END DO
+        END IF
+        ! Potential
+        IF( .NOT. CellListControlPotential ) THEN
+          ! Whole system
+          CALL ComputeTotalPotentialEnergy( NewBoxLength, NewBoxLengthInverse, NewPotentialEnergy )
+        ELSE
+          ! Linked lists
+          CALL ListComputeTotalPotentialEnergy( NewBoxLength, NewBoxLengthInverse, NewPotentialEnergy, HalfNeighboursControl )
+          ! In case the number of cells in one direction (x, y, or z) becomes less than 3
+          IF( .NOT. CellListControlPotential ) CALL ComputeTotalPotentialEnergy( NewBoxLength, NewBoxLengthInverse, &
+          &                                                                      NewPotentialEnergy )
+        END IF
+        ! Energy change
+        EnergyChange = NewPotentialEnergy - OldPotentialEnergy
+        ! Update enthalpy
+        EnthalpyChange = EnthalpyChange + EnergyChange / ReducedTemperature
+      END IF
+
+      ! Random number
+      IF( RNGeneratorLogical(1) ) CALL Random_Number( RandomNumber )
+      IF( RNGeneratorLogical(2) ) CALL RandomNumberGenBitwise(  )
+
+      ! Enthalpy change criterion
+      IF( DEXP( - EnthalpyChange ) >= RandomNumber ) THEN
+
+        ! System configuration update
+        IF( FullPotentialTypeLogical(1) ) THEN
+          ! System configuration update
+          PositionSaveMC = pPositionMC ! Old configuration
+          ! Isotropic volume scaling
+          IF( MovementIsoVolumeChangeLogical ) THEN
+            ! Rescale positions of all particles accordingly
+            DO pParticle = 1, nParticles
+              pPositionMC(:,pParticle) = pPositionMC(:,pParticle) * VolumeScalingFactor
+            END DO
+          ! Anisotropic volume scaling
+          ELSE IF( MovementAnisoVolumeChangeLogical ) THEN
+            ! Rescale positions of all particles accordingly
+            DO pParticle = 1, nParticles
+              ! Scaling coordinates using the old box length
+              CALL MatrixVectorMultiplication( OldBoxLengthInverse, pPositionMC(:,pParticle), ScalingDistanceUnitBox )
+              ! New real coordinates using the new box length
+              CALL MatrixVectorMultiplication( NewBoxLength, ScalingDistanceUnitBox, pPositionMC(:,pParticle) )
+            END DO
+          END IF
         END IF
 
         ! Overlap check after expansion/compression of the simulation box
@@ -1173,6 +1196,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         BoxVolumeMC        = OldBoxVolume        ! Retrieve old box volume
         BoxLengthMC        = OldBoxLength        ! Retrieve old box length
         BoxLengthInverseMC = OldBoxLengthInverse ! Retrieve old box length (inverse)
+        IF( .NOT. FullPotentialTypeLogical(1) ) pPositionMC = PositionSaveMC ! Retrieve old position of particles
 
       END IF ! Enthalpy criterion
     END IF ! Box distortion criterion
