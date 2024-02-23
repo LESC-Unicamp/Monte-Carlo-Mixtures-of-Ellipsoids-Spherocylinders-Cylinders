@@ -1414,7 +1414,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     IF( .NOT. PotentialEnergyLogical ) THEN
       IF( MOD( iCycle, nSavingFrequency ) == 0 ) THEN
         DO rRange = 1, nRange
-          WRITE( (80 + rRange), "(3G0)" ) iCycle, ",", TotalPotentialEnergyMC(rRange)
+          WRITE( (80 + rRange), "(5G0)" ) iCycle, ",", TotalPotentialEnergyMC(rRange), ",", ReducedTemperature
           FLUSH( (80 + rRange) )
         END DO
       END IF
@@ -1422,7 +1422,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     ELSE IF( PotentialEnergyLogical ) THEN
       IF( iCycle > nEquilibrationCycles .AND. MOD( iCycle, nSavingFrequency ) == 0 ) THEN
         DO rRange = 1, nRange
-          WRITE( (80 + rRange), "(3G0)" ) iCycle, ",", TotalPotentialEnergyMC(rRange)
+          WRITE( (80 + rRange), "(5G0)" ) iCycle, ",", TotalPotentialEnergyMC(rRange), ",", ReducedTemperature
           FLUSH( (80 + rRange) )
         END DO
       END IF
