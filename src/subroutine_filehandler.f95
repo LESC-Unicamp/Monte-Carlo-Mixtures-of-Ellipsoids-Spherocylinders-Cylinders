@@ -382,7 +382,7 @@ IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
         OPEN( Unit= (80 + rRange), File= "Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/"// &
         &                                 TRIM( DescriptorHour )//"_thermo_η"//TRIM( DescriptorFileThermoVariable )//"_C"// &
         &                                 TRIM( DescriptorFileComponents )//"_"//TRIM( DescriptorFileGeometry )//".dat" )
-        WRITE( (80 + rRange), "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Potential Energy"//'"'
+        WRITE( (80 + rRange), "(5G0)" ) '"'//"Cycles"//'"', ",", '"'//"Potential Energy"//'"', ",", '"'//"Temperature"//'"'
         FLUSH( (80 + rRange) )
       ELSE
         OPEN( Unit= (80 + rRange), File= "Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/"// &
@@ -402,7 +402,7 @@ IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
         OPEN( Unit= (80 + rRange), File= "Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/"// &
         &                                 TRIM( DescriptorHour )//"_thermo_P"//TRIM( DescriptorFileThermoVariable )//"_C"// &
         &                                 TRIM( DescriptorFileComponents )//"_"//TRIM( DescriptorFileGeometry )//".dat" )
-        WRITE( (80 + rRange), "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Potential Energy"//'"'
+        WRITE( (80 + rRange), "(5G0)" ) '"'//"Cycles"//'"', ",", '"'//"Potential Energy"//'"', ",", '"'//"Temperature"//'"'
         FLUSH( (80 + rRange) )
       ELSE
         OPEN( Unit= (80 + rRange), File= "Potential_Energy/"//TRIM( DescriptorDate )//"/Range_"//TRIM( DescriptorRange )//"/"// &
