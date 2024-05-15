@@ -446,8 +446,14 @@ The following features are supported in the current version:
 </p>
 
 **Standard compilation**
+Without OpenMP API
 ```
 ./mc_mixtures_standard.out
+```
+
+With OpenMP API
+```
+./mc_mixtures_standard_openmp.out
 ```
 
 or
