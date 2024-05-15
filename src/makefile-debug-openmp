@@ -10,7 +10,7 @@ EXEC_NAME= mc_mixtures_debug_openmp.out
 EXEC_PATH= ../bin
 
 # Compiler flags
-F95FLAGS= -c -O3 -fPIC -pedantic -g -g3 -Wall -Wextra -Wconversion -fcheck=all -fbacktrace -fcheck=bounds -ffast-math -funroll-loops -march=native
+F95FLAGS= -cpp -c -O3 -fPIC -pedantic -g -g3 -Wall -Wextra -Wconversion -fcheck=all -fbacktrace -fcheck=bounds -ffast-math -funroll-loops -march=native
 
 # Object names
 OBJS= module_global_variables.o \
