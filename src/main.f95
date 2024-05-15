@@ -162,6 +162,13 @@ LOGICAL :: FlagLogical                      ! Generic TRUE/FALSE flag
 LOGICAL :: FileExist                        ! Checks whether a file exists or not
 LOGICAL :: FolderExist                      ! Checks whether a folder exists or not
 
+! Get the maximum number of threads
+#ifdef _OPENMP
+  nThreads = OMP_GET_MAX_THREADS(  )
+#else
+  nThreads = 1
+#endif
+
 ! Title
 WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
 WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 6 )//"NVT/NPT-MONTE CARLO SIMULATION OF MIXTURES"//REPEAT( " ", 7 )//CH_VS
