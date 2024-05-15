@@ -172,7 +172,7 @@ The following features are supported in the current version:
 | <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile">Standard (without OpenMP)</a> | ```make -f makefile``` |
 | <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-openmp">Standard (with OpenMP)</a> | ```make -f makefile-openmp``` |
 
-If your compilation option includes the OpenMP API, you can also choose the number of threads to be used on your simulation via the following command:
+If your compilation option includes the OpenMP API (**Version 1.4.0**), you can also choose the number of threads to be used on your simulation via the following command:
 
 ```
 > export OMP_NUM_THREADS=X
