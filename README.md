@@ -157,7 +157,9 @@ The following features are supported in the current version:
   To compile it, first remove any object and module files using the <i>clean</i> command:
 </p>
   
-```> make clean```
+```
+> make clean
+```
 
 <p align="justify">
   Then, to compile the source code, run one of the commands below, depending on the chosen compilation type:
@@ -172,7 +174,9 @@ The following features are supported in the current version:
 
 If your compilation option includes the OpenMP API, you can also choose the number of threads to be used on your simulation via the following command:
 
-```> export OMP_NUM_THREADS=X```, 
+```
+> export OMP_NUM_THREADS=X
+```
 
 where <code>X</code> is the number of threads.
 
