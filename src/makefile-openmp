@@ -4,7 +4,7 @@
 FC= gfortran
 
 # Executable name
-EXEC_NAME= mc_mixtures_standard.out
+EXEC_NAME= mc_mixtures_standard_openmp.out
 
 # Executable path
 EXEC_PATH= ../bin
@@ -41,7 +41,7 @@ OBJS= module_global_variables.o \
 
 # Compiling function
 exe: $(OBJS)
-	$(FC) -o $(EXEC_PATH)/$(EXEC_NAME) $+
+	$(FC) -fopenmp -o $(EXEC_PATH)/$(EXEC_NAME) $+
 
 # Clean
 clean:

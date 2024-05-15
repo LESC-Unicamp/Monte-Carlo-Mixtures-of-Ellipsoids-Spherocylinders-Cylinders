@@ -4,13 +4,13 @@
 FC= gfortran
 
 # Executable name
-EXEC_NAME= mc_mixtures_standard.out
+EXEC_NAME= mc_mixtures_debug_openmp.out
 
 # Executable path
 EXEC_PATH= ../bin
 
 # Compiler flags
-F95FLAGS= -c -O3 -ffast-math -funroll-loops -march=native
+F95FLAGS= -c -O3 -fPIC -pedantic -g -g3 -Wall -Wextra -Wconversion -fcheck=all -fbacktrace -fcheck=bounds -ffast-math -funroll-loops -march=native
 
 # Object names
 OBJS= module_global_variables.o \
@@ -41,7 +41,7 @@ OBJS= module_global_variables.o \
 
 # Compiling function
 exe: $(OBJS)
-	$(FC) -o $(EXEC_PATH)/$(EXEC_NAME) $+
+	$(FC) -fopenmp -o $(EXEC_PATH)/$(EXEC_NAME) $+
 
 # Clean
 clean:

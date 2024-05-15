@@ -36,7 +36,7 @@ OBJS= module_global_variables.o \
 	main.o \
 
 # Compiling rule
-%o: %f95
+%.o: %.f95
 	${FC} ${F95FLAGS} $<
 
 # Compiling function
