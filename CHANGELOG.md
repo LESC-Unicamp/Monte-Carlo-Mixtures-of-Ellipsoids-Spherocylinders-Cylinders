@@ -1,10 +1,14 @@
 # <p align="center">NPT/NVT-Monte Carlo Simulation of Mixtures of <br>Anisomorphic Hard Convex Bodies: <br>Ellipsoids of revolution, Spherocylinders, and Cylinders</p>
-<p align="right"><b><sub>Version: 1.3.1</sub></b></p>
+<p align="right"><b><sub>Version: 1.4.0</sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
 Nathan Barros de Souza<br>
 Luís Fernando Mercier Franco<br></p>
+
+**Version 1.4.0**
+
+- Added compatibility with OpenMP API (parallelization).
 
 **Version 1.3.1**
 
