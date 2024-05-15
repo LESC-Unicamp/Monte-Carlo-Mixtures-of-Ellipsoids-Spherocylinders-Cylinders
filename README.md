@@ -165,8 +165,10 @@ The following features are supported in the current version:
 
 | **Compilation type** | **Command** |
 |:---:|:---:|
-| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-debug">Debug</a> | ```make -f makefile-debug``` |
-| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile">Standard</a> | ```make -f makefile``` |
+| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-debug">Debug (without OpenMP)</a> | ```make -f makefile-debug``` |
+| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-debug-openmp">Debug (with OpenMP)</a> | ```make -f makefile-debug-openmp``` |
+| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile">Standard (without OpenMP)</a> | ```make -f makefile``` |
+| <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-openmp">Standard (with OpenMP)</a> | ```make -f makefile-openmp``` |
 
 <p align="justify">
   Each of these commands will produce an executable with a specific name depending on the chosen compilation type. Both executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization variables and options you need to set up.
