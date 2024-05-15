@@ -24,6 +24,11 @@ MODULE GlobalVar
 ! Use kind Real64 and Int64
 USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: Real64, Int64
 
+! OpenMP API
+#ifdef _OPENMP
+USE OMP_LIB
+#endif
+
 IMPLICIT NONE
 
 ! *********************************************************************************************** !
@@ -37,6 +42,7 @@ INTEGER( Kind= Int64 ), PARAMETER :: HalfNeighboursControl = 1 ! Checks whether 
 INTEGER( Kind= Int64 )                 :: nParticles      ! Number of particles
 INTEGER( Kind= Int64 )                 :: nComponents     ! Number of components
 INTEGER( Kind= Int64 )                 :: nRange          ! Number of attractive range parameters
+INTEGER( Kind= Int64 )                 :: nThreads        ! Number of threads (OpenMP)
 INTEGER( Kind= Int64 ), DIMENSION( 3 ) :: pCells          ! Number of cells
 INTEGER( Kind= Int64 ), DIMENSION( 3 ) :: pCellsPotential ! Number of cells (for the perturbed potential)
 
