@@ -445,22 +445,27 @@ The following features are supported in the current version:
   Finally, it's time to run the code! After compilation, the executable(s) can be found in the <code>/bin/</code> folder:
 </p>
 
-**Standard compilation**
-Without OpenMP API
+**Standard compilation** (without OpenMP API)
+
 ```
 ./mc_mixtures_standard.out
 ```
 
-With OpenMP API
+**Standard compilation** (with OpenMP API)
 ```
 ./mc_mixtures_standard_openmp.out
 ```
 
 or
 
-**Debug compilation**
+**Debug compilation** (without OpenMP API)
 ```
 ./mc_mixtures_debug.out
+```
+
+**Debug compilation** (with OpenMP API)
+```
+./mc_mixtures_debug_openmp.out
 ```
 
 <p align="justify">  
