@@ -170,8 +170,12 @@ The following features are supported in the current version:
 | <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile">Standard (without OpenMP)</a> | ```make -f makefile``` |
 | <a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/src/makefile-openmp">Standard (with OpenMP)</a> | ```make -f makefile-openmp``` |
 
+If your compilation option includes the OpenMP API, you can also choose the number of threads to be used on your simulation via the following command:
+
+```> export OMP_NUM_THREADS=X```, where X is the number of threads.
+
 <p align="justify">
-  Each of these commands will produce an executable with a specific name depending on the chosen compilation type. Both executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization variables and options you need to set up.
+  Each of these commands will produce an executable with a specific name depending on the chosen compilation type. All executables can be found in the folder <code>/bin/</code> in the repository directory. Before running the program, there are a few initialization variables and options you need to set up.
 </p>
 
 ## <a name="datainput"></a>Data Input
