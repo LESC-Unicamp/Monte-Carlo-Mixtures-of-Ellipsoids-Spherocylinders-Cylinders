@@ -3,7 +3,7 @@
 !                   This code contains all subroutines used in the main program                   !
 !                         to compute the potential energy of the system.                          !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 1.4.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                         May 15th, 2024                                          !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -49,18 +49,26 @@ INTEGER( KIND= INT64 ) :: iComponent, jComponent ! Counters (component)
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                       :: SquaredDistance        ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 ), DIMENSION( 3 )       :: iPosition, jPosition   ! Position of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )       :: VectorDistance         ! Vector distance between particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )       :: ScalingDistanceUnitBox ! Position (unit box)
-REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy     ! Pair potential energy
+REAL( KIND= REAL64 )                      :: SquaredDistance            ! Magnitude of the vector distance between particles i and j (squared)
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: iPosition, jPosition       ! Position of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: VectorDistance             ! Vector distance between particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox     ! Position (unit box)
+REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair potential energy
+REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergyShared  ! Pair potential energy (shared)
 
 ! Initialization
 TotalPotentialEnergy = 0.D0
+PairPotentialEnergyShared = 0.D0
 
 ! Anisomorphic components
 DO iComponent = 1, nComponents - 1
   DO jComponent = iComponent + 1, nComponents
+    !#############################################################################################!
+    !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
+    !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                 !
+    !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &               !
+    !$OMP REDUCTION( + : PairPotentialEnergyShared )                                              !
+    !#############################################################################################!
     ! First loop represents all particles with indexes i of component Ci
     DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
       ! Second loop represents all particles with indexes j of component Cj
@@ -88,18 +96,33 @@ DO iComponent = 1, nComponents - 1
           CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
         END IF
         ! Increment total potential energy
-        TotalPotentialEnergy = TotalPotentialEnergy + PairPotentialEnergy
+        PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy
       END DO
     END DO
+    !#############################################################################################!
+    !$OMP END PARALLEL DO                                                                         !
+    !#############################################################################################!
+    ! Update total potential energy
+    TotalPotentialEnergy = TotalPotentialEnergy + PairPotentialEnergyShared
+    PairPotentialEnergyShared = 0.D0
   END DO
 END DO
+
 ! Isomorphic components
 DO iComponent = 1, nComponents
   jComponent = iComponent
+  !###############################################################################################!
+  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
+  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                   !
+  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
+  !$OMP REDUCTION( + : PairPotentialEnergyShared )                                                !
+  !###############################################################################################!
   ! First loop represents a particle with an index i of component Ci
-  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) ) - 1
-    ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-    DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
+  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+    ! Second loop represents a particle with an index j of component Cj = Ci
+    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+      ! Cycle if index j <= i (prevents double counting)
+      IF( jParticle <= iParticle ) CYCLE
       ! Position of particle i
       iPosition(1) = pPosition(1,iParticle)
       iPosition(2) = pPosition(2,iParticle)
@@ -123,9 +146,15 @@ DO iComponent = 1, nComponents
         CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
       END IF
       ! Increment total potential energy
-      TotalPotentialEnergy = TotalPotentialEnergy + PairPotentialEnergy
+      PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy
     END DO
   END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update total potential energy
+  TotalPotentialEnergy = TotalPotentialEnergy + PairPotentialEnergyShared
+  PairPotentialEnergyShared = 0.D0
 END DO
 
 RETURN
@@ -158,6 +187,7 @@ REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition               ! Position 
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Box length (inverse)
 REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy        ! Potential energy of particle i
+REAL( KIND= REAL64 ), DIMENSION( nRange ) :: iPotentialEnergyShared  ! Potential energy of particle i (shared)
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -175,7 +205,13 @@ CellHalfLogical = PRESENT( HalfNeighbours )
 
 ! Initialization
 TotalPotentialEnergy = 0.D0
+iPotentialEnergyShared = 0.D0
 
+!#################################################################################################!
+!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
+!$OMP PRIVATE( iParticle, iComponent, iPosition, iPotentialEnergy ) &                             !
+!$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
+!#################################################################################################!
 ! Loop over all particles (consider neighbours)
 DO iParticle = 1, nParticles
   ! Component index of particle i
@@ -186,8 +222,15 @@ DO iParticle = 1, nParticles
   CALL ListComputeParticlePotentialEnergyInitialConfig( iComponent, iParticle, iPosition, iPotentialEnergy, &
   &                                                     CurrentBoxLength, CurrentBoxLengthInverse, CellHalfLogical )
   ! Increment total potential energy
-  TotalPotentialEnergy = TotalPotentialEnergy + iPotentialEnergy
+  iPotentialEnergyShared = iPotentialEnergyShared + iPotentialEnergy
 END DO
+!#################################################################################################!
+!$OMP END PARALLEL DO                                                                             !
+!#################################################################################################!
+
+! Total potential energy
+TotalPotentialEnergy = iPotentialEnergyShared
+iPotentialEnergyShared = 0.D0
 
 RETURN
 
@@ -310,21 +353,29 @@ INTEGER( KIND= INT64 ) :: iComponent, jComponent ! Counters (component)
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                      :: SquaredDistance         ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                      :: SystemPotentialEnergy   ! System potential energy
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: iPosition, jPosition    ! Position of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: VectorDistance          ! Vector distance between particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox  ! Position (unit box)
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Box length (inverse)
-REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy     ! Pair potential energy
+REAL( KIND= REAL64 )                      :: SquaredDistance           ! Magnitude of the vector distance between particles i and j (squared)
+REAL( KIND= REAL64 )                      :: SystemPotentialEnergy     ! System potential energy
+REAL( KIND= REAL64 )                      :: PairPotentialEnergyShared ! Pair potential energy (shared)
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: iPosition, jPosition      ! Position of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: VectorDistance            ! Vector distance between particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox    ! Position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength          ! Box length
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse   ! Box length (inverse)
+REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy       ! Pair potential energy
 
 ! Initialization
 SystemPotentialEnergy = 0.D0
+PairPotentialEnergyShared = 0.D0
 
 ! Anisomorphic components
 DO iComponent = 1, nComponents - 1
   DO jComponent = iComponent + 1, nComponents
+    !#############################################################################################!
+    !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
+    !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                 !
+    !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &               !
+    !$OMP REDUCTION( + : PairPotentialEnergyShared )                                              !
+    !#############################################################################################!
     ! First loop represents all particles with indexes i of component Ci
     DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
       ! Second loop represents all particles with indexes j of component Cj
@@ -352,18 +403,33 @@ DO iComponent = 1, nComponents - 1
           CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
         END IF
         ! Increment total potential energy
-        SystemPotentialEnergy = SystemPotentialEnergy + PairPotentialEnergy(1)
+        PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy(1)
       END DO
     END DO
+    !#############################################################################################!
+    !$OMP END PARALLEL DO                                                                         !
+    !#############################################################################################!
+    ! Update total potential energy
+    SystemPotentialEnergy = SystemPotentialEnergy + PairPotentialEnergyShared
+    PairPotentialEnergyShared = 0.D0
   END DO
 END DO
+
 ! Isomorphic components
 DO iComponent = 1, nComponents
   jComponent = iComponent
+  !###############################################################################################!
+  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
+  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                   !
+  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
+  !$OMP REDUCTION( + : PairPotentialEnergyShared )                                                !
+  !###############################################################################################!
   ! First loop represents a particle with an index i of component Ci
-  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) ) - 1
-    ! Second loop represents all other particles with indexes j > i of component Cj = Ci
-    DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
+  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+    ! Second loop represents a particle with an index j of component Cj = Ci
+    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+      ! Cycle if index j <= i (prevents double counting)
+      IF( jParticle <= iParticle ) CYCLE
       ! Position of particle i
       iPosition(1) = pPositionMC(1,iParticle)
       iPosition(2) = pPositionMC(2,iParticle)
@@ -387,9 +453,15 @@ DO iComponent = 1, nComponents
         CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
       END IF
       ! Increment total potential energy
-      SystemPotentialEnergy = SystemPotentialEnergy + PairPotentialEnergy(1)
+      PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy(1)
     END DO
   END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update total potential energy
+  SystemPotentialEnergy = SystemPotentialEnergy + PairPotentialEnergyShared
+  PairPotentialEnergyShared = 0.D0
 END DO
 
 RETURN
@@ -420,13 +492,21 @@ REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox  ! Scaled po
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Inverse of box length
 REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy        ! Potential energy of particle i
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergyShared  ! Potential energy of particle i (shared)
 REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy     ! Pair potential energy
 
 ! Initialization
 iPotentialEnergy = 0.D0
+iPotentialEnergyShared = 0.D0
 
 ! Anisomorphic components I
 DO jComponent = 1, iComponent - 1
+  !###############################################################################################!
+  !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
+  !$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                 !
+  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
+  !$OMP REDUCTION( + : iPotentialEnergyShared )                                                   !
+  !###############################################################################################!
   ! Unique loop takes only particles whose component indexes are less than Ci
   DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
     ! Position of particle j
@@ -448,12 +528,24 @@ DO jComponent = 1, iComponent - 1
       CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
     END IF
     ! Increment potential energy of particle i
-    iPotentialEnergy = iPotentialEnergy + PairPotentialEnergy
+    iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
   END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update potential energy of particle i
+  iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+  iPotentialEnergyShared = 0.D0
 END DO
 
 ! Anisomorphic components II
 DO jComponent = iComponent + 1, nComponents
+  !###############################################################################################!
+  !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
+  !$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                 !
+  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
+  !$OMP REDUCTION( + : iPotentialEnergyShared )                                                   !
+  !###############################################################################################!
   ! Unique loop takes only particles whose component indexes are greater than Ci
   DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
     ! Position of particle j
@@ -475,12 +567,25 @@ DO jComponent = iComponent + 1, nComponents
       CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
     END IF
     ! Increment potential energy of particle i
-    iPotentialEnergy = iPotentialEnergy + PairPotentialEnergy
+    iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
   END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update potential energy of particle i
+  iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+  iPotentialEnergyShared = 0.D0
 END DO
 
 ! Isomorphic components
 jComponent = iComponent
+
+!#################################################################################################!
+!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
+!$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                   !
+!$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                           !
+!$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
+!#################################################################################################!
 ! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
 DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
   ! Position of particle j
@@ -502,8 +607,22 @@ DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
     CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
   END IF
   ! Increment potential energy of particle i
-  iPotentialEnergy = iPotentialEnergy + PairPotentialEnergy
+  iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
 END DO
+!#################################################################################################!
+!$OMP END PARALLEL DO
+!#################################################################################################!
+
+! Update potential energy of particle i
+iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+iPotentialEnergyShared = 0.D0
+
+!#################################################################################################!
+!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
+!$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                   !
+!$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                           !
+!$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
+!#################################################################################################!
 ! Second loop takes only particles whose j-indexes are above the i-index of the particles of the component Ci
 DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
   ! Position of particle j
@@ -525,8 +644,15 @@ DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
     CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
   END IF
   ! Increment potential energy of particle i
-  iPotentialEnergy = iPotentialEnergy + PairPotentialEnergy
+  iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
 END DO
+!#################################################################################################!
+!$OMP END PARALLEL DO                                                                             !
+!#################################################################################################!
+
+! Update potential energy of particle i
+iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+iPotentialEnergyShared = 0.D0
 
 RETURN
 
@@ -554,6 +680,7 @@ INTEGER( Kind= Int64 ), OPTIONAL :: HalfNeighbours ! Checks whether a cell and i
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
 REAL( KIND= REAL64 )                      :: SystemPotentialEnergy   ! System potential energy
+REAL( Kind= Real64 )                      :: iPotentialEnergyShared  ! Potential energy of particle i (shared)
 REAL( Kind= Real64 ), DIMENSION( 3 )      :: BoxCutoff               ! Box cutoff (x-, y-, and z-directions)
 REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition               ! Position of particles i and j
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
@@ -579,7 +706,13 @@ CellHalfLogical = PRESENT( HalfNeighbours )
 
 ! Initialization
 SystemPotentialEnergy = 0.D0
+iPotentialEnergyShared = 0.D0
 
+!#################################################################################################!
+!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
+!$OMP PRIVATE( iParticle, iComponent, iPosition, iPotentialEnergy ) &                             !
+!$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
+!#################################################################################################!
 ! Loop over all particles (consider neighbours)
 DO iParticle = 1, nParticles
   ! Component index of particle i
@@ -590,8 +723,15 @@ DO iParticle = 1, nParticles
   CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iPosition, iPotentialEnergy, CurrentBoxLength, &
   &                                        CurrentBoxLengthInverse, CellHalfLogical )
   ! Increment total potential energy
-  SystemPotentialEnergy = SystemPotentialEnergy + iPotentialEnergy(1)
+  iPotentialEnergyShared = iPotentialEnergyShared + iPotentialEnergy(1)
 END DO
+!#################################################################################################!
+!$OMP END PARALLEL DO                                                                             !
+!#################################################################################################!
+
+! Update total potential energy
+SystemPotentialEnergy = iPotentialEnergyShared
+iPotentialEnergyShared = 0.D0
 
 RETURN
 

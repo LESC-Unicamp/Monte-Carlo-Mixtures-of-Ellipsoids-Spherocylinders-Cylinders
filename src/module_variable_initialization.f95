@@ -7,7 +7,7 @@
 !  This module also initialize some inquiry (character) variables, allowing the user to control   !
 ! which results will be written out in external files and to enable post-processing subroutines.  !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 1.4.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -15,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                         May 15th, 2024                                          !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
@@ -1098,6 +1098,13 @@ IF( CellListLogical ) THEN
 ELSE IF( .NOT. CellListLogical ) THEN
   WRITE( *, "(G0)" ) "Linked Lists: [DISABLED]"
 END IF
+WRITE( *, "(G0)" ) " "
+#ifdef _OPENMP
+  WRITE( *, "(2G0)" ) "Parallelized code: [YES]"
+#else
+ WRITE( *, "(2G0)" ) "Parallelized code: [NO]"
+#endif
+WRITE( *, "(2G0)" ) "Number of Threads: ", nThreads
 WRITE( *, "(G0)" ) " "
 
 RETURN

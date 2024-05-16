@@ -3,7 +3,7 @@
 !           This module defines the variables used by the main program and most of the            !
 !         subroutines and functions. A brief description is presented for each variable.          !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 1.4.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                         May 15th, 2024                                          !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
