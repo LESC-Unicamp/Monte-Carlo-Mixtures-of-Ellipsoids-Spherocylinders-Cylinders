@@ -7,7 +7,7 @@
 !  The algorithm of Lopes et al. (J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti, 2021) !
 !         is used to search for molecular overlaps between cylinders after a trial move.          !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 1.4.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
