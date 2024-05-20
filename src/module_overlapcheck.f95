@@ -78,8 +78,8 @@ ParallelSPC    = .FALSE.
 SharedOverlap  = .FALSE.
 PrivateOverlap = .FALSE.
 
-! Anisomorphic components I
-DO jComponent = 1, iComponent - 1
+! Anisomorphic and isomorphic components
+DO jComponent = 1, nComponents
   ! Stop if a thread founds an overlap (should never happen)
   IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
   !###############################################################################################!
@@ -89,10 +89,11 @@ DO jComponent = 1, iComponent - 1
   !$OMP PRIVATE( ContactDistance, OverlapSPC, ParallelSPC ) &                                     !
   !$OMP REDUCTION( .OR. : PrivateOverlap )                                                        !
   !###############################################################################################!
-  ! Unique loop takes only particles whose component indexes are less than Ci
   DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
     ! Cycle if a thread founds an overlap
     IF( SharedOverlap ) CYCLE
+    ! Cycle if particle index j = i (prevents self counting) 
+    IF( jParticle == iParticle ) CYCLE
     ! Position of particle j
     jPosition(1) = pPositionMC(1,jParticle)
     jPosition(2) = pPositionMC(2,jParticle)
@@ -189,301 +190,6 @@ DO jComponent = 1, iComponent - 1
     RETURN
   END IF
 END DO
-
-! Anisomorphic components II
-DO jComponent = iComponent + 1, nComponents
-  ! Stop if a thread founds an overlap (should never happen)
-  IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
-  !###############################################################################################!
-  !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
-  !$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &              !
-  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, SquaredCutoffDistance ) &               !
-  !$OMP PRIVATE( ContactDistance, OverlapSPC, ParallelSPC ) &                                     !
-  !$OMP REDUCTION( .OR. : PrivateOverlap )                                                        !
-  !###############################################################################################!
-  ! Unique loop takes only particles whose component indexes are greater than Ci
-  DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
-    ! Cycle if a thread founds an overlap
-    IF( SharedOverlap ) CYCLE
-    ! Position of particle j
-    jPosition(1) = pPositionMC(1,jParticle)
-    jPosition(2) = pPositionMC(2,jParticle)
-    jPosition(3) = pPositionMC(3,jParticle)
-    ! Orientation of particle j
-    jOrientation(1) = pOrientationMC(1,jParticle)
-    jOrientation(2) = pOrientationMC(2,jParticle)
-    jOrientation(3) = pOrientationMC(3,jParticle)
-    ! Quaternion of particle j
-    jQuaternion(0) = pQuaternionMC(0,jParticle)
-    jQuaternion(1) = pQuaternionMC(1,jParticle)
-    jQuaternion(2) = pQuaternionMC(2,jParticle)
-    jQuaternion(3) = pQuaternionMC(3,jParticle)
-    ! Vector distance between particles i and j
-    VectorDistance(1) = jPosition(1) - iPosition(1)
-    VectorDistance(2) = jPosition(2) - iPosition(2)
-    VectorDistance(3) = jPosition(3) - iPosition(3)
-    ! Minimum image convention
-    CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
-    ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
-    CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
-    ! Magnitude of the vector distance (squared)
-    SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
-    ! Cutoff distance (squared)
-    SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
-    SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
-    ! Preliminary test (circumscribing spheres)
-    IF( SquaredDistance <= SquaredCutoffDistance ) THEN
-      ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-      IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-        CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-        &                     PrivateOverlap )
-        ! Overlap found
-        IF( PrivateOverlap ) SharedOverlap = .TRUE.
-      ! Overlap test for spherocylinders (Vega-Lago method)
-      ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-        CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, PrivateOverlap )
-        ! Overlap found
-        IF( PrivateOverlap ) SharedOverlap = .TRUE.
-      ! Overlap test for cylinders and/or spheres
-      ELSE IF( GeometryType(3) ) THEN ! Cylinders
-        IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-          ! Initialization
-          OverlapSPC = .FALSE.
-          ! Preliminary test (circumscribing spherocylinders)
-          CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, OverlapSPC )
-          ! Overlap criterion
-          IF( OverlapSPC ) THEN
-            ! Apply periodic boundary conditions on the position of particle j
-            jPosition(1) = iPosition(1) + VectorDistance(1)
-            jPosition(2) = iPosition(2) + VectorDistance(2)
-            jPosition(3) = iPosition(3) + VectorDistance(3)
-            ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-            CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-            &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
-            ! Overlap found
-            IF( PrivateOverlap ) SharedOverlap = .TRUE.
-          END IF
-        ! Overlap test for cylinders and spheres
-        ELSE IF( .NOT. SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-          ! Apply periodic boundary conditions on the position of particle j
-          jPosition(1) = iPosition(1) + VectorDistance(1)
-          jPosition(2) = iPosition(2) + VectorDistance(2)
-          jPosition(3) = iPosition(3) + VectorDistance(3)
-          CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        ! Overlap test for cylinders and spheres
-        ELSE IF( SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-          ! Apply periodic boundary conditions on the position of particle j
-          jPosition(1) = iPosition(1) + VectorDistance(1)
-          jPosition(2) = iPosition(2) + VectorDistance(2)
-          jPosition(3) = iPosition(3) + VectorDistance(3)
-          CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        ! Overlap test for spheres
-        ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-          PrivateOverlap = .TRUE.
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        END IF
-      END IF
-    END IF
-  END DO
-  !###############################################################################################!
-  !$OMP END PARALLEL DO                                                                           !
-  !###############################################################################################!
-  ! Returns control to the calling program unit if an overlap is detected
-  IF( SharedOverlap ) THEN
-    Overlap = .TRUE.
-    RETURN
-  END IF
-END DO
-
-! Isomorphic components
-jComponent = iComponent
-
-!#################################################################################################!
-!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
-!$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &                !
-!$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, SquaredCutoffDistance ) &                 !
-!$OMP PRIVATE( ContactDistance, OverlapSPC, ParallelSPC ) &                                       !
-!$OMP REDUCTION( .OR. : PrivateOverlap )                                                          !
-!#################################################################################################!
-! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
-DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
-  ! Cycle if a thread founds an overlap
-  IF( SharedOverlap ) CYCLE
-  ! Position of particle j
-  jPosition(1) = pPositionMC(1,jParticle)
-  jPosition(2) = pPositionMC(2,jParticle)
-  jPosition(3) = pPositionMC(3,jParticle)
-  ! Orientation of particle j
-  jOrientation(1) = pOrientationMC(1,jParticle)
-  jOrientation(2) = pOrientationMC(2,jParticle)
-  jOrientation(3) = pOrientationMC(3,jParticle)
-  ! Quaternion of particle j
-  jQuaternion(0) = pQuaternionMC(0,jParticle)
-  jQuaternion(1) = pQuaternionMC(1,jParticle)
-  jQuaternion(2) = pQuaternionMC(2,jParticle)
-  jQuaternion(3) = pQuaternionMC(3,jParticle)
-  ! Vector distance between particles i and j
-  VectorDistance(1) = jPosition(1) - iPosition(1)
-  VectorDistance(2) = jPosition(2) - iPosition(2)
-  VectorDistance(3) = jPosition(3) - iPosition(3)
-  ! Minimum image convention
-  CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
-  ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
-  CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
-  ! Magnitude of the vector distance (squared)
-  SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
-  ! Cutoff distance (squared)
-  SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
-  SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
-  ! Preliminary test (circumscribing spheres)
-  IF( SquaredDistance <= SquaredCutoffDistance ) THEN
-    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-    IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-      CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     PrivateOverlap )
-      ! Overlap found
-      IF( PrivateOverlap ) SharedOverlap = .TRUE.
-    ! Overlap test for spherocylinders (Vega-Lago method)
-    ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-      CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     ParallelSPC, PrivateOverlap )
-      ! Overlap found
-      IF( PrivateOverlap ) SharedOverlap = .TRUE.
-    ! Overlap test for cylinders or spheres
-    ELSE IF( GeometryType(3) ) THEN ! Cylinders
-      IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-        ! Initialization
-        OverlapSPC = .FALSE.
-        ! Preliminary test (circumscribing spherocylinders)
-        CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, OverlapSPC )
-        ! Overlap criterion
-        IF( OverlapSPC ) THEN
-          ! Apply periodic boundary conditions on the position of particle j
-          jPosition(1) = iPosition(1) + VectorDistance(1)
-          jPosition(2) = iPosition(2) + VectorDistance(2)
-          jPosition(3) = iPosition(3) + VectorDistance(3)
-          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-          CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-          &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        END IF
-      ! Overlap test for spheres
-      ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-        PrivateOverlap = .TRUE.
-        ! Overlap found
-        IF( PrivateOverlap ) SharedOverlap = .TRUE.
-      END IF
-    END IF
-  END IF
-END DO
-!#################################################################################################!
-!$OMP END PARALLEL DO                                                                             !
-!#################################################################################################!
-
-! Returns control to the calling program unit if an overlap is detected
-IF( SharedOverlap ) THEN
-  Overlap = .TRUE.
-  RETURN
-END IF
-
-!#################################################################################################!
-!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
-!$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &                !
-!$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, SquaredCutoffDistance ) &                 !
-!$OMP PRIVATE( ContactDistance, OverlapSPC, ParallelSPC ) &                                       !
-!$OMP REDUCTION( .OR. : PrivateOverlap )                                                          !
-!#################################################################################################!
-! Second loop takes only particles whose j-indexes are above the i-index of the particles of the component Ci
-DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
-  ! Cycle if a thread founds an overlap
-  IF( SharedOverlap ) CYCLE
-  ! Position of particle j
-  jPosition(1) = pPositionMC(1,jParticle)
-  jPosition(2) = pPositionMC(2,jParticle)
-  jPosition(3) = pPositionMC(3,jParticle)
-  ! Orientation of particle j
-  jOrientation(1) = pOrientationMC(1,jParticle)
-  jOrientation(2) = pOrientationMC(2,jParticle)
-  jOrientation(3) = pOrientationMC(3,jParticle)
-  ! Quaternion of particle j
-  jQuaternion(0) = pQuaternionMC(0,jParticle)
-  jQuaternion(1) = pQuaternionMC(1,jParticle)
-  jQuaternion(2) = pQuaternionMC(2,jParticle)
-  jQuaternion(3) = pQuaternionMC(3,jParticle)
-  ! Vector distance between particles i and j
-  VectorDistance(1) = jPosition(1) - iPosition(1)
-  VectorDistance(2) = jPosition(2) - iPosition(2)
-  VectorDistance(3) = jPosition(3) - iPosition(3)
-  ! Minimum image convention
-  CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
-  ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
-  CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
-  ! Magnitude of the vector distance (squared)
-  SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
-  ! Cutoff distance (squared)
-  SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
-  SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
-  ! Preliminary test (circumscribing spheres)
-  IF( SquaredDistance <= SquaredCutoffDistance ) THEN
-    ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-    IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-      CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     PrivateOverlap )
-      ! Overlap found
-      IF( PrivateOverlap ) SharedOverlap = .TRUE.
-    ! Overlap test for spherocylinders (Vega-Lago method)
-    ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-      CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     ParallelSPC, PrivateOverlap )
-      ! Overlap found
-      IF( PrivateOverlap ) SharedOverlap = .TRUE.
-    ! Overlap test for cylinders or spheres
-    ELSE IF( GeometryType(3) ) THEN ! Cylinders
-      IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-        ! Initialization
-        OverlapSPC = .FALSE.
-        ! Preliminary test (circumscribing spherocylinders)
-        CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, OverlapSPC )
-        ! Overlap criterion
-        IF( OverlapSPC ) THEN
-          ! Apply periodic boundary conditions on the position of particle j
-          jPosition(1) = iPosition(1) + VectorDistance(1)
-          jPosition(2) = iPosition(2) + VectorDistance(2)
-          jPosition(3) = iPosition(3) + VectorDistance(3)
-          ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-          CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-          &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        END IF
-      ! Overlap test for spheres
-      ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-        PrivateOverlap = .TRUE.
-        ! Overlap found
-        IF( PrivateOverlap ) SharedOverlap = .TRUE.
-      END IF
-    END IF
-  END IF
-END DO
-!#################################################################################################!
-!$OMP END PARALLEL DO                                                                             !
-!#################################################################################################!
-
-! Returns control to the calling program unit if an overlap is detected
-IF( SharedOverlap ) THEN
-  Overlap = .TRUE.
-  RETURN
-END IF
 
 RETURN ! No overlaps detected
 
@@ -730,11 +436,13 @@ ParallelSPC    = .FALSE.
 SharedOverlap  = .FALSE.
 PrivateOverlap = .FALSE.
 
-! Anisomorphic components
-DO iComponent = 1, nComponents - 1
-  DO jComponent = iComponent + 1, nComponents
+! Anisomorphic and isomorphic components
+DO iComponent = 1, nComponents
+  DO jComponent = 1, nComponents
     ! Stop if a thread founds an overlap (should never happen)
     IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
+    ! Cycle if component index j < i (prevents double counting) 
+    IF( jComponent < iComponent ) CYCLE
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
     !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &     !
@@ -749,6 +457,8 @@ DO iComponent = 1, nComponents - 1
       DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
         ! Cycle if a thread founds an overlap
         IF( SharedOverlap ) CYCLE
+        ! Cycle if particle index j <= i when components are isomorphic (prevents double counting) 
+        IF( jComponent == iComponent .AND. jParticle <= iParticle ) CYCLE
         ! Position of particle i
         iPosition(1) = pPositionMC(1,iParticle)
         iPosition(2) = pPositionMC(2,iParticle)
@@ -861,120 +571,6 @@ DO iComponent = 1, nComponents - 1
   END DO
 END DO
 
-! Isomorphic components
-DO iComponent = 1, nComponents
-  jComponent = iComponent
-  ! Stop if a thread founds an overlap (should never happen)
-  IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
-  !###############################################################################################!
-  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
-  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &       !
-  !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &             !
-  !$OMP PRIVATE( SquaredDistance, SquaredCutoffDistance, ContactDistance ) &                      !
-  !$OMP PRIVATE( OverlapSPC, ParallelSPC ) &                                                      !
-  !$OMP REDUCTION( .OR. : PrivateOverlap )                                                        !
-  !###############################################################################################!
-  ! First loop represents a particle with an index i of component Ci
-  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
-    ! Second loop represents a particle with an index j of component Cj = Ci
-    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
-      ! Cycle if a thread founds an overlap
-      IF( SharedOverlap ) CYCLE
-      ! Cycle if index j <= i (prevents double counting) 
-      IF( jParticle <= iParticle ) CYCLE
-      ! Position of particle i
-      iPosition(1) = pPositionMC(1,iParticle)
-      iPosition(2) = pPositionMC(2,iParticle)
-      iPosition(3) = pPositionMC(3,iParticle)
-      ! Position of particle j
-      jPosition(1) = pPositionMC(1,jParticle)
-      jPosition(2) = pPositionMC(2,jParticle)
-      jPosition(3) = pPositionMC(3,jParticle)
-      ! Orientation of particle i
-      iOrientation(1) = pOrientationMC(1,iParticle)
-      iOrientation(2) = pOrientationMC(2,iParticle)
-      iOrientation(3) = pOrientationMC(3,iParticle)
-      ! Orientation of particle j
-      jOrientation(1) = pOrientationMC(1,jParticle)
-      jOrientation(2) = pOrientationMC(2,jParticle)
-      jOrientation(3) = pOrientationMC(3,jParticle)
-      ! Quaternion of particle i
-      iQuaternion(0) = pQuaternionMC(0,iParticle)
-      iQuaternion(1) = pQuaternionMC(1,iParticle)
-      iQuaternion(2) = pQuaternionMC(2,iParticle)
-      iQuaternion(3) = pQuaternionMC(3,iParticle)
-      ! Quaternion of particle j
-      jQuaternion(0) = pQuaternionMC(0,jParticle)
-      jQuaternion(1) = pQuaternionMC(1,jParticle)
-      jQuaternion(2) = pQuaternionMC(2,jParticle)
-      jQuaternion(3) = pQuaternionMC(3,jParticle)
-      ! Vector distance between particles i and j
-      VectorDistance(1) = jPosition(1) - iPosition(1)
-      VectorDistance(2) = jPosition(2) - iPosition(2)
-      VectorDistance(3) = jPosition(3) - iPosition(3)
-      ! Minimum image convention
-      CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
-      ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
-      CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
-      ! Magnitude of the vector distance (squared)
-      SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
-      ! Cutoff distance (squared)
-      SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
-      SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
-      ! Preliminary test (circumscribing spheres)
-      IF( SquaredDistance <= SquaredCutoffDistance ) THEN
-        ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-        IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-          CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        ! Overlap test for spherocylinders (Vega-Lago method)
-        ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-          CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        ! Overlap test for cylinders or spheres
-        ELSE IF( GeometryType(3) ) THEN ! Cylinders
-          IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-            ! Initialization
-            OverlapSPC = .FALSE.
-            ! Preliminary test (circumscribing spherocylinders)
-            CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, OverlapSPC )
-            ! Overlap criterion
-            IF( OverlapSPC ) THEN
-              ! Apply periodic boundary conditions on the position of particle j
-              jPosition(1) = iPosition(1) + VectorDistance(1)
-              jPosition(2) = iPosition(2) + VectorDistance(2)
-              jPosition(3) = iPosition(3) + VectorDistance(3)
-              ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-              CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-              &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
-              ! Overlap found
-              IF( PrivateOverlap ) SharedOverlap = .TRUE.
-            END IF
-          ! Overlap test for spheres
-          ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-            PrivateOverlap = .TRUE.
-            ! Overlap found
-            IF( PrivateOverlap ) SharedOverlap = .TRUE.
-          END IF
-        END IF
-      END IF
-    END DO
-  END DO
-  !###############################################################################################!
-  !$OMP END PARALLEL DO                                                                           !
-  !###############################################################################################!
-  ! Returns control to the calling program unit if an overlap is detected
-  IF( SharedOverlap ) THEN
-    Overlap = .TRUE.
-    RETURN
-  END IF
-END DO
-
 RETURN ! No overlaps detected
 
 END SUBROUTINE FullOverlapCheck
@@ -1027,10 +623,12 @@ SharedOverlap  = .FALSE.
 PrivateOverlap = .FALSE.
 
 ! Anisomorphic components
-DO iComponent = 1, nComponents - 1
-  DO jComponent = iComponent + 1, nComponents
+DO iComponent = 1, nComponents
+  DO jComponent = 1, nComponents
     ! Stop if a thread founds an overlap (should never happen)
     IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
+    ! Cycle if component index j < i (prevents double counting) 
+    IF( jComponent < iComponent ) CYCLE
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
     !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &     !
@@ -1045,6 +643,8 @@ DO iComponent = 1, nComponents - 1
       DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
         ! Cycle if a thread founds an overlap
         IF( SharedOverlap ) CYCLE
+        ! Cycle if particle index j <= i when components are isomorphic (prevents double counting) 
+        IF( jComponent == iComponent .AND. jParticle <= iParticle ) CYCLE
         ! Position of particle i
         iPosition(1) = pPosition(1,iParticle)
         iPosition(2) = pPosition(2,iParticle)
@@ -1155,120 +755,6 @@ DO iComponent = 1, nComponents - 1
       RETURN
     END IF
   END DO
-END DO
-
-! Isomorphic components
-DO iComponent = 1, nComponents
-  jComponent = iComponent
-  ! Stop if a thread founds an overlap (should never happen)
-  IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
-  !###############################################################################################!
-  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
-  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &       !
-  !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &             !
-  !$OMP PRIVATE( SquaredDistance, SquaredCutoffDistance, ContactDistance ) &                      !
-  !$OMP PRIVATE( OverlapSPC, ParallelSPC ) &                                                      !
-  !$OMP REDUCTION( .OR. : PrivateOverlap )                                                        !
-  !###############################################################################################!
-  ! First loop represents a particle with an index i of component Ci
-  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
-    ! Second loop represents a particle with an index j of component Cj = Ci
-    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
-      ! Cycle if a thread founds an overlap
-      IF( SharedOverlap ) CYCLE
-      ! Cycle if index j <= i (prevents double counting)
-      IF( jParticle <= iParticle ) CYCLE
-      ! Position of particle i
-      iPosition(1) = pPosition(1,iParticle)
-      iPosition(2) = pPosition(2,iParticle)
-      iPosition(3) = pPosition(3,iParticle)
-      ! Position of particle j
-      jPosition(1) = pPosition(1,jParticle)
-      jPosition(2) = pPosition(2,jParticle)
-      jPosition(3) = pPosition(3,jParticle)
-      ! Orientation of particle i
-      iOrientation(1) = pOrientation(1,iParticle)
-      iOrientation(2) = pOrientation(2,iParticle)
-      iOrientation(3) = pOrientation(3,iParticle)
-      ! Orientation of particle j
-      jOrientation(1) = pOrientation(1,jParticle)
-      jOrientation(2) = pOrientation(2,jParticle)
-      jOrientation(3) = pOrientation(3,jParticle)
-      ! Quaternion of particle i
-      iQuaternion(0) = pQuaternion(0,iParticle)
-      iQuaternion(1) = pQuaternion(1,iParticle)
-      iQuaternion(2) = pQuaternion(2,iParticle)
-      iQuaternion(3) = pQuaternion(3,iParticle)
-      ! Quaternion of particle j
-      jQuaternion(0) = pQuaternion(0,jParticle)
-      jQuaternion(1) = pQuaternion(1,jParticle)
-      jQuaternion(2) = pQuaternion(2,jParticle)
-      jQuaternion(3) = pQuaternion(3,jParticle)
-      ! Vector distance between particles i and j
-      VectorDistance(1) = jPosition(1) - iPosition(1)
-      VectorDistance(2) = jPosition(2) - iPosition(2)
-      VectorDistance(3) = jPosition(3) - iPosition(3)
-      ! Minimum image convention
-      CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
-      ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
-      CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
-      ! Magnitude of the vector distance (squared)
-      SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
-      ! Cutoff distance (squared)
-      SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
-      SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
-      ! Preliminary test (circumscribing spheres)
-      IF( SquaredDistance <= SquaredCutoffDistance ) THEN
-        ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
-        IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-          CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        ! Overlap test for spherocylinders (Vega-Lago method)
-        ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-          CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) SharedOverlap = .TRUE.
-        ! Overlap test for cylinders or spheres
-        ELSE IF( GeometryType(3) ) THEN ! Cylinders
-          IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-            ! Initialization
-            OverlapSPC = .FALSE.
-            ! Preliminary test (circumscribing spherocylinders)
-            CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, OverlapSPC )
-            ! Overlap criterion
-            IF( OverlapSPC ) THEN
-              ! Apply periodic boundary conditions on the position of particle j
-              jPosition(1) = iPosition(1) + VectorDistance(1)
-              jPosition(2) = iPosition(2) + VectorDistance(2)
-              jPosition(3) = iPosition(3) + VectorDistance(3)
-              ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-              CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-              &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
-              ! Overlap found
-              IF( PrivateOverlap ) SharedOverlap = .TRUE.
-            END IF
-          ! Overlap test for spheres
-          ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-            PrivateOverlap = .TRUE.
-            ! Overlap found
-            IF( PrivateOverlap ) SharedOverlap = .TRUE.
-          END IF
-        END IF
-      END IF
-    END DO
-  END DO
-  !###############################################################################################!
-  !$OMP END PARALLEL DO                                                                           !
-  !###############################################################################################!
-  ! Returns control to the calling program unit if an overlap is detected
-  IF( SharedOverlap ) THEN
-    Overlap = .TRUE.
-    RETURN
-  END IF
 END DO
 
 RETURN ! No overlaps detected
@@ -1415,11 +901,13 @@ ParallelSPC    = .FALSE.
 SharedOverlap  = .FALSE.
 PrivateOverlap = .FALSE.
 
-! Anisomorphic components
-DO iComponent = 1, nComponents - 1
-  DO jComponent = iComponent + 1, nComponents
+! Anisomorphic and isomorphic components
+DO iComponent = 1, nComponents
+  DO jComponent = 1, nComponents
     ! Stop if a thread founds an overlap (should never happen)
     IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
+    ! Cycle if component index j < i (prevents double counting) 
+    IF( jComponent < iComponent ) CYCLE
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
     !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &     !
@@ -1434,6 +922,8 @@ DO iComponent = 1, nComponents - 1
       DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
         ! Cycle if a thread founds an overlap
         IF( SharedOverlap ) CYCLE
+        ! Cycle if particle index j <= i when components are isomorphic (prevents double counting) 
+        IF( jComponent == iComponent .AND. jParticle <= iParticle ) CYCLE
         ! Position of particle i
         iPosition(1) = pPosition(1,iParticle)
         iPosition(2) = pPosition(2,iParticle)
@@ -1588,152 +1078,6 @@ DO iComponent = 1, nComponents - 1
       CALL Exit(  )
     END IF
   END DO
-END DO
-
-! Isomorphic components
-DO iComponent = 1, nComponents
-  jComponent = iComponent
-  ! Stop if a thread founds an overlap (should never happen)
-  IF( SharedOverlap ) STOP "ERROR: Mishap in the overlap check algorithm. Overlap detected but did not return control."
-  !###############################################################################################!
-  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
-  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &       !
-  !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &             !
-  !$OMP PRIVATE( SquaredDistance, SquaredCutoffDistance, ContactDistance ) &                      !
-  !$OMP PRIVATE( OverlapSPC, ParallelSPC ) &                                                      !
-  !$OMP REDUCTION( .OR. : PrivateOverlap )                                                        !
-  !###############################################################################################!
-  ! First loop represents a particle with an index i of component Ci
-  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
-    ! Second loop represents a particle with an index j of component Cj = Ci
-    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
-      ! Cycle if a thread founds an overlap
-      IF( SharedOverlap ) CYCLE
-      ! Cycle if index j <= i (prevents double counting)
-      IF( jParticle <= iParticle ) CYCLE
-      ! Position of particle i
-      iPosition(1) = pPosition(1,iParticle)
-      iPosition(2) = pPosition(2,iParticle)
-      iPosition(3) = pPosition(3,iParticle)
-      ! Position of particle j
-      jPosition(1) = pPosition(1,jParticle)
-      jPosition(2) = pPosition(2,jParticle)
-      jPosition(3) = pPosition(3,jParticle)
-      ! Orientation of particle i
-      iOrientation(1) = pOrientation(1,iParticle)
-      iOrientation(2) = pOrientation(2,iParticle)
-      iOrientation(3) = pOrientation(3,iParticle)
-      ! Orientation of particle j
-      jOrientation(1) = pOrientation(1,jParticle)
-      jOrientation(2) = pOrientation(2,jParticle)
-      jOrientation(3) = pOrientation(3,jParticle)
-      ! Quaternion of particle i
-      iQuaternion(0) = pQuaternion(0,iParticle)
-      iQuaternion(1) = pQuaternion(1,iParticle)
-      iQuaternion(2) = pQuaternion(2,iParticle)
-      iQuaternion(3) = pQuaternion(3,iParticle)
-      ! Quaternion of particle j
-      jQuaternion(0) = pQuaternion(0,jParticle)
-      jQuaternion(1) = pQuaternion(1,jParticle)
-      jQuaternion(2) = pQuaternion(2,jParticle)
-      jQuaternion(3) = pQuaternion(3,jParticle)
-      ! Vector distance between particles i and j
-      VectorDistance(1) = jPosition(1) - iPosition(1)
-      VectorDistance(2) = jPosition(2) - iPosition(2)
-      VectorDistance(3) = jPosition(3) - iPosition(3)
-      ! Minimum image convention
-      CALL MatrixVectorMultiplication( BoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
-      ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT(ScalingDistanceUnitBox)
-      CALL MatrixVectorMultiplication( BoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
-      ! Magnitude of the vector distance (squared)
-      SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
-      ! Cutoff distance (squared)
-      SquaredCutoffDistance = 0.5D0 * ( cCircumscribingSphereDiameter(iComponent) + cCircumscribingSphereDiameter(jComponent) )
-      SquaredCutoffDistance = SquaredCutoffDistance * SquaredCutoffDistance
-      ! Preliminary test (circumscribing spheres)
-      IF( SquaredDistance <= SquaredCutoffDistance ) THEN
-        ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
-        IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-          CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) THEN
-            SharedOverlap = .TRUE.
-            iParticleMessage  = iParticle
-            jParticleMessage  = jParticle
-            iComponentMessage = iComponent
-            jComponentMessage = jComponent
-          END IF
-        ! Overlap test for spherocylinders (Vega-Lago Method)
-        ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-          CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, PrivateOverlap )
-          ! Overlap found
-          IF( PrivateOverlap ) THEN
-            SharedOverlap = .TRUE.
-            iParticleMessage  = iParticle
-            jParticleMessage  = jParticle
-            iComponentMessage = iComponent
-            jComponentMessage = jComponent
-          END IF
-        ! Overlap test for cylinders or spheres
-        ELSE IF( GeometryType(3) ) THEN ! Cylinders
-          IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
-            ! Initialization
-            OverlapSPC = .FALSE.
-            ! Preliminary test (circumscribing spherocylinders)
-            CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, OverlapSPC )
-            ! Overlap criterion
-            IF( OverlapSPC ) THEN
-              ! Apply periodic boundary conditions on the position of particle j
-              jPosition(1) = iPosition(1) + VectorDistance(1)
-              jPosition(2) = iPosition(2) + VectorDistance(2)
-              jPosition(3) = iPosition(3) + VectorDistance(3)
-              ! Overlap test for cylinders (modified algorithm of Lopes et al.)
-              CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, &
-              &                     jPosition, iComponent, jComponent, ParallelSPC, PrivateOverlap )
-              ! Overlap found
-              IF( PrivateOverlap ) THEN
-                SharedOverlap = .TRUE.
-                iParticleMessage  = iParticle
-                jParticleMessage  = jParticle
-                iComponentMessage = iComponent
-                jComponentMessage = jComponent
-              END IF
-            END IF
-          ! Overlap test for spheres
-          ELSE IF( SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
-            PrivateOverlap = .TRUE.
-            ! Overlap found
-            IF( PrivateOverlap ) THEN
-              SharedOverlap = .TRUE.
-              iParticleMessage  = iParticle
-              jParticleMessage  = jParticle
-              iComponentMessage = iComponent
-              jComponentMessage = jComponent
-            END IF
-          END IF
-        END IF
-      END IF
-    END DO
-  END DO
-  !###############################################################################################!
-  !$OMP END PARALLEL DO                                                                           !
-  !###############################################################################################!
-  ! Overlap detected in the initial configuration
-  IF( SharedOverlap ) THEN
-    IF( nComponents > 1 ) THEN
-      WRITE( *, "(9G0)" ) "Overlap found in the initial configuration between particles ", iParticleMessage, &
-      &                   " of component ", iComponentMessage, " and ", jParticleMessage, " of component ", jComponentMessage, &
-      &                   ". Exiting..."
-    ELSE IF( nComponents == 1 ) THEN
-      WRITE( *, "(5G0)" ) "Overlap found in the initial configuration between particles ", iParticleMessage, " and ", &
-      &                   jParticleMessage, ". Exiting..."
-    END IF
-    CALL Sleep( 1 )
-    CALL Exit(  )
-  END IF
 END DO
 
 ! No overlaps
