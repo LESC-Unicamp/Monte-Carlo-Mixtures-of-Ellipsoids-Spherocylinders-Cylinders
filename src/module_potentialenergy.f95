@@ -60,11 +60,9 @@ REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergyShared  ! Pair p
 TotalPotentialEnergy = 0.D0
 PairPotentialEnergyShared = 0.D0
 
-! Anisomorphic and isomorphic components
-DO iComponent = 1, nComponents
-  DO jComponent = 1, nComponents
-    ! Cycle if component index j < i (prevents double counting) 
-    IF( jComponent < iComponent ) CYCLE
+! Anisomorphic components
+DO iComponent = 1, nComponents - 1
+  DO jComponent = iComponent + 1, nComponents
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
     !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                 !
@@ -75,8 +73,6 @@ DO iComponent = 1, nComponents
     DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
       ! Second loop represents all particles with indexes j of component Cj
       DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
-        ! Cycle if particle index j <= i when components are isomorphic (prevents double counting) 
-        IF( jComponent == iComponent .AND. jParticle <= iParticle ) CYCLE
         ! Position of particle i
         iPosition(1) = pPosition(1,iParticle)
         iPosition(2) = pPosition(2,iParticle)
@@ -110,6 +106,55 @@ DO iComponent = 1, nComponents
     TotalPotentialEnergy = TotalPotentialEnergy + PairPotentialEnergyShared
     PairPotentialEnergyShared = 0.D0
   END DO
+END DO
+
+! Isomorphic components
+DO iComponent = 1, nComponents
+  jComponent = iComponent
+  !###############################################################################################!
+  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
+  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                   !
+  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
+  !$OMP REDUCTION( + : PairPotentialEnergyShared )                                                !
+  !###############################################################################################!
+  ! First loop represents a particle with an index i of component Ci
+  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+    ! Second loop represents a particle with an index j of component Cj = Ci
+    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+      ! Cycle if index j <= i (prevents double counting)
+      IF( jParticle <= iParticle ) CYCLE
+      ! Position of particle i
+      iPosition(1) = pPosition(1,iParticle)
+      iPosition(2) = pPosition(2,iParticle)
+      iPosition(3) = pPosition(3,iParticle)
+      ! Position of particle j
+      jPosition(1) = pPosition(1,jParticle)
+      jPosition(2) = pPosition(2,jParticle)
+      jPosition(3) = pPosition(3,jParticle)
+      ! Vector distance between particles i and j
+      VectorDistance(1) = jPosition(1) - iPosition(1)
+      VectorDistance(2) = jPosition(2) - iPosition(2)
+      VectorDistance(3) = jPosition(3) - iPosition(3)
+      ! Minimum image convention
+      CALL MatrixVectorMultiplication( BoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+      ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+      CALL MatrixVectorMultiplication( BoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+      ! Magnitude of the vector distance (squared)
+      SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+      ! Compute pair potential
+      IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
+        CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+      END IF
+      ! Increment total potential energy
+      PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy
+    END DO
+  END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update total potential energy
+  TotalPotentialEnergy = TotalPotentialEnergy + PairPotentialEnergyShared
+  PairPotentialEnergyShared = 0.D0
 END DO
 
 RETURN
@@ -322,11 +367,9 @@ REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy       ! Pair po
 SystemPotentialEnergy = 0.D0
 PairPotentialEnergyShared = 0.D0
 
-! Anisomorphic and isomorphic components
-DO iComponent = 1, nComponents
-  DO jComponent = 1, nComponents
-    ! Cycle if component index j < i (prevents double counting) 
-    IF( jComponent < iComponent ) CYCLE
+! Anisomorphic components
+DO iComponent = 1, nComponents - 1
+  DO jComponent = iComponent + 1, nComponents
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
     !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                 !
@@ -337,8 +380,6 @@ DO iComponent = 1, nComponents
     DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
       ! Second loop represents all particles with indexes j of component Cj
       DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
-        ! Cycle if particle index j <= i when components are isomorphic (prevents double counting) 
-        IF( jComponent == iComponent .AND. jParticle <= iParticle ) CYCLE
         ! Position of particle i
         iPosition(1) = pPositionMC(1,iParticle)
         iPosition(2) = pPositionMC(2,iParticle)
@@ -372,6 +413,55 @@ DO iComponent = 1, nComponents
     SystemPotentialEnergy = SystemPotentialEnergy + PairPotentialEnergyShared
     PairPotentialEnergyShared = 0.D0
   END DO
+END DO
+
+! Isomorphic components
+DO iComponent = 1, nComponents
+  jComponent = iComponent
+  !###############################################################################################!
+  !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
+  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                   !
+  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
+  !$OMP REDUCTION( + : PairPotentialEnergyShared )                                                !
+  !###############################################################################################!
+  ! First loop represents a particle with an index i of component Ci
+  DO iParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+    ! Second loop represents a particle with an index j of component Cj = Ci
+    DO jParticle = SUM( cParticles(0:(iComponent-1)) ) + 1, SUM( cParticles(0:iComponent) )
+      ! Cycle if index j <= i (prevents double counting)
+      IF( jParticle <= iParticle ) CYCLE
+      ! Position of particle i
+      iPosition(1) = pPositionMC(1,iParticle)
+      iPosition(2) = pPositionMC(2,iParticle)
+      iPosition(3) = pPositionMC(3,iParticle)
+      ! Position of particle j
+      jPosition(1) = pPositionMC(1,jParticle)
+      jPosition(2) = pPositionMC(2,jParticle)
+      jPosition(3) = pPositionMC(3,jParticle)
+      ! Vector distance between particles i and j
+      VectorDistance(1) = jPosition(1) - iPosition(1)
+      VectorDistance(2) = jPosition(2) - iPosition(2)
+      VectorDistance(3) = jPosition(3) - iPosition(3)
+      ! Minimum image convention
+      CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+      ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+      CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+      ! Magnitude of the vector distance (squared)
+      SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+      ! Compute pair potential
+      IF( FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
+        CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+      END IF
+      ! Increment total potential energy
+      PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy(1)
+    END DO
+  END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update total potential energy
+  SystemPotentialEnergy = SystemPotentialEnergy + PairPotentialEnergyShared
+  PairPotentialEnergyShared = 0.D0
 END DO
 
 RETURN
@@ -409,17 +499,16 @@ REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy     ! Pair pote
 iPotentialEnergy = 0.D0
 iPotentialEnergyShared = 0.D0
 
-! Anisomorphic and isomorphic components
-DO jComponent = 1, nComponents
+! Anisomorphic components I
+DO jComponent = 1, iComponent - 1
   !###############################################################################################!
   !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
   !$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                 !
   !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
   !$OMP REDUCTION( + : iPotentialEnergyShared )                                                   !
   !###############################################################################################!
+  ! Unique loop takes only particles whose component indexes are less than Ci
   DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
-    ! Cycle if particle index j = i (prevents self counting) 
-    IF( jParticle == iParticle ) CYCLE
     ! Position of particle j
     jPosition(1) = pPositionMC(1,jParticle)
     jPosition(2) = pPositionMC(2,jParticle)
@@ -448,6 +537,122 @@ DO jComponent = 1, nComponents
   iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
   iPotentialEnergyShared = 0.D0
 END DO
+
+! Anisomorphic components II
+DO jComponent = iComponent + 1, nComponents
+  !###############################################################################################!
+  !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
+  !$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                 !
+  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
+  !$OMP REDUCTION( + : iPotentialEnergyShared )                                                   !
+  !###############################################################################################!
+  ! Unique loop takes only particles whose component indexes are greater than Ci
+  DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, SUM( cParticles(0:jComponent) )
+    ! Position of particle j
+    jPosition(1) = pPositionMC(1,jParticle)
+    jPosition(2) = pPositionMC(2,jParticle)
+    jPosition(3) = pPositionMC(3,jParticle)
+    ! Vector distance between particles i and j
+    VectorDistance(1) = jPosition(1) - iPosition(1)
+    VectorDistance(2) = jPosition(2) - iPosition(2)
+    VectorDistance(3) = jPosition(3) - iPosition(3)
+    ! Minimum image convention
+    CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+    ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+    CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+    ! Magnitude of the vector distance (squared)
+    SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+    ! Compute pair potential
+    IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
+      CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+    END IF
+    ! Increment potential energy of particle i
+    iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
+  END DO
+  !###############################################################################################!
+  !$OMP END PARALLEL DO                                                                           !
+  !###############################################################################################!
+  ! Update potential energy of particle i
+  iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+  iPotentialEnergyShared = 0.D0
+END DO
+
+! Isomorphic components
+jComponent = iComponent
+
+!#################################################################################################!
+!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
+!$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                   !
+!$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                           !
+!$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
+!#################################################################################################!
+! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
+DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
+  ! Position of particle j
+  jPosition(1) = pPositionMC(1,jParticle)
+  jPosition(2) = pPositionMC(2,jParticle)
+  jPosition(3) = pPositionMC(3,jParticle)
+  ! Vector distance between particles i and j
+  VectorDistance(1) = jPosition(1) - iPosition(1)
+  VectorDistance(2) = jPosition(2) - iPosition(2)
+  VectorDistance(3) = jPosition(3) - iPosition(3)
+  ! Minimum image convention
+  CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+  ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+  CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+  ! Magnitude of the vector distance (squared)
+  SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+  ! Compute pair potential
+  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
+    CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+  END IF
+  ! Increment potential energy of particle i
+  iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
+END DO
+!#################################################################################################!
+!$OMP END PARALLEL DO
+!#################################################################################################!
+
+! Update potential energy of particle i
+iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+iPotentialEnergyShared = 0.D0
+
+!#################################################################################################!
+!$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
+!$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                   !
+!$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                           !
+!$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
+!#################################################################################################!
+! Second loop takes only particles whose j-indexes are above the i-index of the particles of the component Ci
+DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
+  ! Position of particle j
+  jPosition(1) = pPositionMC(1,jParticle)
+  jPosition(2) = pPositionMC(2,jParticle)
+  jPosition(3) = pPositionMC(3,jParticle)
+  ! Vector distance between particles i and j
+  VectorDistance(1) = jPosition(1) - iPosition(1)
+  VectorDistance(2) = jPosition(2) - iPosition(2)
+  VectorDistance(3) = jPosition(3) - iPosition(3)
+  ! Minimum image convention
+  CALL MatrixVectorMultiplication( CurrentBoxLengthInverse, VectorDistance, ScalingDistanceUnitBox ) ! Spatial transformation
+  ScalingDistanceUnitBox = ScalingDistanceUnitBox - ANINT( ScalingDistanceUnitBox )
+  CALL MatrixVectorMultiplication( CurrentBoxLength, ScalingDistanceUnitBox, VectorDistance ) ! Spatial transformation
+  ! Magnitude of the vector distance (squared)
+  SquaredDistance = DOT_PRODUCT( VectorDistance, VectorDistance )
+  ! Compute pair potential
+  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
+    CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+  END IF
+  ! Increment potential energy of particle i
+  iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
+END DO
+!#################################################################################################!
+!$OMP END PARALLEL DO                                                                             !
+!#################################################################################################!
+
+! Update potential energy of particle i
+iPotentialEnergy = iPotentialEnergy + iPotentialEnergyShared
+iPotentialEnergyShared = 0.D0
 
 RETURN
 
