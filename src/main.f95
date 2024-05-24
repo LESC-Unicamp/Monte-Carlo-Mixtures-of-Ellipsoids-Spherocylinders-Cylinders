@@ -1290,7 +1290,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         IF( EnsembleMC == "NPT" ) THEN
           IF( iCycle > LastLine(3) ) THEN
             WRITE( 50, "(9G0)" ) iCycle, ",", Ratio, ",", MaxIsoVolumetricDisplacement, ",", AcceptanceRatioIsoVolumeChange, &
-            &                    ",", VolumeType
+            &                    ",", "IS"
             FLUSH( 50 )
           END IF
         END IF
@@ -1317,7 +1317,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         IF( EnsembleMC == "NPT" ) THEN
           IF( iCycle > LastLine(3) ) THEN
             WRITE( 50, "(9G0)" ) iCycle, ",", Ratio, ",", MaxAnisoVolumetricDisplacement, ",", AcceptanceRatioAnisoVolumeChange, &
-            &                    ",", VolumeType
+            &                    ",", "AN"
             FLUSH( 50 )
           END IF
         END IF
