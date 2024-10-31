@@ -1474,7 +1474,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = cRoots(1)
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       ELSE IF( rInterval == 2 ) THEN
@@ -1484,7 +1484,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = cRoots(2)
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       ELSE IF( rInterval == 3 ) THEN
@@ -1494,7 +1494,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = cRoots(3)
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       ELSE IF( rInterval == 4 ) THEN
@@ -1504,7 +1504,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = rHalfLength
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       END IF
@@ -1516,7 +1516,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = cRoots(1)
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       ELSE IF( rInterval == 2 ) THEN
@@ -1526,7 +1526,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = cRoots(2)
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       ELSE IF( rInterval == 3 ) THEN
@@ -1536,7 +1536,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = rHalfLength
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       END IF
@@ -1548,7 +1548,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = cRoots(1)
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       ELSE IF( rInterval == 2 ) THEN
@@ -1558,7 +1558,7 @@ IF( Alpha > 0.D0 ) THEN
         Lambda(3) = rHalfLength
         Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
         &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-        IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+        IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
           CYCLE RootFindingIntervals
         END IF
       END IF
@@ -1569,7 +1569,7 @@ IF( Alpha > 0.D0 ) THEN
       Lambda(3) = MINVAL( cRoots )
       Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
       &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-      IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+      IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
         CYCLE RootFindingIntervals
       END IF
     ELSE IF( nIntervals == 1 .AND. MAXVAL( cRoots ) <= - rHalfLength ) THEN
@@ -1579,7 +1579,7 @@ IF( Alpha > 0.D0 ) THEN
       Lambda(3) = rHalfLength
       Func(3)   = ( cQuartic(1) * Lambda(3) * Lambda(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(2) * Lambda(3) * Lambda(3) * &
       &           Lambda(3) ) + ( cQuartic(3) * Lambda(3) * Lambda(3) ) + ( cQuartic(4) * Lambda(3) ) + cQuartic(5)
-      IF( ( Func(2) * Func(3) ) >= 0.D0 ) THEN
+      IF( ( Func(2) * Func(3) ) > 0.D0 ) THEN
         CYCLE RootFindingIntervals
       END IF
     END IF
@@ -1595,7 +1595,7 @@ IF( Alpha > 0.D0 ) THEN
     LambdaD          = 0.D0    ! Third-to-last root guess
 
     ! Brent's condition
-    IF( ( Func(2) * Func(3) ) < 0.D0 ) THEN
+    IF( ( Func(2) * Func(3) ) <= 0.D0 ) THEN
       ! Swap condition
       IF( DABS( Func(2) ) < DABS( Func(3) ) ) THEN
         ! Swap bounds
