@@ -1899,9 +1899,9 @@ ELSE IF( csSquaredVectorDistanceOrthogonal <= HalfDiameter(1) * HalfDiameter(1) 
 ELSE
   DO dDisk = 1, 2
     ! Vector distance between a disk of the cylinder and the center of mass of the sphere
-    dsVectorDistance(1) = cDiskPosition(dDisk,1) - sPosition(1)
-    dsVectorDistance(2) = cDiskPosition(dDisk,2) - sPosition(2)
-    dsVectorDistance(3) = cDiskPosition(dDisk,3) - sPosition(3)
+    dsVectorDistance(1) = sPosition(1) - cDiskPosition(dDisk,1)
+    dsVectorDistance(2) = sPosition(2) - cDiskPosition(dDisk,2)
+    dsVectorDistance(3) = sPosition(3) - cDiskPosition(dDisk,3)
     ! Magnitude of the vector distance between the centers of mass of a disk and a sphere
     dsSquaredVectorDistance = DOT_PRODUCT( dsVectorDistance, dsVectorDistance )
     ! Non-overlapping condition (circumscribing spheres)
@@ -1918,29 +1918,9 @@ ELSE
       dClosestPoint(3) = cDiskPosition(dDisk,3) + HalfDiameter(1) * DCOS( Phi ) * cOrientationX(3) + &
       &                  HalfDiameter(1) * DSIN( Phi ) * cOrientationY(3)
       ! Distance between point of closest approach in the circumference of the disk and center of sphere
-      dsClosestDistance(1) = dClosestPoint(1) - sPosition(1)
-      dsClosestDistance(2) = dClosestPoint(2) - sPosition(2)
-      dsClosestDistance(3) = dClosestPoint(3) - sPosition(3)
-      ! Distance between point of closest approach in the circumference of the disk and center of sphere (squared)
-      dsSquaredClosestDistance = DOT_PRODUCT( dsClosestDistance, dsClosestDistance )
-      ! Overlap condition (point on the circumference of the disk inside the sphere)
-      IF( dsSquaredClosestDistance <= HalfDiameter(2) * HalfDiameter(2) ) THEN
-        OverlapCYLSPH = .TRUE.
-        RETURN ! Return immediately
-      END IF
-      ! Angle (derivative of the distance function with respect to φ)
-      Phi = Phi + cPi
-      ! Point on the circumference of the disk that is closest to the center of the sphere
-      dClosestPoint(1) = cDiskPosition(dDisk,1) + HalfDiameter(1) * DCOS( Phi ) * cOrientationX(1) + &
-      &                  HalfDiameter(1) * DSIN( Phi ) * cOrientationY(1)
-      dClosestPoint(2) = cDiskPosition(dDisk,2) + HalfDiameter(1) * DCOS( Phi ) * cOrientationX(2) + &
-      &                  HalfDiameter(1) * DSIN( Phi ) * cOrientationY(2)
-      dClosestPoint(3) = cDiskPosition(dDisk,3) + HalfDiameter(1) * DCOS( Phi ) * cOrientationX(3) + &
-      &                  HalfDiameter(1) * DSIN( Phi ) * cOrientationY(3)
-      ! Distance between point of closest approach in the circumference of the disk and center of sphere
-      dsClosestDistance(1) = dClosestPoint(1) - sPosition(1)
-      dsClosestDistance(2) = dClosestPoint(2) - sPosition(2)
-      dsClosestDistance(3) = dClosestPoint(3) - sPosition(3)
+      dsClosestDistance(1) = sPosition(1) - dClosestPoint(1)
+      dsClosestDistance(2) = sPosition(2) - dClosestPoint(2)
+      dsClosestDistance(3) = sPosition(3) - dClosestPoint(3)
       ! Distance between point of closest approach in the circumference of the disk and center of sphere (squared)
       dsSquaredClosestDistance = DOT_PRODUCT( dsClosestDistance, dsClosestDistance )
       ! Overlap condition (point on the circumference of the disk inside the sphere)
@@ -1951,16 +1931,6 @@ ELSE
     END IF
   END DO
 END IF
-
-! *********************************************************************************************** !
-! -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*  IMPORTANT NOTES  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* !
-! *********************************************************************************************** !
-! The roots of the derivative of the distance function allow you to calculate the critical points !
-! of the distance function, including minimum and maximum points. The root found by taking the    !
-! arctangent of the derivative will not necessarily be the minimum we want to find. However, we   !
-! know that the minima and maxima of a periodic function (distance function) whose argument is φ  !
-! will be out of phase by π radians. Therefore, we must test both points: φ and φ + π (or φ - π). !
-! *********************************************************************************************** !
 
 ! No overlaps
 RETURN
