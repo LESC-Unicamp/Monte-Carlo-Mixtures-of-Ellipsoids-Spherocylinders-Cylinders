@@ -7,7 +7,7 @@
 !  The algorithm of Lopes et al. (J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti, 2021) !
 !         is used to search for molecular overlaps between cylinders after a trial move.          !
 !                                                                                                 !
-! Version number: 1.4.0                                                                           !
+! Version number: 1.3.1                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -15,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                         May 15th, 2024                                          !
+!                                       February 9th, 2024                                        !
 ! ############################################################################################### !
 ! Main References:                 J. W. Perram, M. S. Wertheim                                   !
 !                               J. Comput. Phys 15, 409-416 (1985)                                !
@@ -139,14 +139,14 @@ REAL( Kind= Real64 ), DIMENSION( : ), ALLOCATABLE    :: rFreeEnergyDeviation    
 REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: PositionSaveMC                           ! Old position of particles
 
 ! *********************************************************************************************** !
-! CHARACTER STRINGS (ALLOCATABLE)                                                                 !
+! CHARACTER STRINGS                                                                               !
 ! *********************************************************************************************** !
-CHARACTER( LEN= 02 ) :: VolumeType             ! Expansion/Compression type
-CHARACTER( LEN= 32 ) :: FormatHour             ! String format for output file
-CHARACTER( LEN= 32 ) :: FormatDate             ! String format for output folder
-CHARACTER( LEN= 14 ) :: DescriptorBackupFile   ! Descriptor for output file
-CHARACTER( LEN= 20 ) :: DescriptorBackupString ! Descriptor for backup variable
-CHARACTER( LEN= 20 ) :: DescriptorString       ! Descriptor for strings
+CHARACTER( LEN= 02 )  :: VolumeType             ! Expansion/Compression type
+CHARACTER( LEN= 32 )  :: FormatHour             ! String format for output file
+CHARACTER( LEN= 32 )  :: FormatDate             ! String format for output folder
+CHARACTER( LEN= 14 )  :: DescriptorBackupFile   ! Descriptor for output file
+CHARACTER( LEN= 20 )  :: DescriptorBackupString ! Descriptor for backup variable
+CHARACTER( LEN= 140 ) :: DescriptorString       ! Descriptor for strings
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -1290,7 +1290,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         IF( EnsembleMC == "NPT" ) THEN
           IF( iCycle > LastLine(3) ) THEN
             WRITE( 50, "(9G0)" ) iCycle, ",", Ratio, ",", MaxIsoVolumetricDisplacement, ",", AcceptanceRatioIsoVolumeChange, &
-            &                    ",", "IS"
+            &                    ",", VolumeType
             FLUSH( 50 )
           END IF
         END IF
@@ -1317,7 +1317,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         IF( EnsembleMC == "NPT" ) THEN
           IF( iCycle > LastLine(3) ) THEN
             WRITE( 50, "(9G0)" ) iCycle, ",", Ratio, ",", MaxAnisoVolumetricDisplacement, ",", AcceptanceRatioAnisoVolumeChange, &
-            &                    ",", "AN"
+            &                    ",", VolumeType
             FLUSH( 50 )
           END IF
         END IF
@@ -1342,21 +1342,26 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
   IF( TrajectoryLogical ) THEN
     IF( MOD ( iCycle, nSavingFrequency ) == 0 ) THEN
       WRITE( 20, "(G0)" ) nParticles
-      WRITE( 20, * ) " "
+      ! Descriptor string
+      DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
+      WRITE( 20, DescriptorString ) 'Lattice="', BoxLengthMC(1:9), '" Origin="', -0.5D0 * ( BoxLengthMC(1) + BoxLengthMC(4) + &
+      &                             BoxLengthMC(7) ), -0.5D0 * ( BoxLengthMC(2) + BoxLengthMC(5) + BoxLengthMC(8) ), -0.5D0 * &
+      &                             ( BoxLengthMC(3) + BoxLengthMC(6) + BoxLengthMC(9) ), '" ', &
+      &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
       IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
         DO cComponent = 1, nComponents
           IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
             DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
               WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
-              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
-              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(1,pParticle), pQuaternionMC(2,pParticle), &
+              &                          pQuaternionMC(3,pParticle), pQuaternionMC(0,pParticle), 0.5D0 * cDiameter(cComponent), &
               &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cLength(cComponent)
             END DO
           ELSE
             DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
               WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
-              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
-              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(1,pParticle), pQuaternionMC(2,pParticle), &
+              &                          pQuaternionMC(3,pParticle), pQuaternionMC(0,pParticle), 0.5D0 * cDiameter(cComponent), &
               &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
             END DO
           END IF
@@ -1366,15 +1371,15 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
           IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
             DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
               WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
-              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
-              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(1,pParticle), pQuaternionMC(2,pParticle), &
+              &                          pQuaternionMC(3,pParticle), pQuaternionMC(0,pParticle), 0.5D0 * cDiameter(cComponent), &
               &                          0.5D0 * cDiameter(cComponent), cLength(cComponent)
             END DO
           ELSE
             DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
               WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
-              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
-              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(1,pParticle), pQuaternionMC(2,pParticle), &
+              &                          pQuaternionMC(3,pParticle), pQuaternionMC(0,pParticle), 0.5D0 * cDiameter(cComponent), &
               &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
             END DO
           END IF
@@ -1384,15 +1389,15 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
           IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
             DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
               WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
-              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
-              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(1,pParticle), pQuaternionMC(2,pParticle), &
+              &                          pQuaternionMC(3,pParticle), pQuaternionMC(0,pParticle), 0.5D0 * cDiameter(cComponent), &
               &                          0.5D0 * cDiameter(cComponent), cLength(cComponent)
             END DO
           ELSE
             DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
               WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPositionMC(1,pParticle), pPositionMC(2,pParticle), &
-              &                          pPositionMC(3,pParticle), pQuaternionMC(0,pParticle), pQuaternionMC(1,pParticle), &
-              &                          pQuaternionMC(2,pParticle), pQuaternionMC(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+              &                          pPositionMC(3,pParticle), pQuaternionMC(1,pParticle), pQuaternionMC(2,pParticle), &
+              &                          pQuaternionMC(3,pParticle), pQuaternionMC(0,pParticle), 0.5D0 * cDiameter(cComponent), &
               &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
             END DO
           END IF

@@ -45,6 +45,11 @@ INTEGER( Kind= Int64 )                 :: LastLineTemp ! Last line of a file (te
 INTEGER( Kind= Int64 ), DIMENSION( 3 ) :: LastLine     ! Last line of a file
 
 ! *********************************************************************************************** !
+! CHARACTER STRINGS                                                                               !
+! *********************************************************************************************** !
+CHARACTER( LEN= 140 ) :: DescriptorString ! Descriptor for strings
+
+! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
 LOGICAL :: FileExist ! Checks whether a file exists or not
@@ -91,21 +96,26 @@ IF( TrajectoryLogical ) THEN
   END IF
   IF( .NOT. FileExist ) THEN
     WRITE( 20, "(G0)" ) nParticles
-    WRITE( 20, * ) " "
+    ! Descriptor string
+    DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
+    WRITE( 20, DescriptorString ) 'Lattice="', BoxLength(1:9), '" Origin="', -0.5D0 * ( BoxLength(1) + BoxLength(4) + &
+    &                             BoxLength(7) ), -0.5D0 * ( BoxLength(2) + BoxLength(5) + BoxLength(8) ), -0.5D0 * &
+    &                             ( BoxLength(3) + BoxLength(6) + BoxLength(9) ), '" ', &
+    &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
     IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
             WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), &
-            &                          pPosition(3,pParticle), pQuaternion(0,pParticle), pQuaternion(1,pParticle), &
-            &                          pQuaternion(2,pParticle), pQuaternion(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+            &                          pPosition(3,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
+            &                          pQuaternion(3,pParticle), pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), &
             &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cLength(cComponent)
           END DO
         ELSE
           DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
             WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), &
-            &                          pPosition(3,pParticle), pQuaternion(0,pParticle), pQuaternion(1,pParticle), &
-            &                          pQuaternion(2,pParticle), pQuaternion(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+            &                          pPosition(3,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
+            &                          pQuaternion(3,pParticle), pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), &
             &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
           END DO
         END IF
@@ -115,15 +125,15 @@ IF( TrajectoryLogical ) THEN
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
             WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), &
-            &                          pPosition(3,pParticle), pQuaternion(0,pParticle), pQuaternion(1,pParticle), &
-            &                          pQuaternion(2,pParticle), pQuaternion(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+            &                          pPosition(3,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
+            &                          pQuaternion(3,pParticle), pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), &
             &                          0.5D0 * cDiameter(cComponent), cLength(cComponent)
           END DO
         ELSE
           DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
             WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), &
-            &                          pPosition(3,pParticle), pQuaternion(0,pParticle), pQuaternion(1,pParticle), &
-            &                          pQuaternion(2,pParticle), pQuaternion(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+            &                          pPosition(3,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
+            &                          pQuaternion(3,pParticle), pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), &
             &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
           END DO
         END IF
@@ -133,15 +143,15 @@ IF( TrajectoryLogical ) THEN
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
             WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), &
-            &                          pPosition(3,pParticle), pQuaternion(0,pParticle), pQuaternion(1,pParticle), &
-            &                          pQuaternion(2,pParticle), pQuaternion(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+            &                          pPosition(3,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
+            &                          pQuaternion(3,pParticle), pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), &
             &                          0.5D0 * cDiameter(cComponent), cLength(cComponent)
           END DO
         ELSE
           DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
             WRITE( 20, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), &
-            &                          pPosition(3,pParticle), pQuaternion(0,pParticle), pQuaternion(1,pParticle), &
-            &                          pQuaternion(2,pParticle), pQuaternion(3,pParticle), 0.5D0 * cDiameter(cComponent), &
+            &                          pPosition(3,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
+            &                          pQuaternion(3,pParticle), pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), &
             &                          0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent)
           END DO
         END IF
