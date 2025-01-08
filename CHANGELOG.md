@@ -8,7 +8,8 @@ Luís Fernando Mercier Franco<br></p>
 
 **Version 1.4.0**
 
-- Added compatibility with OpenMP API (parallelization).
+- Added compatibility with OpenMP API (parallelization);
+- Enhanced trajectory file handling: Box dimensions (cubic and noncubic) and particle properties are now correctly written to .xyz files, ensuring proper readability by OVITO.
 
 **Version 1.3.1**
 
