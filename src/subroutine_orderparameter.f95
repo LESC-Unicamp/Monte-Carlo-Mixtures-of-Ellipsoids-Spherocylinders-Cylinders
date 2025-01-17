@@ -58,7 +58,7 @@ REAL( Kind= Real64 )                             :: HQ                  ! One-ha
 REAL( Kind= Real64 )                             :: P                   ! Sum of squares of elements of a matrix
 REAL( Kind= Real64 )                             :: Phi                 ! Angle
 REAL( Kind= Real64 )                             :: TestCondition       ! Condition for real eigenvalues
-REAL( Kind= Real64 ), DIMENSION( 3 )             :: Eigenvector         ! Eigenvector of the order tensor Q
+REAL( Kind= Real64 ), DIMENSION( 3 )             :: Eigenvalues         ! Eigenvalues of the order tensor Q
 REAL( Kind= Real64 ), DIMENSION( 3, 3 )          :: pTensorQ            ! Order tensor Q of particle i (3 x 3 Matrix)
 REAL( Kind= Real64 ), DIMENSION( 3, 3 )          :: TensorQ             ! Order tensor Q of particle i (Average)
 REAL( Kind= Real64 ), DIMENSION( 3, nParticles ) :: pCurrentOrientation ! Order tensor Q of particle i (Average)
@@ -127,13 +127,13 @@ ELSE
   Phi = 0.D0
 END IF
 
-! Eigenvector of Q (phase director)
-Eigenvector(1) = M + ( 2.D0 * DSQRT( P ) * DCOS( Phi ) )
-Eigenvector(2) = M - DSQRT( P ) * ( DCOS( Phi ) + ( DSQRT( 3.D0 ) * DSIN( Phi ) ) )
-Eigenvector(3) = M - DSQRT( P ) * ( DCOS( Phi ) - ( DSQRT( 3.D0 ) * DSIN( Phi ) ) )
+! Eigenvalues of Q
+Eigenvalues(1) = M + ( 2.D0 * DSQRT( P ) * DCOS( Phi ) )
+Eigenvalues(2) = M - DSQRT( P ) * ( DCOS( Phi ) + ( DSQRT( 3.D0 ) * DSIN( Phi ) ) )
+Eigenvalues(3) = M - DSQRT( P ) * ( DCOS( Phi ) - ( DSQRT( 3.D0 ) * DSIN( Phi ) ) )
 
 ! Nematic order parameter
-OrderParameterS2 = MAXVAL( Eigenvector ) ! Largest eigenvalue
+OrderParameterS2 = MAXVAL( Eigenvalues ) ! Largest eigenvalue
 
 RETURN
 
