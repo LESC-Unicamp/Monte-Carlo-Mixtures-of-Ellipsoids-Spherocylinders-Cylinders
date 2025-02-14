@@ -89,6 +89,42 @@ RETURN
 END SUBROUTINE ActiveTransformation
 
 ! *********************************************************************************************** !
+!              This subroutine rotates a vector using Hamilton's quaternion product.              !
+! *********************************************************************************************** !
+SUBROUTINE VectorRotation( RotationQuaternion, PointVector, RotatedVector )
+
+! Uses one module: global variables
+USE GlobalVar
+
+IMPLICIT NONE
+
+! *********************************************************************************************** !
+! REAL VARIABLES                                                                                  !
+! *********************************************************************************************** !
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: PointVector         ! Point vector [XYZ]
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: RotatedVector       ! Rotated vector [XYZ]
+REAL( Kind= Real64 ), DIMENSION( 0:3 ) :: RotationQuaternion  ! Rotation quaternion [WXYZ]
+REAL( Kind= Real64 ), DIMENSION( 0:3 ) :: ConjugateQuaternion ! Conjugate quaternion [WXYZ]
+REAL( Kind= Real64 ), DIMENSION( 0:3 ) :: RotatedQuaternion   ! Rotated quaternion [WXYZ]
+REAL( Kind= Real64 ), DIMENSION( 0:3 ) :: TempQuaternion      ! Temporary quaternion [WXYZ]
+
+! Multiplication of quaternions to find the rotated quaternion
+CALL QuaternionMultiplication( RotationQuaternion, [ 0.D0, PointVector ], TempQuaternion )
+
+! Conjugate quaternion
+ConjugateQuaternion = [ RotationQuaternion(0), -RotationQuaternion(1), -RotationQuaternion(2), -RotationQuaternion(3) ]
+
+! Multiplication of the rotated quaternion and the conjugate of the rotation quaternion to find the rotated vector
+CALL QuaternionMultiplication( TempQuaternion, ConjugateQuaternion, RotatedQuaternion )
+
+! Rotated vector
+RotatedVector(1:3) = RotatedQuaternion(1:3)
+
+RETURN
+
+END SUBROUTINE VectorRotation
+
+! *********************************************************************************************** !
 !        This subroutine takes a rotation quaternion (qm) and combines it with a randomly         !
 !        generated quaternion (qr) through quaternion multiplication, creating a randomly         !
 !                                composed rotation quaternion (qn)                                !
