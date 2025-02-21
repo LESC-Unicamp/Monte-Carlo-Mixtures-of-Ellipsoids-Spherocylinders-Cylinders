@@ -91,7 +91,7 @@ END SUBROUTINE ActiveTransformation
 ! *********************************************************************************************** !
 !              This subroutine rotates a vector using Hamilton's quaternion product.              !
 ! *********************************************************************************************** !
-SUBROUTINE VectorRotation( RotationQuaternion, PointVector, RotatedVector )
+SUBROUTINE VectorRotation( PointVector, RotationQuaternion, RotatedVector )
 
 ! Uses one module: global variables
 USE GlobalVar
