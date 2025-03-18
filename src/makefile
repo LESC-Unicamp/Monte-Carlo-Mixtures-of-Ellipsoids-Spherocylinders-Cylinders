@@ -4,39 +4,35 @@
 FC= gfortran
 
 # Executable name
-EXEC_NAME= mc_mixtures_standard.out
+EXEC_NAME= mc_floppy_box.out
 
 # Executable path
 EXEC_PATH= ../bin
 
 # Compiler flags
-F95FLAGS= -cpp -c -O3 -ffast-math -funroll-loops -march=native
+F95FLAGS= -c -O3 -ffast-math -funroll-loops
 
 # Object names
 OBJS= module_global_variables.o \
-	module_folders.o \
-	module_forcefields.o \
 	module_variable_initialization.o \
-	module_linked_lists.o \
+	module_folders.o \
 	module_overlap_algorithm.o \
 	module_overlapcheck.o \
 	module_initial_configuration.o \
-	module_potentialenergy.o \
-	subroutine_blockaverage.o \
-	subroutine_latticereduction.o \
-	subroutine_quaternionoperations.o \
-	subroutine_randomquaterniongen.o \
 	subroutine_randomnumbergen.o \
-	subroutine_orderparameter.o \
-	subroutine_boxrotation.o \
-	subroutine_general.o \
+	subroutine_quaternionrotation.o \
 	subroutine_matrixvectoroperation.o \
-	subroutine_simulationlog.o \
+	subroutine_latticereduction.o \
+	subroutine_general.o \
 	subroutine_filehandler.o \
-	main.o \
+	subroutine_boxrotation.o \
+	subroutines_imagelist.o \
+	subroutine_nonconvex_particles.o \
+	subroutine_orderparameter.o \
+	program.o \
 
 # Compiling rule
-%.o: %.f95
+%o: %f95
 	${FC} ${F95FLAGS} $<
 
 # Compiling function
@@ -45,4 +41,4 @@ exe: $(OBJS)
 
 # Clean
 clean:
-	rm -fr *.o *.mod *.ini $(EXEC_PATH)/*.out
+	rm -fr *.o *.mod $(EXEC_PATH)/*.out
