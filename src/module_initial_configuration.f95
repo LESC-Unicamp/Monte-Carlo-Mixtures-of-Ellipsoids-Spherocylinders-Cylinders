@@ -1364,14 +1364,14 @@ HitAndMissNVT: DO
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
@@ -1382,14 +1382,14 @@ HitAndMissNVT: DO
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
@@ -1400,14 +1400,14 @@ HitAndMissNVT: DO
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
@@ -1443,14 +1443,14 @@ IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
@@ -1461,14 +1461,14 @@ ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
@@ -1479,14 +1479,14 @@ ELSE IF( GeometryType(3) ) THEN ! Cylinders
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
@@ -2047,14 +2047,14 @@ SimulationNPT: DO
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
@@ -2065,14 +2065,14 @@ SimulationNPT: DO
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
@@ -2083,14 +2083,14 @@ SimulationNPT: DO
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+          WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
           &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
           &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
@@ -2114,14 +2114,14 @@ IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
@@ -2132,14 +2132,14 @@ ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
@@ -2150,14 +2150,14 @@ ELSE IF( GeometryType(3) ) THEN ! Cylinders
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+        WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
         &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
         &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
@@ -2250,14 +2250,14 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
@@ -2268,14 +2268,14 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
@@ -2286,14 +2286,14 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
