@@ -309,7 +309,7 @@ where <code>X</code> is the number of threads.
 | Maximum number of blocks | <code>max_blocks</code> | <b>Block-average parameter</b>:<br>Used to define the maximum number of blocks to compute the statistical inefficiency of a dataset | Any positive <code>INTEGER</code> number greater than the minimum number of blocks |
 
 <p align="justify">
-  <sup>¹For the spherical square-well (SW) potential, this means a spherical attractive region of diameter &lambda;&sigma;. For the anisotropic square-well (ASW) potential, this means a anisotropic region circumscribing the particle and with the same geometry of it; the size parameters of the anisotropic attractive region will be D+&lambda;&sigma; and L+&lambda;&sigma;, where D is the diameter and L is the length</sup><br>
+  <sup>¹For the spherical square-well (SW) potential, this corresponds to a spherical attractive region with diameter &lambda;D. For the anisotropic square-well (ASW) potential, this corresponds to an anisotropic attractive region circumscribing the particle and sharing its geometry. The size parameters of the anisotropic attractive region are D+&lambda;D and L+&lambda;D, where D is the particle diameter and L is its length.</sup><br>
   <sup>²T<sup>*</sup> = (k<sub>B</sub>T)/&varepsilon;, where <i>T</i> is the absolute temperature in Kelvin, <i>k<sub>B</sub></i> is the Boltzmann constant, and <i>&varepsilon;</i> is the well depth of the potential.</sup>
 </p>
 
