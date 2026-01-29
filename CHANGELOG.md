@@ -1,16 +1,26 @@
 # <p align="center">NPT/NVT-Monte Carlo Simulation of Mixtures of <br>Anisomorphic Hard Convex Bodies: <br>Ellipsoids of revolution, Spherocylinders, and Cylinders</p>
-<p align="right"><b><sub>Version: 1.3.1</sub></b></p>
+<p align="right"><b><sub>Version: 2.0.0</sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
 Nathan Barros de Souza<br>
 Luís Fernando Mercier Franco<br></p>
 
+**Version 2.0.0**
+
+- Included the Anisotropic Square-Well (ASW) potential, where the attractive field outlines the particle geometry;
+
+- Added routine 'NematicPhaseDirector' to calculate the phase director of the nematic phase;
+
+- Fixed trajectory printing during creation of the random configuration;
+
+- Removed 'Packed Box' routine altogether.
+
 **Version 1.3.1**
 
 - Improved readability and performance of the code;
 
-- The intermolecular potentials can now be applied to the reference system.
+- The intermolecular potentials can now be applied to the reference system;
 
 - Added compatibility with OpenMP API (parallelization);
 

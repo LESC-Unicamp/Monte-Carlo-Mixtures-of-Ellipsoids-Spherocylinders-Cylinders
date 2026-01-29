@@ -31,7 +31,7 @@
                         |  ██████/  | ██ \  ██   /██████  |  ██████/  | ██  | ██  | ██ \/  | ██  | ██
                          \______/   |__/  \__/  |______/   \______/   |__/  |__/  |__/     |__/  |__/
 ```
-<p align="right"><b><sub><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/CHANGELOG.md">Version: 1.3.1</a></sub></b></p>
+<p align="right"><b><sub><a href="https://github.com/LESC-Unicamp/Monte-Carlo-Mixtures-of-Ellipsoids-Spherocylinders-Cylinders/blob/main/CHANGELOG.md">Version: 2.0.0</a></sub></b></p>
 
 <p align="center"><b>Authors</b></p>
 <p align="center">
@@ -62,7 +62,7 @@ The authors make no warranties about the use of this software. The authors hold 
 
 ## <a name="overview"></a>Overview
 <p align="justify">
-  This NVT/NPT-Monte Carlo algorithm was designed to evaluate the thermodynamic behavior of mixtures of anisomorphic hard convex bodies (HCB), namely: ellipsoids of revolution (EOR), spherocylinders (SPC), and cylinders (CYL). Here, the HCB interact either through a spherical square well potential (<b>Version 1.3.1</b>) or a purely repulsive hard-core potential, which means that a single check of overlapping configurations is sufficient to validate a random trial move. It is also possible to select a force field to account for the attractive interactions in the perturbed system (<i>NVT</i> only), but they do not affect the probability distribution function of accepting random trial moves. To search for overlapping configurations, different methods were applied depending on the molecular geometry: for mixtures of anisomorphic EOR particles, the Perram-Wertheim (PW) method (<a href="https://doi.org/10.1016/0021-9991(85)90171-8"><b>J. Comput. Phys.</b>, 58, 409-416, 1985</a>) is used; for mixtures of anisomorphic SPC particles, the Vega-Lago (VL) method (<a href="https://doi.org/10.1016/0097-8485(94)80023-5"><b>Comput. Chem.</b>, 18, 55-59, 1994</a>) is used; and for mixtures of CYL particles, a modified version of Lopes <i>et al.</i> (mLCYL) algorithm (<a href="https://doi.org/10.1063/5.0040942"><b>J. Chem. Phys.</b>, 154, 104902, 2021</a>) is used. We have also implemented a new algorithm to search for overlaps between cylinders and spheres.
+  This NVT/NPT-Monte Carlo algorithm was designed to evaluate the thermodynamic behavior of mixtures of anisomorphic hard convex bodies (HCB), namely: ellipsoids of revolution (EOR), spherocylinders (SPC), and cylinders (CYL). Here, the HCB interact either through a spherical square-well potential (<b>Version 1.3.1</b>), anisotropic square-well potential (<b>Version 2.0.0</b>), or a purely repulsive hard-core potential. The latter means that a single check of overlapping configurations is sufficient to validate a random trial move. It is also possible to select a force field to account for the attractive interactions in the perturbed system (<i>NVT</i> only), but they do not affect the probability distribution function of accepting random trial moves. To search for overlapping configurations, different methods were applied depending on the molecular geometry: for mixtures of anisomorphic EOR particles, the Perram-Wertheim (PW) method (<a href="https://doi.org/10.1016/0021-9991(85)90171-8"><b>J. Comput. Phys.</b>, 58, 409-416, 1985</a>) is used; for mixtures of anisomorphic SPC particles, the Vega-Lago (VL) method (<a href="https://doi.org/10.1016/0097-8485(94)80023-5"><b>Comput. Chem.</b>, 18, 55-59, 1994</a>) is used; and for mixtures of CYL particles, a modified version of Lopes <i>et al.</i> (mLCYL) algorithm (<a href="https://doi.org/10.1063/5.0040942"><b>J. Chem. Phys.</b>, 154, 104902, 2021</a>) is used. We have also implemented a new algorithm to search for overlaps between cylinders and spheres.
 </p>
 
 <p align="justify">
@@ -122,10 +122,12 @@ The following features are supported in the current version:
 
 5. Force Fields
     - Spherical Square Well (both perturbed and reference system*)
+    - Anisotropic Square Well (both perturbed and reference system**)
 
 6. Cell Lists
 
 <sub>*<b>Version 1.3.1</b>.</sub>
+<sub>*<b>Version 2.0.0</b>.</sub>
 
 ## <a name="language"></a>Language
 <p align="justify">
@@ -233,8 +235,8 @@ where <code>X</code> is the number of threads.
 | Random number generator | <code>random_number_generator</code> | Used to select the pseudorandom number generator | <ul><li><code>FORTRAN</code> for the standard Fortran generator</li><li><code>BITWISE</code> for a generator based on bitwise operations</li></ul> |
 | Backup control | <code>backup_file</code> | Used to specify whether a backup file will be generated every <code>saving_frequency</code> cycles | <ul><li><code>Y</code> to generate a backup file</li><li><code>N</code> to NOT generate a backup file</li></ul> |
 | Restore backup | <code>restore_backup</code> | Used to restore data from previous, unfinished simulations | <ul><li><code>Y</code> to restore data from a previous simulation</li><li><code>N</code> to use current simulation data</li></ul> |
-| Potential type<br> (perturbed system) | <code>perturbed_potential_type</code> | Used to control the type of potential applied in the perturbed system | <ul><li><code>HARDCORE</code> for a purely repulsive hard-core potential</li><li><code>SQUAREWELL</code> for a spherically symmetric square-well potential</li></ul> |
-| Potential type<br> (reference system) | <code>full_potential_type</code> | Used to control the type of potential applied in the reference system | <ul><li><code>HARDCORE</code> for a purely repulsive hard-core potential</li><li><code>SQUAREWELL</code> for a spherically symmetric square-well potential</li></ul> |
+| Potential type<br> (perturbed system) | <code>perturbed_potential_type</code> | Used to control the type of potential applied in the perturbed system | <ul><li><code>HARDCORE</code> for a purely repulsive hard-core potential</li><li><code>SQUAREWELL</code> for a spherically symmetric square-well potential</li><li><code>ANISOSW</code> for a anisotropic square-well potential</li></ul> |
+| Potential type<br> (reference system) | <code>full_potential_type</code> | Used to control the type of potential applied in the reference system | <ul><li><code>HARDCORE</code> for a purely repulsive hard-core potential</li><li><code>SQUAREWELL</code> for a spherically symmetric square-well potential</li><li><code>ANISOSW</code> for a anisotropic square-well potential</li></ul> |
 | Cell lists | <code>cell_lists</code> | Used to improve the simulation performance by considering neighbour cell lists instead of considering the whole system | <ul><li><code>.TRUE.</code> to use cell lists</li><li><code>.FALSE.</code> to NOT use cell lists</li></ul> |
 | Potential energy printing | <code>potential_production_only</code> | Used to specify whether the potential energy data will be written out during the whole <i>NVT</i>-simulation or only for production-related cycles | <ul><li><code>Y</code> to write out the potential data only for production-related cycles</li><li><code>N</code> to write out the potential data for both equilibration- and production-related cycles</li></ul> |
 | TPT¹ coefficients printing | <code>coefficients_calculation</code> | Used to specify whether the first- and second-order coefficients of a high-temperature expansion of the Helmholtz free energy will be calculated or not<br>(<i>NVT</i>-simulation only) | <ul><li><code>Y</code> to compute the perturbation coefficients, including the full Helmholtz free energy of the perturbed system</li><li><code>N</code> to skip the computation of the perturbation coefficients</li></ul> |
@@ -301,14 +303,15 @@ where <code>X</code> is the number of threads.
 
 | Name<br> ________________________ | String Name<br> _______________________ | Definition<br> _________________________________ | Options<br> _______________________________________ |
 |:---:|:---:| --- | --- 
-| Attrative range points<br><i>Square-well potential</i> | <code>lambda_points</code> | Used to define the number of attractive range points for which the potential will be computed | Any positive, non-zero <code>INTEGER</code> number |
-| Attrative range values<br><i>Square-well potential</i> | <code>lambda_values</code> | Used to define the attractive range of the potential | Any positive <code>FLOAT</code> number greater than 1|
-| Reduced temperature¹ | <code>reduced_temperature</code> | Used to define the reduced temperature of the system | Any positive, non-zero <code>FLOAT</code> number |
+| Attrative range points<br><i>ASW/SW potential</i> | <code>lambda_points</code> | Used to define the number of attractive range points for which the potential will be computed | Any positive, non-zero <code>INTEGER</code> number |
+| Attrative range values¹<br><i>ASW/SW potential</i> | <code>lambda_values</code> | Used to define the attractive range of the potential | Any positive <code>FLOAT</code> number greater than 1|
+| Reduced temperature² | <code>reduced_temperature</code> | Used to define the reduced temperature of the system | Any positive, non-zero <code>FLOAT</code> number |
 | Minimum number of blocks | <code>min_blocks</code> | <b>Block-average parameter</b>:<br>Used to define the minimum number of blocks to compute the statistical inefficiency of a dataset | Any positive, non-zero <code>INTEGER</code> number |
 | Maximum number of blocks | <code>max_blocks</code> | <b>Block-average parameter</b>:<br>Used to define the maximum number of blocks to compute the statistical inefficiency of a dataset | Any positive <code>INTEGER</code> number greater than the minimum number of blocks |
 
 <p align="justify">
-  <sup>¹T<sup>*</sup> = (k<sub>B</sub>T)/&varepsilon;, where <i>T</i> is the absolute temperature in Kelvin, <i>k<sub>B</sub></i> is the Boltzmann constant, and <i>&varepsilon;</i> is the well depth of the potential.</sup>
+  <sup>¹For the spherical square-well (SW) potential, this means a spherical attractive region of diameter &lambda;&sigma;. For the anisotropic square-well (ASW) potential, this means a anisotropic region circumscribing the particle and with the same geometry of it; the size parameters of the anisotropic attractive region will be D+&lambda;&sigma; and L+&lambda;&sigma;, where D is the diameter and L is the length</sup>
+  <sup>²T<sup>*</sup> = (k<sub>B</sub>T)/&varepsilon;, where <i>T</i> is the absolute temperature in Kelvin, <i>k<sub>B</sub></i> is the Boltzmann constant, and <i>&varepsilon;</i> is the well depth of the potential.</sup>
 </p>
 
 <p align="justify">
