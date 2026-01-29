@@ -3,7 +3,7 @@
 !                   This code contains all subroutines used in the main program                   !
 !                  to eliminate any undesirable rotations of the simulation box.                  !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Recommended Reference:  V. Del Tatto, P. Raiteri, M. Bernetti, G. Bussi                         !
 !                         Journal of Applied Sciences, 12(3), 1139 (2022)                         !
@@ -97,16 +97,16 @@ RotationQuaternion(3) = DSIN( ThetaAngle * 0.5D0 ) * RotationAxis(3) ! Imaginary
 ! Make box x-vector parallel to the x-axis of the coordinate system
 IF( DABS( RotationAxisMagnitude - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
   ! Rotated x-vector
-  CALL ActiveTransformation( BoxVectorX / ( DSQRT( DOT_PRODUCT( BoxVectorX, BoxVectorX ) ) ), RotationQuaternion, RotatedVector )
+  CALL VectorRotation( BoxVectorX / ( DSQRT( DOT_PRODUCT( BoxVectorX, BoxVectorX ) ) ), RotationQuaternion, RotatedVector )
   ! New x-vector of the simulation box
   BoxLengthBoxRotation(1:3) = DSQRT( DOT_PRODUCT( BoxLengthMC(1:3), BoxLengthMC(1:3) ) ) * RotatedVector
   BoxLengthBoxRotation(2:3) = 0.D0
   ! Rotated y-vector
-  CALL ActiveTransformation( BoxVectorY / ( DSQRT( DOT_PRODUCT( BoxVectorY, BoxVectorY ) ) ), RotationQuaternion, RotatedVector )
+  CALL VectorRotation( BoxVectorY / ( DSQRT( DOT_PRODUCT( BoxVectorY, BoxVectorY ) ) ), RotationQuaternion, RotatedVector )
   ! New y-vector of the simulation box
   BoxLengthBoxRotation(4:6) = DSQRT( DOT_PRODUCT( BoxLengthMC(4:6), BoxLengthMC(4:6) ) ) * RotatedVector
   ! Rotated z-vector
-  CALL ActiveTransformation( BoxVectorZ / ( DSQRT( DOT_PRODUCT( BoxVectorZ, BoxVectorZ ) ) ), RotationQuaternion, RotatedVector )
+  CALL VectorRotation( BoxVectorZ / ( DSQRT( DOT_PRODUCT( BoxVectorZ, BoxVectorZ ) ) ), RotationQuaternion, RotatedVector )
   ! New z-vector of the simulation box
   BoxLengthBoxRotation(7:9) = DSQRT( DOT_PRODUCT( BoxLengthMC(7:9), BoxLengthMC(7:9) ) ) * RotatedVector
   ! Calculate the new reciprocal box basis vectors
@@ -120,7 +120,7 @@ IF( DABS( RotationAxisMagnitude - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
     ! Reorient particles
     CALL QuaternionMultiplication( RotationQuaternion, pQuaternionMC(:,Particle), pQuaternionBoxRotation(:,Particle) )
     ! Active transformation (rotation)
-    CALL ActiveTransformation( zAxis, pQuaternionBoxRotation(:,Particle), pOrientationBoxRotation(:,Particle) )
+    CALL VectorRotation( zAxis, pQuaternionBoxRotation(:,Particle), pOrientationBoxRotation(:,Particle) )
   END DO
 ! Box x-vector already parallel to the x-axis of the coordinate system
 ELSE
@@ -183,17 +183,17 @@ END IF
 ! Make box y-vector parallel to the XY-plane of the coordinate system
 IF( DABS( RotationAxisMagnitude - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
   ! Rotated x-vector
-  CALL ActiveTransformation( BoxVectorX / ( DSQRT( DOT_PRODUCT( BoxVectorX, BoxVectorX ) ) ), RotationQuaternion, RotatedVector )
+  CALL VectorRotation( BoxVectorX / ( DSQRT( DOT_PRODUCT( BoxVectorX, BoxVectorX ) ) ), RotationQuaternion, RotatedVector )
   ! New x-vector of the simulation box
   BoxLengthBoxRotation(1:3) = DSQRT( DOT_PRODUCT( BoxLengthBoxRotation(1:3), BoxLengthBoxRotation(1:3) ) ) * RotatedVector
   BoxLengthBoxRotation(2:3) = 0.D0
   ! Rotated y-vector
-  CALL ActiveTransformation( BoxVectorY / ( DSQRT( DOT_PRODUCT( BoxVectorY, BoxVectorY ) ) ), RotationQuaternion, RotatedVector )
+  CALL VectorRotation( BoxVectorY / ( DSQRT( DOT_PRODUCT( BoxVectorY, BoxVectorY ) ) ), RotationQuaternion, RotatedVector )
   ! New y-vector of the simulation box
   BoxLengthBoxRotation(4:6) = DSQRT( DOT_PRODUCT( BoxLengthBoxRotation(4:6), BoxLengthBoxRotation(4:6) ) ) * RotatedVector
   BoxLengthBoxRotation(6)   = 0.D0
   ! Rotated z-vector
-  CALL ActiveTransformation( BoxVectorZ / ( DSQRT( DOT_PRODUCT( BoxVectorZ, BoxVectorZ ) ) ), RotationQuaternion, RotatedVector )
+  CALL VectorRotation( BoxVectorZ / ( DSQRT( DOT_PRODUCT( BoxVectorZ, BoxVectorZ ) ) ), RotationQuaternion, RotatedVector )
   ! New z-vector of the simulation box
   BoxLengthBoxRotation(7:9) = DSQRT( DOT_PRODUCT( BoxLengthBoxRotation(7:9), BoxLengthBoxRotation(7:9) ) ) * RotatedVector
   ! Calculate the new reciprocal box basis vectors
@@ -207,7 +207,7 @@ IF( DABS( RotationAxisMagnitude - 0.D0 ) >= EPSILON( 1.D0 ) ) THEN
     ! Reorient particles
     CALL QuaternionMultiplication( RotationQuaternion, pQuaternionBoxRotation(:,Particle), pQuaternionBoxRotation(:,Particle) )
     ! Active transformation (rotation)
-    CALL ActiveTransformation( zAxis, pQuaternionBoxRotation(:,Particle), pOrientationBoxRotation(:,Particle) )
+    CALL VectorRotation( zAxis, pQuaternionBoxRotation(:,Particle), pOrientationBoxRotation(:,Particle) )
   END DO
 END IF
 

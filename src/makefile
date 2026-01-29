@@ -15,10 +15,10 @@ F95FLAGS= -cpp -c -O3 -ffast-math -funroll-loops
 # Object names
 OBJS= module_global_variables.o \
 	module_folders.o \
-	module_forcefields.o \
 	module_variable_initialization.o \
 	module_linked_lists.o \
 	module_overlap_algorithm.o \
+	module_forcefields.o \
 	module_overlapcheck.o \
 	module_initial_configuration.o \
 	module_potentialenergy.o \

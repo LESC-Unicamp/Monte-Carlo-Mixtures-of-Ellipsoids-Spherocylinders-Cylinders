@@ -2,13 +2,12 @@
 !               NVT/NPT-Monte Carlo algorithm for cylindrically-symmetric molecules               !
 !          This module allows the user to choose one of the molecular configurations for          !
 !              isomorphic molecules - Simple Cube (SC), Body-Centered Cube (BCC), or              !
-!        Face-Centered Cube (FCC) -, and for anisomorphic molecules - Random Box (RND) or         !
-!                                        Packed Box (PB).                                         !
+!         Face-Centered Cube (FCC) -, and for anisomorphic molecules - Random Box (RND).          !
 !        Molecules will be then allocated in accordance to the selected crystal structure.        !
 !                       See Macpherson et al. (2007) for some information.                        !
 !     This module also writes out a file containing all particles' positions and quaternions.     !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -16,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                 M. P. Allen, D. J. Tildesley                                   !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -54,7 +53,6 @@ REAL( Kind= Real64 ), DIMENSION( 3 ) :: BodyFixedAxis ! Body-fixed axis of rotat
 !                                    Face-centered cube = FCC                                     !
 !                                    Body-centered cube = BCC                                     !
 !                                        Random box = RND                                         !
-!                                         Packed box = PB                                         !
 ! *********************************************************************************************** !
 
 CONTAINS
@@ -123,7 +121,6 @@ IMPLICIT NONE
 !  (2) = BCC                                                                                      !
 !  (3) = FCC                                                                                      !
 !  (4) = RND                                                                                      !
-!  (5) = PB                                                                                       !
 ! *********************************************************************************************** !
 ConfigurationSelection = .FALSE.
 
@@ -135,16 +132,14 @@ CALL ToUpper( ConfigurationInquiry, LEN_TRIM( ConfigurationInquiry ), Configurat
 CLOSE( 100 )
 
 ! Extended configuration name
-IF( ConfigurationInquiry == "PB" ) THEN
-  InitialConfiguration = "Packed Box"
-ELSE IF( ConfigurationInquiry == "RND" ) THEN
-  InitialConfiguration = "Random"
-ELSE IF( ConfigurationInquiry == "SC" ) THEN
+IF( ConfigurationInquiry == "SC" ) THEN
   InitialConfiguration = "Simple Cube"
 ELSE IF( ConfigurationInquiry == "BCC" ) THEN
   InitialConfiguration = "Body-Centered Cube"
 ELSE IF( ConfigurationInquiry == "FCC" ) THEN
   InitialConfiguration = "Face-Centered Cube"
+ELSE IF( ConfigurationInquiry == "RND" ) THEN
+  InitialConfiguration = "Random"
 ELSE ! Stop condition
   WRITE( *, "(3G0)" ) "The user-defined ", TRIM( ConfigurationInquiry ), " is not an available initial configuration. Exiting... "
   CALL Exit(  )
@@ -160,8 +155,6 @@ ELSE IF( ConfigurationInquiry == "FCC" ) THEN
   ConfigurationSelection(3) = .TRUE.
 ELSE IF( ConfigurationInquiry == "RND" ) THEN
   ConfigurationSelection(4) = .TRUE.
-ELSE IF( ConfigurationInquiry == "PB" ) THEN
-  ConfigurationSelection(5) = .TRUE.
 END IF
 WRITE( *, "(G0)" ) " "
 
@@ -412,37 +405,6 @@ ELSE IF( ConfigurationSelection(4) ) THEN
     OPEN( Unit= 10, Action= "READ", File= "Initial_Configuration/"//TRIM( DescriptorInitialConfig )//"_initconf_rnd_" &
     &                                     //TRIM( DescriptorFileGeometry )//".xyz" )
   END IF
-! Calls 'PackedBoxConfiguration' subroutine if the user chooses a packed-box structure
-ELSE IF( ConfigurationSelection(5) ) THEN
-  IF( .NOT. PresetInitialConfiguration ) THEN
-    CALL PackedBoxConfiguration(  )
-    CALL ConfigurationOutput(  )
-    RETURN
-  ELSE
-    WRITE( *, "(2G0)" ) "Preset initial configuration selected! Simulation parameters previously calculated will be ", &
-    &                   "overwritten. Continue? [Y/N]"
-    READ( *, * ) Dummy
-    CALL ToUpper( Dummy, LEN_TRIM( Dummy ), Dummy )
-    IF( Dummy /= "Y" ) THEN
-      CALL Exit(  )
-    END IF
-    WRITE( *, "(G0)" ) " "
-    WRITE( *, "(G0)" ) "Please enter the 14-character descriptor code of the file: "
-    READ( *, * ) DescriptorInitialConfig
-    INQUIRE( File= "Initial_Configuration/"//TRIM( DescriptorInitialConfig )//"_initconf_pb_"//TRIM( DescriptorFileGeometry )// &
-    &              ".xyz", EXIST= FileExist )
-    WRITE( *, "(G0)" ) " "
-    IF( .NOT. FileExist ) THEN
-      WRITE( *, "(G0,G0)" ) "Preset initial configuration not found for the specified configuration or the ", &
-      &                     "selected molecular geometry. Exiting..."
-      CALL Sleep( 1 )
-      CALL Exit(  )
-    END IF
-    WRITE( *, "(G0)" ) "Preset initial configuration found for the specified configuration and molecular geometry!"
-    CALL Sleep( 1 )
-    OPEN( Unit= 10, Action= "READ", File= "Initial_Configuration/"//TRIM( DescriptorInitialConfig )//"_initconf_pb_" &
-    &                                     //TRIM( DescriptorFileGeometry )//".xyz" )
-  END IF
 END IF
 
 ! Read variables from preset initial configuration file
@@ -475,9 +437,6 @@ ELSE IF( ConfigurationInquiry == "FCC" ) THEN
 ELSE IF( ConfigurationInquiry == "RND" ) THEN
   InitialConfiguration      = "Random"
   ConfigurationSelection(4) = .TRUE.
-ELSE IF( ConfigurationInquiry == "PB" ) THEN
-  InitialConfiguration      = "Packed Box"
-  ConfigurationSelection(5) = .TRUE.
 END IF
 READ( 10, * ) Dummy, PackingFraction
 READ( 10, * ) Dummy, nComponents
@@ -493,6 +452,7 @@ IF( ALLOCATED( cMolecularVolume ) ) DEALLOCATE( cMolecularVolume )
 IF( ALLOCATED( cNumberDensity ) ) DEALLOCATE( cNumberDensity )
 IF( ALLOCATED( cIndex ) ) DEALLOCATE( cIndex )
 IF( ALLOCATED( cPotentialRange ) ) DEALLOCATE( cPotentialRange )
+IF( ALLOCATED( cCircumscribingPotentialRange ) ) DEALLOCATE( cCircumscribingPotentialRange )
 IF( ALLOCATED( cCircumscribingSphereDiameter ) ) DEALLOCATE( cCircumscribingSphereDiameter )
 IF( ALLOCATED( cDiameterEquivalentSphere ) ) DEALLOCATE( cDiameterEquivalentSphere )
 ! Reallocate
@@ -504,6 +464,7 @@ ALLOCATE( SphericalComponentInquiry(nComponents) )
 ALLOCATE( SphericalComponentLogical(nComponents) )
 ALLOCATE( cIndex(nComponents) )
 ALLOCATE( cPotentialRange(nComponents,nRange) )
+ALLOCATE( cCircumscribingPotentialRange(nComponents,nRange) )
 ! Resume
 cParticles = 0
 DO cComponent = 1, nComponents
@@ -596,7 +557,8 @@ ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
 ELSE IF( GeometryType(3) ) THEN ! Cylinders
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
-      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent) + cLength(cComponent)
+      cCircumscribingSphereDiameter(cComponent) = DSQRT( cDiameter(cComponent) * cDiameter(cComponent) + &
+      &                                                  cLength(cComponent) * cLength(cComponent) )
     ELSE
       cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent)
     END IF
@@ -632,10 +594,47 @@ ELSE IF( GeometryType(3) ) THEN ! Cylinders
 END IF
 
 ! Effective range of attraction
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
   DO cComponent = 1, nComponents
     cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
   END DO
+ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+  IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+    DO cComponent = 1, nComponents
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        IF( cAspectRatio(cComponent) > 0.D0 .AND. cAspectRatio(cComponent) < 1.D0 ) THEN
+          cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        ELSE IF( cAspectRatio(cComponent) > 1.D0 ) THEN
+          cCircumscribingPotentialRange(cComponent,:) = cLength(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        END IF
+      ELSE
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+      END IF
+    END DO
+  ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+    DO cComponent = 1, nComponents
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + cLength(cComponent) + PotentialRange(:) * &
+        &                                             cDiameter(cComponent)
+      ELSE
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+      END IF
+    END DO
+  ELSE IF( GeometryType(3) ) THEN ! Cylinders
+    DO cComponent = 1, nComponents
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        cCircumscribingPotentialRange(cComponent,:) = DSQRT( cLength(cComponent) * cLength(cComponent) + cDiameter(cComponent) * &
+        &                                             cDiameter(cComponent) * ( 1.D0 + 2.D0 * PotentialRange(:) + 2.D0 * &
+        &                                             PotentialRange(:) * PotentialRange(:) ) + 2.D0 * cDiameter(cComponent) * &
+        &                                             cLength(cComponent) * PotentialRange(:) )
+      ELSE
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+      END IF
+    END DO
+  END IF
 END IF
 
 ! Component index of a particle
@@ -1111,7 +1110,7 @@ CALL InverseMatrixCofactorVec( BoxLength, BoxLengthInverse, BoxVolume )
 
 ! Active transformation (orientation)
 DO iParticle = 1, nParticles
-  CALL ActiveTransformation( zAxis, pQuaternion(:,iParticle), pOrientation(:,iParticle) )
+  CALL VectorRotation( zAxis, pQuaternion(:,iParticle), pOrientation(:,iParticle) )
 END DO
 
 ! Packing fraction (NVT simulation)
@@ -1269,7 +1268,7 @@ HitAndMissNVT: DO
       ! Random composed unit quaternion
       CALL QuaternionCombination( iOldQuaternion, iNewQuaternion, MaxAngularDisplacement )
       ! Active transformation
-      CALL ActiveTransformation( zAxis, iNewQuaternion, iNewOrientation )
+      CALL VectorRotation( zAxis, iNewQuaternion, iNewOrientation )
     ! Disable rotation
     ELSE IF( .NOT. MovementRotationLogical ) THEN
       iNewQuaternion  = iOldQuaternion
@@ -1356,24 +1355,24 @@ HitAndMissNVT: DO
   ! Initial configuration (partial)
   WRITE( 55, "(G0)" ) nParticles
   DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
-  WRITE( 55, DescriptorString ) 'Lattice="', BoxLength(1:9), '" Origin="', -0.5D0 * ( BoxLength(1) + BoxLength(4) + &
-  &                             BoxLength(7) ), -0.5D0 * ( BoxLength(2) + BoxLength(5) + BoxLength(8) ), -0.5D0 * &
-  &                             ( BoxLength(3) + BoxLength(6) + BoxLength(9) ), '" ', &
+  WRITE( 55, DescriptorString ) 'Lattice="', BoxLengthNVT(1:9), '" Origin="', -0.5D0 * ( BoxLengthNVT(1) + BoxLengthNVT(4) + &
+  &                             BoxLengthNVT(7) ), -0.5D0 * ( BoxLengthNVT(2) + BoxLengthNVT(5) + BoxLengthNVT(8) ), -0.5D0 * &
+  &                             ( BoxLengthNVT(3) + BoxLengthNVT(6) + BoxLengthNVT(9) ), '" ', &
   &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
   IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
         END DO
       END IF
@@ -1383,15 +1382,15 @@ HitAndMissNVT: DO
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
         END DO
       END IF
@@ -1401,15 +1400,15 @@ HitAndMissNVT: DO
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
         END DO
       END IF
@@ -1435,24 +1434,24 @@ END DO HitAndMissNVT
 REWIND( 55 )
 WRITE( 55, "(G0)" ) nParticles
 DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
-WRITE( 55, DescriptorString ) 'Lattice="', BoxLength(1:9), '" Origin="', -0.5D0 * ( BoxLength(1) + BoxLength(4) + &
-&                             BoxLength(7) ), -0.5D0 * ( BoxLength(2) + BoxLength(5) + BoxLength(8) ), -0.5D0 * &
-&                             ( BoxLength(3) + BoxLength(6) + BoxLength(9) ), '" ', &
+WRITE( 55, DescriptorString ) 'Lattice="', BoxLengthNVT(1:9), '" Origin="', -0.5D0 * ( BoxLengthNVT(1) + BoxLengthNVT(4) + &
+&                             BoxLengthNVT(7) ), -0.5D0 * ( BoxLengthNVT(2) + BoxLengthNVT(5) + BoxLengthNVT(8) ), -0.5D0 * &
+&                             ( BoxLengthNVT(3) + BoxLengthNVT(6) + BoxLengthNVT(9) ), '" ', &
 &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
 IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
       END DO
     END IF
@@ -1462,15 +1461,15 @@ ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
       END DO
     END IF
@@ -1480,15 +1479,15 @@ ELSE IF( GeometryType(3) ) THEN ! Cylinders
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
       END DO
     END IF
@@ -1682,7 +1681,7 @@ SimulationNPT: DO
         ! Random composed unit quaternion
         CALL QuaternionCombination( iOldQuaternion, iNewQuaternion, MaxAngularDisplacement )
         ! Active transformation
-        CALL ActiveTransformation( zAxis, iNewQuaternion, iNewOrientation )
+        CALL VectorRotation( zAxis, iNewQuaternion, iNewOrientation )
       ! Disable rotation
       ELSE IF( .NOT. MovementRotationLogical ) THEN
         iNewQuaternion  = iOldQuaternion
@@ -2039,24 +2038,24 @@ SimulationNPT: DO
   ! Initial configuration (partial)
   WRITE( 55, "(G0)" ) nParticles
   DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
-  WRITE( 55, DescriptorString ) 'Lattice="', BoxLength(1:9), '" Origin="', -0.5D0 * ( BoxLength(1) + BoxLength(4) + &
-  &                             BoxLength(7) ), -0.5D0 * ( BoxLength(2) + BoxLength(5) + BoxLength(8) ), -0.5D0 * &
-  &                             ( BoxLength(3) + BoxLength(6) + BoxLength(9) ), '" ', &
+  WRITE( 55, DescriptorString ) 'Lattice="', BoxLengthMC(1:9), '" Origin="', -0.5D0 * ( BoxLengthMC(1) + BoxLengthMC(4) + &
+  &                             BoxLengthMC(7) ), -0.5D0 * ( BoxLengthMC(2) + BoxLengthMC(5) + BoxLengthMC(8) ), -0.5D0 * &
+  &                             ( BoxLengthMC(3) + BoxLengthMC(6) + BoxLengthMC(9) ), '" ', &
   &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
   IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
         END DO
       END IF
@@ -2066,15 +2065,15 @@ SimulationNPT: DO
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
         END DO
       END IF
@@ -2084,15 +2083,15 @@ SimulationNPT: DO
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              cLength(cComponent)
         END DO
       ELSE
         DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
           WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-          &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-          &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+          &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+          &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
           &              0.5D0 * cDiameter(cComponent)
         END DO
       END IF
@@ -2106,24 +2105,24 @@ END DO SimulationNPT
 REWIND( 55 )
 WRITE( 55, "(G0)" ) nParticles
 DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
-WRITE( 55, DescriptorString ) 'Lattice="', BoxLength(1:9), '" Origin="', -0.5D0 * ( BoxLength(1) + BoxLength(4) + &
-&                             BoxLength(7) ), -0.5D0 * ( BoxLength(2) + BoxLength(5) + BoxLength(8) ), -0.5D0 * &
-&                             ( BoxLength(3) + BoxLength(6) + BoxLength(9) ), '" ', &
+WRITE( 55, DescriptorString ) 'Lattice="', BoxLengthMC(1:9), '" Origin="', -0.5D0 * ( BoxLengthMC(1) + BoxLengthMC(4) + &
+&                             BoxLengthMC(7) ), -0.5D0 * ( BoxLengthMC(2) + BoxLengthMC(5) + BoxLengthMC(8) ), -0.5D0 * &
+&                             ( BoxLengthMC(3) + BoxLengthMC(6) + BoxLengthMC(9) ), '" ', &
 &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
 IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
       END DO
     END IF
@@ -2133,15 +2132,15 @@ ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
       END DO
     END IF
@@ -2151,15 +2150,15 @@ ELSE IF( GeometryType(3) ) THEN ! Cylinders
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              cLength(cComponent)
       END DO
     ELSE
       DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
         WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
-        &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
-        &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
+        &              pQuaternionMC(1,iParticle), pQuaternionMC(2,iParticle), pQuaternionMC(3,iParticle), &
+        &              pQuaternionMC(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
         &              0.5D0 * cDiameter(cComponent)
       END DO
     END IF
@@ -2250,14 +2249,14 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
       DO cComponent = 1, nComponents
         IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cLength(cComponent)
           END DO
         ELSE
           DO iParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-            WRITE( 55, * ) cIndex(cComponent), pPositionMC(1,iParticle), pPositionMC(2,iParticle), pPositionMC(3,iParticle), &
+            WRITE( 55, * ) cIndex(cComponent), pPosition(1,iParticle), pPosition(2,iParticle), pPosition(3,iParticle), &
             &              pQuaternion(1,iParticle), pQuaternion(2,iParticle), pQuaternion(3,iParticle), &
             &              pQuaternion(0,iParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
             &              0.5D0 * cDiameter(cComponent)
@@ -2403,7 +2402,7 @@ IF( PackingFractionNPT >= PackingFraction ) THEN
           ! Random Composed Unit Quaternion
           CALL QuaternionCombination( iOldQuaternion, iNewQuaternion, MaxAngularDisplacement )
           ! Active transformation
-          CALL ActiveTransformation( zAxis, iNewQuaternion, iNewOrientation )
+          CALL VectorRotation( zAxis, iNewQuaternion, iNewOrientation )
         ! Disable rotation
         ELSE IF( .NOT. MovementRotationLogical ) THEN
           iNewQuaternion  = iOldQuaternion
@@ -2516,48 +2515,6 @@ CALL FinalizeList(  )
 RETURN
 
 END SUBROUTINE RandomConfiguration
-
-! *********************************************************************************************** !
-!           This subroutine allocates particles according to a packed-box configuration           !
-! *********************************************************************************************** !
-SUBROUTINE PackedBoxConfiguration(  )
-
-IMPLICIT NONE
-
-! Chosen unrotated reference (x-, y-, or z-axis)
-IF( AxisSelection(1) ) THEN
-  BodyFixedAxis = xAxis
-ELSE IF( AxisSelection(2) ) THEN
-  BodyFixedAxis = yAxis
-ELSE IF( AxisSelection(3) ) THEN
-  BodyFixedAxis = zAxis
-END IF
-
-! Convert degrees to radians
-QuaternionAngle = QuaternionAngle * cPi / 180.D0
-
-! *********************************************************************************************** !
-! Quaternion Algebra                                                                              !
-! *********************************************************************************************** !
-!  See 'Quaternion algebras (2021)' book by John Voight.                                          !
-!  Available at: <https://math.dartmouth.edu/~jvoight/quat-book.pdf>.                             !
-! *********************************************************************************************** !
-pQuaternion(0,:) = DCOS( QuaternionAngle * 0.5D0 )                    ! Real part
-pQuaternion(1,:) = DSIN( QuaternionAngle * 0.5D0 ) * BodyFixedAxis(1) ! Imaginary part (Vector)
-pQuaternion(2,:) = DSIN( QuaternionAngle * 0.5D0 ) * BodyFixedAxis(2) ! Imaginary part (Vector)
-pQuaternion(3,:) = DSIN( QuaternionAngle * 0.5D0 ) * BodyFixedAxis(3) ! Imaginary part (Vector)
-
-! Summary
-WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
-WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 15 )//"PACKED-BOX CONFIGURATION"//REPEAT( " ", 16 )//CH_VS
-WRITE( *, "(G0)" ) CH_BL//REPEAT( CH_HS, 55 )//CH_BR
-WRITE( *, "(G0)" ) "Under construction. Exiting..."
-CALL Sleep( 1 )
-CALL Exit(  )
-
-RETURN
-
-END SUBROUTINE PackedBoxConfiguration
 
 ! *********************************************************************************************** !
 !                                          PROGRESS BAR                                           !
@@ -3345,138 +3302,6 @@ ELSE IF( ConfigurationSelection(4) ) THEN
   ! Initial configuration (RND) | All Properties
   IF( .NOT. PresetInitialConfiguration ) THEN
     OPEN( Unit= 10, File= "Initial_Configuration/"//TRIM( DescriptorDate )//""//TRIM( DescriptorHour )//"_initconf_rnd_"// &
-    &                      TRIM( DescriptorFileGeometry )//".xyz" )
-    WRITE( 10, "(G0,G0)" ) "Molecular_geometry: ", GeometryInquiry
-    WRITE( 10, "(G0,G0)" ) "Initial_configuration: ", ConfigurationInquiry
-    WRITE( 10, "(G0,G0.5)" ) "Packing_fraction: ", PackingFraction
-    WRITE( 10, "(G0,G0)" ) "Number_of_Components: ", nComponents
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,3G0)" ) "Spherical_Component_#", cComponent, ": ", SphericalComponentInquiry(cComponent)
-    END DO
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Diameter_of_Component_#", cComponent, ": ", cDiameter(cComponent), " Å"
-    END DO
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Length_of_Component_#", cComponent, ": ", cLength(cComponent), " Å"
-    END DO
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Aspect_Ratio_of_Component_#", cComponent, ": ", cAspectRatio(cComponent)
-    END DO
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0.5)" ) "Molar_Fraction_of_Component_#", cComponent, ": ", cMolarFraction(cComponent)
-    END DO
-    WRITE( 10, "(G0,G0)" ) "Number_of_Particles: ", nParticles
-    WRITE( 10, "(G0,G0.5,G0)" ) "Total_Molecular_Volume: ", TotalParticleVolume, " Å³"
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0)" ) "Number_of_Particles_of_Component_#", cComponent, ": ", cParticles(cComponent)
-    END DO
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Molecular_Volume_of_Component_#", cComponent, ": ", cMolecularVolume(cComponent), " Å³"
-    END DO
-    WRITE( 10, "(G0,G0.5,G0)" ) "Volume_of_the_Simulation_Box_(Cubic): ", BoxVolume, " Å³"
-    WRITE( 10, "(G0,3(G0.15,1X))" ) "Length_of_the_Simulation_Box_(Cubic_1)_in_Å: ", BoxLength(1:3)
-    WRITE( 10, "(G0,3(G0.15,1X))" ) "Length_of_the_Simulation_Box_(Cubic_2)_in_Å: ", BoxLength(4:6)
-    WRITE( 10, "(G0,3(G0.15,1X))" ) "Length_of_the_Simulation_Box_(Cubic_3)_in_Å: ", BoxLength(7:9)
-    WRITE( 10, "(G0,3(G0.15,1X))" ) "Length_of_the_Simulation_Box_(Inverse_1)_in_Å⁻¹: ", BoxLengthInverse(1:3)
-    WRITE( 10, "(G0,3(G0.15,1X))" ) "Length_of_the_Simulation_Box_(Inverse_2)_in_Å⁻¹: ", BoxLengthInverse(4:6)
-    WRITE( 10, "(G0,3(G0.15,1X))" ) "Length_of_the_Simulation_Box_(Inverse_3)_in_Å⁻¹: ", BoxLengthInverse(7:9)
-    DO cComponent = 1, nComponents
-      WRITE( 10, "(G0,G0,G0,G0.5,G0)" ) "Number_Density_of_Component_#", cComponent, ": ", cNumberDensity(cComponent), " Å⁻³"
-    END DO
-    WRITE( 10, "(G0,G0.5,G0)" ) "Total_Number_Density: ", TotalNumberDensity, " Å⁻³"
-    WRITE( 10, "(G0,G0.5,G0)" ) "Absolute_Temperature: ", AbsoluteTemperature, " K"
-    WRITE( 10, "(G0,G0.5)" ) "Reduced_Pressure: ", ReducedPressure
-    WRITE( 10, * ) " "
-    DO cComponent = 1, nComponents
-      DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-        WRITE( 10, FormatPosition ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-        &                           pQuaternion(0,pParticle), pQuaternion(1,pParticle), pQuaternion(2,pParticle), &
-        &                           pQuaternion(3,pParticle)
-      END DO
-    END DO
-    CLOSE( 10 )
-  END IF
-
-! Packed cubic box structure
-ELSE IF( ConfigurationSelection(5) ) THEN
-
-  ! Initial configuration (OVITO) | Positions, Orientations, and Geometric Details
-  IF( EnsembleMC == "NVT" ) THEN
-    OPEN( Unit= 10, File= "Initial_Configuration/OVITO/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
-    &                      "_initconf_η"//TRIM( DescriptorFileThermoVariable )//"_C"//TRIM( DescriptorFileComponents )//"_pb_"// &
-    &                      TRIM( DescriptorFileGeometry )//".xyz" )
-  ELSE IF( EnsembleMC == "NPT" ) THEN
-    OPEN( Unit= 10, File= "Initial_Configuration/OVITO/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
-    &                      "_initconf_P"//TRIM( DescriptorFileThermoVariable )//"_C"//TRIM( DescriptorFileComponents )//"_pb_"// &
-    &                      TRIM( DescriptorFileGeometry )//".xyz" )
-  END IF
-  WRITE( 10, "(G0)" ) nParticles
-  ! Descriptor string
-  DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
-  WRITE( 10, DescriptorString ) 'Lattice="', BoxLength(1:9), '" Origin="', -0.5D0 * ( BoxLength(1) + BoxLength(4) + &
-  &                             BoxLength(7) ), -0.5D0 * ( BoxLength(2) + BoxLength(5) + BoxLength(8) ), -0.5D0 * &
-  &                             ( BoxLength(3) + BoxLength(6) + BoxLength(9) ), '" ', &
-  &                             "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3"
-  IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
-    DO cComponent = 1, nComponents
-      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
-        DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 10, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-          &                          pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle), &
-          &                          pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
-          &                          0.5D0 * cLength(cComponent)
-        END DO
-      ELSE
-        DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 10, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-          &                          pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle), &
-          &                          pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
-          &                          0.5D0 * cDiameter(cComponent)
-        END DO
-      END IF
-    END DO
-  ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
-    DO cComponent = 1, nComponents
-      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
-        DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 10, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-          &                          pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle), &
-          &                          pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
-          &                          cLength(cComponent)
-        END DO
-      ELSE
-        DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 10, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-          &                          pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle), &
-          &                          pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
-          &                          0.5D0 * cDiameter(cComponent)
-        END DO
-      END IF
-    END DO
-  ELSE IF( GeometryType(3) ) THEN ! Cylinders
-    DO cComponent = 1, nComponents
-      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
-        DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 10, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-          &                          pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle), &
-          &                          pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
-          &                          cLength(cComponent)
-        END DO
-      ELSE
-        DO pParticle = SUM( cParticles(0:(cComponent-1)) ) + 1, SUM( cParticles(0:cComponent) )
-          WRITE( 10, "(11(G0,1X))" ) cIndex(cComponent), pPosition(1,pParticle), pPosition(2,pParticle), pPosition(3,pParticle), &
-          &                          pQuaternion(1,pParticle), pQuaternion(2,pParticle), pQuaternion(3,pParticle), &
-          &                          pQuaternion(0,pParticle), 0.5D0 * cDiameter(cComponent), 0.5D0 * cDiameter(cComponent), &
-          &                          0.5D0 * cDiameter(cComponent)
-        END DO
-      END IF
-    END DO
-  END IF
-  CLOSE( 10 )
-
-  ! Initial configuration (PB) | All Properties
-  IF( .NOT. PresetInitialConfiguration ) THEN
-    OPEN( Unit= 10, File= "Initial_Configuration/"//TRIM( DescriptorDate )//""//TRIM( DescriptorHour )//"_initconf_pb_"// &
     &                      TRIM( DescriptorFileGeometry )//".xyz" )
     WRITE( 10, "(G0,G0)" ) "Molecular_geometry: ", GeometryInquiry
     WRITE( 10, "(G0,G0)" ) "Initial_configuration: ", ConfigurationInquiry

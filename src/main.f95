@@ -7,7 +7,7 @@
 !  The algorithm of Lopes et al. (J. Lopes, F. Romano, E. Grelet, L. Franco, A. Giacometti, 2021) !
 !         is used to search for molecular overlaps between cylinders after a trial move.          !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -15,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                 J. W. Perram, M. S. Wertheim                                   !
 !                               J. Comput. Phys 15, 409-416 (1985)                                !
@@ -112,6 +112,7 @@ REAL( Kind= Real64 )                   :: MaxTranslationalDisplacement          
 REAL( Kind= Real64 )                   :: MaxAngularDisplacement                   ! Maximum displacement [+/-] (Rotation)
 REAL( Kind= Real64 )                   :: MaxIsoVolumetricDisplacement             ! Maximum displacement [+/-] (Isotropic volume scaling)
 REAL( Kind= Real64 )                   :: MaxAnisoVolumetricDisplacement           ! Maximum displacement [+/-] (Anisotropic volume scaling)
+REAL( Kind= Real64 ), DIMENSION( 3 )   :: PhaseDirector                            ! Nematic phase director
 REAL( Kind= Real64 ), DIMENSION( 3 )   :: BoxCutoff                                ! Box cutoff (x-, y-, and z-directions)
 REAL( Kind= Real64 ), DIMENSION( 3 )   :: ScalingDistanceUnitBox                   ! Scaled position (unit box)
 REAL( Kind= Real64 ), DIMENSION( 3 )   :: iOldOrientation, iNewOrientation         ! Orientation (before/after a trial move)
@@ -291,18 +292,20 @@ ELSE IF( RestoreBackupFileLogical ) THEN
   CALL RestoreBackupVariables( DescriptorBackupFile, DateTime )
   CALL Sleep( 1 )
   ! Allocation
-  IF( PerturbedPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) ) THEN
     ALLOCATE( CoefficientTPT1(nRange), CoefficientTPT2(nRange), rFreeEnergy(nRange) )
     ALLOCATE( CoefficientTPT1Deviation(nRange), CoefficientTPT2Deviation(nRange), rFreeEnergyDeviation(nRange) )
     ALLOCATE( TotalPotentialEnergy(nRange), TotalPotentialEnergyMC(nRange) )
     ALLOCATE( iNewPotentialEnergy(nRange), iOldPotentialEnergy(nRange), iPotentialEnergyDifference(nRange) )
     ALLOCATE( cPotentialRange(nComponents,nRange) )
+    ALLOCATE( cCircumscribingPotentialRange(nComponents,nRange) )
   END IF
   ! Allocation
-  IF( FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     ALLOCATE( TotalPotentialEnergy(nRange), TotalPotentialEnergyMC(nRange) )
     ALLOCATE( iNewPotentialEnergy(nRange), iOldPotentialEnergy(nRange), iPotentialEnergyDifference(nRange) )
     ALLOCATE( cPotentialRange(nComponents,nRange) )
+    ALLOCATE( cCircumscribingPotentialRange(nComponents,nRange) )
   END IF
   WRITE( *, "(G0)", Advance= "YES" ) " Done!"
   WRITE( *, "(G0)" ) " "
@@ -313,17 +316,19 @@ IF( .NOT. RestoreBackupFileLogical ) THEN
   ALLOCATE( pQuaternion(0:3,nParticles), pQuaternionMC(0:3,nParticles) )
   ALLOCATE( pPosition(3,nParticles), pPositionMC(3,nParticles) )
   ALLOCATE( pOrientation(3,nParticles), pOrientationMC(3,nParticles) )
-  IF( PerturbedPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) ) THEN
     ALLOCATE( CoefficientTPT1(nRange), CoefficientTPT2(nRange), rFreeEnergy(nRange) )
     ALLOCATE( CoefficientTPT1Deviation(nRange), CoefficientTPT2Deviation(nRange), rFreeEnergyDeviation(nRange) )
     ALLOCATE( TotalPotentialEnergy(nRange), TotalPotentialEnergyMC(nRange) )
     ALLOCATE( iNewPotentialEnergy(nRange), iOldPotentialEnergy(nRange), iPotentialEnergyDifference(nRange) )
     ALLOCATE( cPotentialRange(nComponents,nRange) )
+    ALLOCATE( cCircumscribingPotentialRange(nComponents,nRange) )
   END IF
-  IF( FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     ALLOCATE( TotalPotentialEnergy(nRange), TotalPotentialEnergyMC(nRange) )
     ALLOCATE( iNewPotentialEnergy(nRange), iOldPotentialEnergy(nRange), iPotentialEnergyDifference(nRange) )
     ALLOCATE( cPotentialRange(nComponents,nRange) )
+    ALLOCATE( cCircumscribingPotentialRange(nComponents,nRange) )
   END IF
 END IF
 
@@ -351,7 +356,8 @@ ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
 ELSE IF( GeometryType(3) ) THEN ! Cylinders
   DO cComponent = 1, nComponents
     IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
-      cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent) + cLength(cComponent)
+      cCircumscribingSphereDiameter(cComponent) = DSQRT( cDiameter(cComponent) * cDiameter(cComponent) + cLength(cComponent) * &
+      &                                                  cLength(cComponent) )
     ELSE
       cCircumscribingSphereDiameter(cComponent) = cDiameter(cComponent)
     END IF
@@ -387,10 +393,47 @@ ELSE IF( GeometryType(3) ) THEN ! Cylinders
 END IF
 
 ! Effective range of attraction
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
   DO cComponent = 1, nComponents
     cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
   END DO
+ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+  IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
+    DO cComponent = 1, nComponents
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        IF( cAspectRatio(cComponent) > 0.D0 .AND. cAspectRatio(cComponent) < 1.D0 ) THEN
+          cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        ELSE IF( cAspectRatio(cComponent) > 1.D0 ) THEN
+          cCircumscribingPotentialRange(cComponent,:) = cLength(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        END IF
+      ELSE
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+      END IF
+    END DO
+  ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
+    DO cComponent = 1, nComponents
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + cLength(cComponent) + PotentialRange(:) * &
+        &                                             cDiameter(cComponent)
+      ELSE
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+      END IF
+    END DO
+  ELSE IF( GeometryType(3) ) THEN ! Cylinders
+    DO cComponent = 1, nComponents
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
+        cCircumscribingPotentialRange(cComponent,:) = DSQRT( cLength(cComponent) * cLength(cComponent) + cDiameter(cComponent) * &
+        &                                             cDiameter(cComponent) * ( 1.D0 + 2.D0 * PotentialRange(:) + 2.D0 * &
+        &                                             PotentialRange(:) * PotentialRange(:) ) + 2.D0 * cDiameter(cComponent) * &
+        &                                             cLength(cComponent) * PotentialRange(:) )
+      ELSE
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+      END IF
+    END DO
+  END IF
 END IF
 
 ! Diameter of the largest circumscribing sphere
@@ -421,8 +464,9 @@ IF( CellListLogical ) THEN
   ELSE IF( GeometryType(3) ) THEN ! Cylinders
     DO cComponent = 1, nComponents
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
-        IF( ( cDiameter(cComponent) + cLength(cComponent) ) >= cLargestSphereDiameter ) cLargestSphereDiameter = &
-        &     cDiameter(cComponent) + cLength(cComponent)
+        IF( ( DSQRT( cDiameter(cComponent) * cDiameter(cComponent) + cLength(cComponent) * cLength(cComponent) ) ) >= &
+        &   cLargestSphereDiameter ) cLargestSphereDiameter = DSQRT( cDiameter(cComponent) * cDiameter(cComponent) + &
+        &   cLength(cComponent) * cLength(cComponent) )
       ELSE
         IF( cDiameter(cComponent) >= cLargestSphereDiameter ) cLargestSphereDiameter = cDiameter(cComponent)
       END IF
@@ -439,6 +483,13 @@ IF( CellListLogical ) THEN
       DO rRange = 1, nRange
         IF( cPotentialRange(cComponent,rRange) >= cLargestSphericalWell ) cLargestSphericalWell = &
         &   cPotentialRange(cComponent,rRange)
+      END DO
+    END DO
+  ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN
+    DO cComponent = 1, nComponents
+      DO rRange = 1, nRange
+        IF( cCircumscribingPotentialRange(cComponent,rRange) >= cLargestSphericalWell ) cLargestSphericalWell = &
+        &   cCircumscribingPotentialRange(cComponent,rRange)
       END DO
     END DO
   END IF
@@ -515,7 +566,7 @@ IF( BackupFileLogical ) THEN
 END IF
 
 ! Initialization of the attractive range subfolders (see 'Folders' module)
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   CALL RangeFolders(  )
 END IF
 
@@ -525,7 +576,7 @@ IF( CellListLogical .AND. .NOT. RestoreBackupFileLogical ) THEN
   BoxCutoff(2) = cLargestSphereDiameter / BoxLength(5)
   BoxCutoff(3) = cLargestSphereDiameter / BoxLength(9)
   CALL MakeList( BoxCutoff, pPosition, BoxLengthInverse )
-  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     BoxCutoff(1) = cLargestSphericalWell / BoxLength(1)
     BoxCutoff(2) = cLargestSphericalWell / BoxLength(5)
     BoxCutoff(3) = cLargestSphericalWell / BoxLength(9)
@@ -537,7 +588,7 @@ END IF
 IF( .NOT. RestoreBackupFileLogical ) THEN
   ! Active transformation (orientation of particles)
   DO pParticle = 1, nParticles
-    CALL ActiveTransformation( zAxis, pQuaternion(:,pParticle), pOrientation(:,pParticle) )
+    CALL VectorRotation( zAxis, pQuaternion(:,pParticle), pOrientation(:,pParticle) )
   END DO
   ! Status
   WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
@@ -591,7 +642,7 @@ WRITE( *, "(G0)" ) " "
 
 ! Computation of total potential energy (initial configuration) if restoration is not selected
 IF( .NOT. RestoreBackupFileLogical ) THEN
-  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     WRITE( *, "(G0)", Advance= "NO" ) "Computing total potential energy of the initial configuration..."
     IF( .NOT. CellListControlPotential ) THEN
       ! Whole system
@@ -637,7 +688,7 @@ IF( .NOT. RestoreBackupFileLogical ) THEN
   pQuaternionMC                      = pQuaternion                        ! Rotation quaternions                             (initial value)
   pPositionMC                        = pPosition                          ! Position of particles                            (initial value)
   pOrientationMC                     = pOrientation                       ! Orientation of particles                         (initial value)
-  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     TotalPotentialEnergyMC           = TotalPotentialEnergy               ! Total potential energy                           (initial value)
   END IF
   BoxLengthMC                        = BoxLength                          ! Box length                                       (initial value)
@@ -655,21 +706,24 @@ ELSE
   READ( 105, * ) Dummy, FirstCycle
   IF( CellListLogical ) THEN
     READ( 105, * ) Dummy, CellListControl
-    IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) READ( 105, * ) Dummy, CellListControlPotential
+    IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) READ( 105, * ) Dummy, &
+    &   CellListControlPotential
     IF( CellListControl ) READ( 105, * ) Dummy, pCells
-    IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) &
+    IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) ) &
     &   READ( 105, * ) Dummy, pCellsPotential
     ! Allocation
     IF( CellListControl ) ALLOCATE( pCellHead(0:(pCells(1)-1),0:(pCells(2)-1),0:(pCells(3)-1)) )
-    IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) THEN
+    IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. &
+    &                                    ANY( FullPotentialTypeLogical(2:3) ) ) ) THEN
       ALLOCATE( pCellHeadPotential(0:(pCellsPotential(1)-1),0:(pCellsPotential(2)-1),0:(pCellsPotential(3)-1)) )
     END IF
     IF( CellListControl ) READ( 105, * ) Dummy, pCellHead
-    IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) &
+    IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) ) &
     &   READ( 105, * ) Dummy, pCellHeadPotential
     IF( CellListControl ) READ( 105, * ) Dummy, pCellList
     IF( CellListControl ) READ( 105, * ) Dummy, pCellIndex
-    IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) THEN
+    IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. &
+    &                                    ANY( FullPotentialTypeLogical(2:3) ) ) ) THEN
       READ( 105, * ) Dummy, pCellListPotential
       READ( 105, * ) Dummy, pCellIndexPotential
     END IF
@@ -677,7 +731,7 @@ ELSE
   READ( 105, * ) Dummy, pPositionMC
   READ( 105, * ) Dummy, pOrientationMC
   READ( 105, * ) Dummy, pQuaternionMC
-  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     READ( 105, * ) Dummy, TotalPotentialEnergyMC
   END IF
   IF( CellListLogical ) THEN
@@ -711,7 +765,7 @@ END IF
 
 ! Deallocation
 DEALLOCATE( pQuaternion, pPosition, pOrientation, SphericalComponentInquiry )
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   DEALLOCATE( TotalPotentialEnergy )
 END IF
 
@@ -729,7 +783,7 @@ IF( CellListLogical .AND. .NOT. RestoreBackupFileLogical ) THEN
   BoxCutoff(2) = cLargestSphereDiameter / BoxLengthMC(5)
   BoxCutoff(3) = cLargestSphereDiameter / BoxLengthMC(9)
   CALL MakeList( BoxCutoff, pPositionMC, BoxLengthInverseMC )
-  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     BoxCutoff(1) = cLargestSphericalWell / BoxLengthMC(1)
     BoxCutoff(2) = cLargestSphericalWell / BoxLengthMC(5)
     BoxCutoff(3) = cLargestSphericalWell / BoxLengthMC(9)
@@ -856,7 +910,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
       ! Random quaternion
       CALL QuaternionCombination( iOldQuaternion, iNewQuaternion, MaxAngularDisplacement )
       ! Active transformation
-      CALL ActiveTransformation( zAxis, iNewQuaternion, iNewOrientation )
+      CALL VectorRotation( zAxis, iNewQuaternion, iNewOrientation )
     ! No rotation
     ELSE IF( .NOT. MovementRotationLogical ) THEN
       iNewQuaternion  = iOldQuaternion
@@ -867,18 +921,18 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     IF( .NOT. FullPotentialTypeLogical(1) ) THEN
       IF( .NOT. CellListControlPotential ) THEN ! Whole system
         ! Computation of potential energy of particle i (microstate m)
-        CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
-        &                                    BoxLengthInverseMC )
+        CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iOldQuaternion, iOldOrientation, iOldPosition, &
+        &                                    iOldPotentialEnergy, BoxLengthMC, BoxLengthInverseMC )
         ! Computation of potential energy of particle i (microstate n)
-        CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iNewPosition, iNewPotentialEnergy, BoxLengthMC, &
-        &                                    BoxLengthInverseMC )
+        CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, &
+        &                                    iNewPotentialEnergy, BoxLengthMC, BoxLengthInverseMC )
       ELSE ! Linked lists
         ! Computation of potential energy of particle i (microstate m)
-        CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
-        &                                        BoxLengthInverseMC, .FALSE. )
+        CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iOldQuaternion, iOldOrientation, iOldPosition, &
+        &                                        iOldPotentialEnergy, BoxLengthMC, BoxLengthInverseMC, .FALSE. )
         ! Computation of potential energy of particle i (microstate n)
-        CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iNewPosition, iNewPotentialEnergy, BoxLengthMC, &
-        &                                        BoxLengthInverseMC, .FALSE. )
+        CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, &
+        &                                        iNewPotentialEnergy, BoxLengthMC, BoxLengthInverseMC, .FALSE. )
       END IF
       ! Computation of energy difference of microstates n and m
       iPotentialEnergyDifference = iNewPotentialEnergy - iOldPotentialEnergy
@@ -910,21 +964,21 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         pQuaternionMC(:,iParticle)  = iNewQuaternion(:)  ! Update quaternion
         pOrientationMC(:,iParticle) = iNewOrientation(:) ! Update orientation
         ! Update total perturbed potential energy
-        IF( PerturbedPotentialTypeLogical(2) ) THEN
+        IF( ANY( PerturbedPotentialTypeLogical(2:3) ) ) THEN
           IF( .NOT. CellListControlPotential ) THEN ! Whole system
             ! Computation of potential energy of particle i (microstate m)
-            CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
-            &                                    BoxLengthInverseMC )
+            CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iOldQuaternion, iOldOrientation, iOldPosition, &
+            &                                    iOldPotentialEnergy, BoxLengthMC, BoxLengthInverseMC )
             ! Computation of potential energy of particle i (microstate n)
-            CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iNewPosition, iNewPotentialEnergy, BoxLengthMC, &
-            &                                    BoxLengthInverseMC )
+            CALL ComputeParticlePotentialEnergy( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, &
+            &                                    iNewPotentialEnergy, BoxLengthMC, BoxLengthInverseMC )
           ELSE ! Linked lists
             ! Computation of potential energy of particle i (microstate m)
-            CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iOldPosition, iOldPotentialEnergy, BoxLengthMC, &
-            &                                        BoxLengthInverseMC, .FALSE. )
+            CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iOldQuaternion, iOldOrientation, iOldPosition, &
+            &                                    iOldPotentialEnergy, BoxLengthMC, BoxLengthInverseMC, .FALSE. )
             ! Computation of potential energy of particle i (microstate n)
-            CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iNewPosition, iNewPotentialEnergy, BoxLengthMC, &
-            &                                        BoxLengthInverseMC, .FALSE. )
+            CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iNewQuaternion, iNewOrientation, iNewPosition, &
+            &                                    iNewPotentialEnergy, BoxLengthMC, BoxLengthInverseMC, .FALSE. )
           END IF
           ! Computation of energy difference of microstates n and m
           iPotentialEnergyDifference = iNewPotentialEnergy - iOldPotentialEnergy
@@ -1333,14 +1387,14 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
   ! Order parameter data
   IF( MOD( iCycle, nSavingFrequency ) == 0 ) THEN
     ! Nematic order parameter (Q-tensor method)
-    CALL UniaxialNematicOrderParameter( OrderParameterMC, pOrientationMC )
-    WRITE( 60, "(3G0)" ) iCycle, ",", OrderParameterMC
+    CALL UniaxialNematicOrderParameter( OrderParameterMC, pOrientationMC, PhaseDirector )
+    WRITE( 60, "(9G0)" ) iCycle, ",", OrderParameterMC, ",", PhaseDirector(1), ",", PhaseDirector(2), ",", PhaseDirector(3)
     FLUSH( 60 )
   END IF
 
   ! Trajectory data
   IF( TrajectoryLogical ) THEN
-    IF( MOD ( iCycle, nSavingFrequency ) == 0 ) THEN
+    IF( MOD ( iCycle, nSavingFrequencyXYZ ) == 0 ) THEN
       WRITE( 20, "(G0)" ) nParticles
       ! Descriptor string
       DescriptorString = "(G0,8(G0,1X),G0,G0,2(G0,1X),G0,2G0)"
@@ -1422,7 +1476,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
   END IF
 
   ! Potential data (equilibration and production)
-  IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+  IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     IF( .NOT. PotentialEnergyLogical ) THEN
       IF( MOD( iCycle, nSavingFrequency ) == 0 ) THEN
         DO rRange = 1, nRange
@@ -1447,10 +1501,11 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     WRITE( 105, "(2G0)" ) "Current_Cycle: ", iCycle
     IF( CellListLogical ) THEN
       WRITE( 105, "(2G0)" ) "Cell_List_Control: ", CellListControl
-      IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2)  ) WRITE( 105, "(2G0)" ) &
+      IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) )  ) WRITE( 105, "(2G0)" ) &
       &   "Cell_List_Control_Potential: ", CellListControlPotential
       IF( CellListControl ) WRITE( 105, "(G0,3(G0,1X))" ) "Current_Number_of_Cells: ", pCells
-      IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) &
+      IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. &
+      &                                    ANY( FullPotentialTypeLogical(2:3) ) ) ) &
       &   WRITE( 105, "(G0,3(G0,1X))" ) "Current_Number_of_Cells_Potential: ", pCellsPotential
       IF( CellListControl ) WRITE( DescriptorBackupString, "(G0)" ) pCells(1) * pCells(2) * pCells(3)
       IF( CellListControl ) DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
@@ -1458,7 +1513,8 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
       IF( CellListControlPotential ) WRITE( DescriptorBackupString, "(G0)" ) &
       &   pCellsPotential(1) * pCellsPotential(2) * pCellsPotential(3)
       IF( CellListControlPotential ) DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
-      IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) &
+      IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. &
+      &                                    ANY( FullPotentialTypeLogical(2:3) ) ) ) &
       &   WRITE( 105, DescriptorBackupString ) "Cell_Head_Potential: ", pCellHeadPotential
       IF( CellListControl ) WRITE( DescriptorBackupString, "(G0)" ) nParticles
       IF( CellListControl ) DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
@@ -1466,7 +1522,8 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
       IF( CellListControl ) WRITE( DescriptorBackupString, "(G0)" ) nParticles * 3
       IF( CellListControl ) DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
       IF( CellListControl ) WRITE( 105, DescriptorBackupString ) "Cell_Index: ", pCellIndex
-      IF( CellListControlPotential .AND. ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) ) THEN
+      IF( CellListControlPotential .AND. ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. &
+      &                                    ANY( FullPotentialTypeLogical(2:3) ) ) ) THEN
         WRITE( DescriptorBackupString, "(G0)" ) nParticles
         DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
         WRITE( 105, DescriptorBackupString ) "Cell_List_Potential: ", pCellListPotential
@@ -1482,7 +1539,7 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
     WRITE( DescriptorBackupString, "(G0)" ) nParticles * 4
     DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
     WRITE( 105, DescriptorBackupString ) "Particle_Quaternion: ", pQuaternionMC
-    IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2)  ) THEN
+    IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
       WRITE( DescriptorBackupString, "(G0)" ) nRange
       DescriptorBackupString = "(G0,"//TRIM( DescriptorBackupString )//"(G0,1X)"//")"
       WRITE( 105, DescriptorBackupString ) "Total_Potential_MC: ", TotalPotentialEnergyMC
@@ -1532,7 +1589,7 @@ IF( EnsembleMC == "NPT" ) THEN
   CLOSE( 55 )
   CLOSE( 70 )
 END IF
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   DO rRange = 1, nRange
     CLOSE ( 80 + rRange )
   END DO
@@ -1551,15 +1608,15 @@ WRITE( *, "(G0)" ) " "
 
 ! Deallocation of arrays
 DEALLOCATE( pQuaternionMC, pPositionMC, pOrientationMC, PositionSaveMC )
-IF( PerturbedPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) ) THEN
   DEALLOCATE( TotalPotentialEnergyMC, iNewPotentialEnergy, iOldPotentialEnergy, iPotentialEnergyDifference )
-  DEALLOCATE( cPotentialRange )
+  DEALLOCATE( cPotentialRange, cCircumscribingPotentialRange )
 END IF
 IF( CellListLogical ) CALL FinalizeList(  )
-IF( CellListLogical .AND. PerturbedPotentialTypeLogical(2) ) CALL FinalizeListPotential(  )
+IF( CellListLogical .AND. ANY( PerturbedPotentialTypeLogical(2:3) ) ) CALL FinalizeListPotential(  )
 
 ! Calculation of the first- and second-order TPT coefficients
-IF( PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" .AND. PerturbedPotentialTypeLogical(2) ) THEN
+IF( PerturbationCoefficientLogical .AND. EnsembleMC == "NVT" .AND. ANY( PerturbedPotentialTypeLogical(2:3) ) ) THEN
   ! Status
   WRITE( *, "(G0)" ) CH_UL//REPEAT( CH_HS, 55 )//CH_UR
   WRITE( *, "(G0)" ) CH_VS//REPEAT( " ", 20 )//"TPT PARAMETERS"//REPEAT( " ", 21 )//CH_VS

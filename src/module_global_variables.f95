@@ -3,7 +3,7 @@
 !           This module defines the variables used by the main program and most of the            !
 !         subroutines and functions. A brief description is presented for each variable.          !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                         May 15th, 2024                                          !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -58,6 +58,7 @@ INTEGER( Kind= Int64 ) :: MaxBlocks ! Maximum number of blocks
 INTEGER( Kind= Int64 ) :: MaxSimulationCycles             ! Total number of simulation cycles
 INTEGER( Kind= Int64 ) :: nEquilibrationCycles            ! Number of equilibration cycles
 INTEGER( Kind= Int64 ) :: nSavingFrequency                ! Saving frequency
+INTEGER( Kind= Int64 ) :: nSavingFrequencyXYZ             ! Saving frequency (trajectory)
 INTEGER( Kind= Int64 ) :: nAdjustmentMovementFrequency    ! Movement adjustment frequency
 INTEGER( Kind= Int64 ) :: nAdjustmentVolumeFrequency      ! Volumetric adjustment frequency
 INTEGER( Kind= Int64 ) :: nAdjustmentMovementRandomConfig ! Movement adjustment frequency (initial configuration)
@@ -146,15 +147,19 @@ REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: pQuaternion, pQuaternion
 REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: pPosition, pPositionMC        ! Position array of particles
 REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: pOrientation, pOrientationMC  ! Orientation array of particles
 REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: cPotentialRange               ! Effective range of attraction of component c
+REAL( Kind= Real64 ), DIMENSION( :, : ), ALLOCATABLE :: cCircumscribingPotentialRange ! Effective cutoff range of attraction of component c (ASW)
 
 ! *********************************************************************************************** !
 ! REAL PARAMETERS                                                                                 !
 ! *********************************************************************************************** !
-REAL( Kind= Real64 ), PARAMETER                 :: cPi = 4.D0 * DATAN( 1.D0 ) ! Pi number
-REAL( Kind= Real64 ), PARAMETER                 :: cBoltzmann = 1.380649D-23  ! Boltzmann constant
-REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER :: xAxis = [1.D0,0.D0,0.D0]   ! Body-fixed axis of rotation along x-direction
-REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER :: yAxis = [0.D0,1.D0,0.D0]   ! Body-fixed axis of rotation along y-direction
-REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER :: zAxis = [0.D0,0.D0,1.D0]   ! Body-fixed axis of rotation along z-direction
+REAL( Kind= Real64 ), PARAMETER                    :: cPi = 4.D0 * DATAN( 1.D0 ) ! Pi number
+REAL( Kind= Real64 ), PARAMETER                    :: cBoltzmann = 1.380649D-23  ! Boltzmann constant
+REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER    :: xAxis = [1.D0,0.D0,0.D0]   ! Body-fixed axis of rotation along x-direction
+REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER    :: yAxis = [0.D0,1.D0,0.D0]   ! Body-fixed axis of rotation along y-direction
+REAL( Kind= Real64 ), DIMENSION( 3 ), PARAMETER    :: zAxis = [0.D0,0.D0,1.D0]   ! Body-fixed axis of rotation along z-direction
+REAL( Kind= Real64 ), DIMENSION( 3, 3 ), PARAMETER :: IdentityMatrix = RESHAPE( [ 1.D0, 0.D0, 0.D0, &
+&                                                                                 0.D0, 1.D0, 0.D0, &
+&                                                                                 0.D0, 0.D0, 1.D0 ], [ 3, 3 ] ) ! Identity matrix
 
 ! *********************************************************************************************** !
 ! CHARACTER STRINGS                                                                               !
@@ -229,7 +234,7 @@ LOGICAL                 :: FixedSeedLogical               ! Checks whether the s
 LOGICAL                 :: CellListLogical                ! Checks whether a cell list will be used to compute the potential (NVT only) or search for overlaps
 LOGICAL                 :: CellListControl                ! Toggles control of cell list
 LOGICAL                 :: CellListControlPotential       ! Toggles control of cell list (for the perturbed potential)
-LOGICAL, DIMENSION( 5 ) :: ConfigurationSelection         ! Checks the selected molecular configuration
+LOGICAL, DIMENSION( 4 ) :: ConfigurationSelection         ! Checks the selected molecular configuration
 LOGICAL, DIMENSION( 3 ) :: GeometryType                   ! Checks the selected molecular geometry
 LOGICAL, DIMENSION( 2 ) :: LatticeReductionTypeLogical    ! Lattice reduction selection
 LOGICAL, DIMENSION( 3 ) :: AxisSelection                  ! Checks the selected unrotated reference axis

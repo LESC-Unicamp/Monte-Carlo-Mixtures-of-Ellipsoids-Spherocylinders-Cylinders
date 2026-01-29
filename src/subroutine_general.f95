@@ -2,7 +2,7 @@
 !               NVT/NPT-Monte Carlo algorithm for cylindrically-symmetric molecules               !
 !           This code contains all miscellaneous subroutines used in the main program.            !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -10,7 +10,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !

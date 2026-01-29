@@ -3,7 +3,7 @@
 !                    This code contains a subroutine used in the main program                     !
 !                      that opens all file units and creates their headers.                       !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                          A. Stukowski                                          !
 !                      Modelling Simul. Mater. Sci. Eng. 18, 015012O (2010)                       !
@@ -336,7 +336,7 @@ IF( EnsembleMC == "NVT" ) THEN
     OPEN( Unit= 60, File= "Order_Parameter/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
     &                     "_order_η"//TRIM( DescriptorFileThermoVariable )//"_C"//TRIM( DescriptorFileComponents )//"_" &
     &                     //TRIM( DescriptorFileGeometry )//".dat" )
-    WRITE( 60, "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"'
+    WRITE( 60, "(5G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"', ",", '"'//"Phase Director [XYZ]"//'"'
     FLUSH( 60 )
   ELSE
     OPEN( Unit= 60, File= "Order_Parameter/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
@@ -351,7 +351,7 @@ ELSE IF( EnsembleMC == "NPT" ) THEN
     OPEN( Unit= 60, File= "Order_Parameter/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
     &                     "_order_P"//TRIM( DescriptorFileThermoVariable )//"_C"//TRIM( DescriptorFileComponents )//"_" &
     &                     //TRIM( DescriptorFileGeometry )//".dat" )
-    WRITE( 60, "(3G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"'
+    WRITE( 60, "(5G0)" ) '"'//"Cycles"//'"', ",", '"'//"Nematic Order Parameter"//'"', ",", '"'//"Phase Director [XYZ]"//'"'
     FLUSH( 60 )
   ELSE
     OPEN( Unit= 60, File= "Order_Parameter/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
@@ -369,7 +369,7 @@ IF( EnsembleMC == "NPT" ) THEN
     OPEN( Unit= 70, File= "Results/"//TRIM( DescriptorDate )//"/"//TRIM( DescriptorHour )// &
     &                     "_results_P"//TRIM( DescriptorFileThermoVariable )//"_C"//TRIM( DescriptorFileComponents )//"_" &
     &                     //TRIM( DescriptorFileGeometry )//".dat" )
-    WRITE( 70, "(9G0)" ) '"'//"Cycles"//'"', ",", '"'//"Packing Fraction"//'"', ",", '"'//"Number Density [Å⁻³]"//'"', ",", &
+    WRITE( 70, "(9G0)" ) '"'//"Cycles"//'"', ",", '"'//"Packing Fraction"//'"', ",", '"'//"Number Density"//'"', ",", &
     &                    '"'//"Box Volume"//'"', ",", '"'//"Reduced Pressure"//'"'
     FLUSH( 70 )
   ELSE
@@ -380,7 +380,7 @@ IF( EnsembleMC == "NPT" ) THEN
 END IF
 
 ! Potential file
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   IF( EnsembleMC == "NVT" ) THEN
     DO rRange = 1, nRange
       WRITE( DescriptorRange, FormatRange ) PotentialRange(rRange)

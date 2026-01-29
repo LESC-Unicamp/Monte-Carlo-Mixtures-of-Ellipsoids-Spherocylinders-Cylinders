@@ -3,7 +3,7 @@
 !         This code contains the overlap search subroutine for ellipsoids of revolution,          !
 !                                 spherocylinders, and cylinders.                                 !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                 J. W. Perram, M. S. Wertheim                                   !
 !                               J. Comput. Phys 15, 409-416 (1985)                                !
@@ -56,7 +56,7 @@ IMPLICIT NONE
 CONTAINS
 
 SUBROUTINE OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-&                           OverlapHER )
+&                           OverlapHER, ASWPotentialCheck, pASWRange )
 
 IMPLICIT NONE
 
@@ -65,6 +65,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 INTEGER( Kind= Int64 ) :: iComponent, jComponent ! Counters
 INTEGER( Kind= Int64 ) :: cBrent                 ! Counter (numerical method)
+INTEGER( Kind= Int64 ) :: pASWRange              ! Counter (range value of the anisotropic SW potential)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES (PARAMETER)                                                                      !
@@ -108,13 +109,13 @@ REAL( Kind= Real64 ), DIMENSION( 3, 3 ) :: iSemiAxisMatrixInverse           ! In
 REAL( Kind= Real64 ), DIMENSION( 3, 3 ) :: jSemiAxisMatrixInverse           ! Inverse matrix of the semiaxis of ellipsoid j
 REAL( Kind= Real64 ), DIMENSION( 3, 3 ) :: gMatrix, gMatrixInverse          ! Auxiliary matrix G and inverse matrix G
 REAL( Kind= Real64 ), DIMENSION( 3, 3 ) :: DgMatrixDLambda                  ! Derivative of matrix G with respect to λ
-REAL( Kind= Real64 ), DIMENSION( 3, 3 ) :: IdentityMatrix                   ! Identity matrix
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
 LOGICAL :: OverlapHER       ! Detects overlap between two ellipsoids of revolution: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: BisectionLogical ! Checks whether the root from the bisection method will be used or not
+LOGICAL :: ASWPotentialCheck   ! Checks whether the anisotropic square-well potential will be used or not
 
 ! Ellipsoid centers of mass coincide (FA = FB = 0 | Brent's method cannot be used)
 IF( DABS( SquaredDistance - 0.D0 ) < EPSILON( 1.D0 ) ) THEN
@@ -129,21 +130,15 @@ cBrent           = 0
 OverlapHER       = .FALSE.
 BisectionLogical = .FALSE.
 
-! Identity matrix
-IdentityMatrix      = 0.D0
-IdentityMatrix(1,1) = 1.D0
-IdentityMatrix(2,2) = 1.D0
-IdentityMatrix(3,3) = 1.D0
-
 ! Orientation of particle i along x-, y-, and z-directions
-CALL ActiveTransformation( xAxis, iQuaternion, iOrientationX )
-CALL ActiveTransformation( yAxis, iQuaternion, iOrientationY )
-CALL ActiveTransformation( zAxis, iQuaternion, iOrientationZ )
+CALL VectorRotation( xAxis, iQuaternion, iOrientationX )
+CALL VectorRotation( yAxis, iQuaternion, iOrientationY )
+CALL VectorRotation( zAxis, iQuaternion, iOrientationZ )
 
 ! Orientation of particle j along x-, y-, and z-direction
-CALL ActiveTransformation( xAxis, jQuaternion, jOrientationX )
-CALL ActiveTransformation( yAxis, jQuaternion, jOrientationY )
-CALL ActiveTransformation( zAxis, jQuaternion, jOrientationZ )
+CALL VectorRotation( xAxis, jQuaternion, jOrientationX )
+CALL VectorRotation( yAxis, jQuaternion, jOrientationY )
+CALL VectorRotation( zAxis, jQuaternion, jOrientationZ )
 
 ! Outer product of the orientation of particle i along x-direction
 CALL OuterProduct( iOrientationX, iOrientationX, iOrientationMatrixX )
@@ -159,14 +154,26 @@ CALL OuterProduct( jOrientationY, jOrientationY, jOrientationMatrixY )
 CALL OuterProduct( jOrientationZ, jOrientationZ, jOrientationMatrixZ )
 
 ! Semiaxes of particle i
-iSemiAxis(1) = 0.5D0 * cDiameter(iComponent)
-iSemiAxis(2) = 0.5D0 * cDiameter(iComponent)
-iSemiAxis(3) = 0.5D0 * cLength(iComponent)
+IF( ASWPotentialCheck ) THEN
+  iSemiAxis(1) = 0.5D0 * ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) )
+  iSemiAxis(2) = 0.5D0 * ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) )
+  iSemiAxis(3) = 0.5D0 * ( cLength(iComponent) + cPotentialRange(iComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  iSemiAxis(1) = 0.5D0 * cDiameter(iComponent)
+  iSemiAxis(2) = 0.5D0 * cDiameter(iComponent)
+  iSemiAxis(3) = 0.5D0 * cLength(iComponent)
+END IF
 
 ! Semiaxes of particle j
-jSemiAxis(1) = 0.5D0 * cDiameter(jComponent)
-jSemiAxis(2) = 0.5D0 * cDiameter(jComponent)
-jSemiAxis(3) = 0.5D0 * cLength(jComponent)
+IF( ASWPotentialCheck ) THEN
+  jSemiAxis(1) = 0.5D0 * ( cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) )
+  jSemiAxis(2) = 0.5D0 * ( cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) )
+  jSemiAxis(3) = 0.5D0 * ( cLength(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  jSemiAxis(1) = 0.5D0 * cDiameter(jComponent)
+  jSemiAxis(2) = 0.5D0 * cDiameter(jComponent)
+  jSemiAxis(3) = 0.5D0 * cLength(jComponent)
+END IF
 
 ! Matrix of the semiaxes of particle i
 iOrientationMatrixX = iOrientationMatrixX / ( iSemiAxis(1) * iSemiAxis(1) )
@@ -538,7 +545,7 @@ END SUBROUTINE InverseMatrixCofactor
 !           See Vega and Lago, Computers Chem. 18, 55-59 (1993), for more information.            !
 ! *********************************************************************************************** !
 SUBROUTINE OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-&                           ParallelSPC, OverlapSPC )
+&                           ParallelSPC, OverlapSPC, ASWPotentialCheck, pASWRange )
 
 IMPLICIT NONE
 
@@ -546,6 +553,7 @@ IMPLICIT NONE
 ! INTEGER VARIABLES                                                                               !
 ! *********************************************************************************************** !
 INTEGER( Kind= Int64 ) :: iComponent, jComponent ! Counters (component)
+INTEGER( Kind= Int64 ) :: pASWRange              ! Counter (range value of the anisotropic SW potential)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -569,21 +577,35 @@ REAL( Kind= Real64 ), DIMENSION( 3 ) :: VectorDistance             ! Vector dist
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL :: OverlapSPC  ! Detects overlap between two spherocylinders: TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: ParallelSPC ! Checks whether spherocylinders are parallel or not
+LOGICAL :: OverlapSPC        ! Detects overlap between two spherocylinders: TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: ParallelSPC       ! Checks whether spherocylinders are parallel or not
+LOGICAL :: ASWPotentialCheck ! Checks whether the anisotropic square-well potential will be used or not
 
 ! Initialization
 OverlapSPC  = .FALSE.
 ParallelSPC = .FALSE.
 
 ! Shortest distance between two spherocylinders
-ShortestDistance        = 0.5D0 * ( cDiameter(iComponent) + cDiameter(jComponent) )
+IF( ASWPotentialCheck ) THEN
+  ShortestDistance = 0.5D0 * ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) + &
+  &                            cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  ShortestDistance = 0.5D0 * ( cDiameter(iComponent) + cDiameter(jComponent) )
+END IF
 SquaredShortestDistance = ShortestDistance * ShortestDistance
 
 ! Half length of spherocylinder i
-HalfLength(1) = ( 0.5D0 * cLength(iComponent) )
+IF( ASWPotentialCheck ) THEN
+  HalfLength(1) = 0.5D0 * ( cLength(iComponent) + cPotentialRange(iComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfLength(1) = 0.5D0 * cLength(iComponent)
+END IF
 ! Half length of spherocylinder j
-HalfLength(2) = ( 0.5D0 * cLength(jComponent) )
+IF( ASWPotentialCheck ) THEN
+  HalfLength(2) = 0.5D0 * ( cLength(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfLength(2) = 0.5D0 * cLength(jComponent)
+END IF
 
 ! Initial calculation
 iVectorDistanceOrientation = DOT_PRODUCT( VectorDistance, iOrientation )
@@ -725,7 +747,7 @@ END SUBROUTINE OverlapCheckSPC
 !       See Ibarra-Avalos et al., Mol. Simul. 33, 6, 505–515 (2007), for more information.        !
 ! *********************************************************************************************** !
 SUBROUTINE OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-&                           iComponent, jComponent, ParallelSPC, OverlapCYL )
+&                           iComponent, jComponent, ParallelSPC, OverlapCYL, ASWPotentialCheck, pASWRange )
 
 IMPLICIT NONE
 
@@ -734,6 +756,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 INTEGER( Kind= Int64 ) :: iDisk, jDisk, dDisk    ! Counters (disk)
 INTEGER( Kind= Int64 ) :: iComponent, jComponent ! Counters (component)
+INTEGER( Kind= Int64 ) :: pASWRange              ! Counter (range value of the anisotropic SW potential)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -761,31 +784,65 @@ REAL( Kind= Real64 ), DIMENSION( 3, 2 ) :: iDiskPosition, jDiskPosition    ! Pos
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL :: OverlapCYL      ! Detects overlap between two cylindrical particles : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: OverlapRimRim   ! Detects overlap between two particles (rim-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: OverlapDiskDisk ! Detects overlap between two particles (disk-disk configuration) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: OverlapDiskRim  ! Detects overlap between two particles (disk-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
-LOGICAL :: ParallelSPC     ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
+LOGICAL :: OverlapCYL        ! Detects overlap between two cylindrical particles : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: OverlapRimRim     ! Detects overlap between two particles (rim-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: OverlapDiskDisk   ! Detects overlap between two particles (disk-disk configuration) : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: OverlapDiskRim    ! Detects overlap between two particles (disk-rim configuration) : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: ParallelSPC       ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
+LOGICAL :: ASWPotentialCheck ! Checks whether the anisotropic square-well potential will be used or not
 
 ! Half length of cylinder i
-HalfLength(1) = 0.5D0 * cLength(iComponent)
+IF( ASWPotentialCheck ) THEN
+  HalfLength(1) = 0.5D0 * ( cLength(iComponent) + cPotentialRange(iComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfLength(1) = 0.5D0 * cLength(iComponent)
+END IF
 ! Half length of cylinder j
-HalfLength(2) = 0.5D0 * cLength(jComponent)
+IF( ASWPotentialCheck ) THEN
+  HalfLength(2) = 0.5D0 * ( cLength(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfLength(2) = 0.5D0 * cLength(jComponent)
+END IF
 ! Half diameter of cylinder i
-HalfDiameter(1) = 0.5D0 * cDiameter(iComponent)
+IF( ASWPotentialCheck ) THEN
+  HalfDiameter(1) = 0.5D0 * ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfDiameter(1) = 0.5D0 * cDiameter(iComponent)
+END IF
 ! Half diameter of cylinder j
-HalfDiameter(2) = 0.5D0 * cDiameter(jComponent)
+IF( ASWPotentialCheck ) THEN
+  HalfDiameter(2) = 0.5D0 * ( cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfDiameter(2) = 0.5D0 * cDiameter(jComponent)
+END IF
 
 ! Cylindrical length (squared)
-cSquaredLength = 0.5D0 * ( cLength(iComponent) + cLength(jComponent) )
+IF( ASWPotentialCheck ) THEN
+  cSquaredLength = 0.5D0 * ( cLength(iComponent) + cPotentialRange(iComponent,pASWRange) + &
+  &                          cLength(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  cSquaredLength = 0.5D0 * ( cLength(iComponent) + cLength(jComponent) )
+END IF
 cSquaredLength = cSquaredLength * cSquaredLength
 ! Cylindrical diameter (squared)
-cSquaredDiameter = 0.5D0 * ( cDiameter(iComponent) + cDiameter(jComponent) )
+IF( ASWPotentialCheck ) THEN
+  cSquaredDiameter = 0.5D0 * ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) + &
+  &                            cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  cSquaredDiameter = 0.5D0 * ( cDiameter(iComponent) + cDiameter(jComponent) )
+END IF
 cSquaredDiameter = cSquaredDiameter * cSquaredDiameter
 
 ! Diameter of the disks (squared)
-dSquaredDiameter(1) = cDiameter(iComponent) * cDiameter(iComponent)
-dSquaredDiameter(2) = cDiameter(jComponent) * cDiameter(jComponent)
+IF( ASWPotentialCheck ) THEN
+  dSquaredDiameter(1) = ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) ) * &
+  &                     ( cDiameter(iComponent) + cPotentialRange(iComponent,pASWRange) )
+  dSquaredDiameter(2) = ( cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) ) * &
+  &                     ( cDiameter(jComponent) + cPotentialRange(jComponent,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  dSquaredDiameter(1) = cDiameter(iComponent) * cDiameter(iComponent)
+  dSquaredDiameter(2) = cDiameter(jComponent) * cDiameter(jComponent)
+END IF
 
 ! Initialization
 OverlapCYL = .FALSE.
@@ -1282,11 +1339,11 @@ END IF
 ! OTHER CONFIGURATIONS (INITIALIZATION)                                                           !
 ! *********************************************************************************************** !
 ! Orientation of the cylindrical disk along the x-direction
-CALL ActiveTransformation( xAxis, pDiskQuaternion, pDiskOrientationX )
+CALL VectorRotation( xAxis, pDiskQuaternion, pDiskOrientationX )
 ! Orientation of the cylindrical disk along the y-direction
-CALL ActiveTransformation( yAxis, pDiskQuaternion, pDiskOrientationY )
+CALL VectorRotation( yAxis, pDiskQuaternion, pDiskOrientationY )
 ! Orientation of the cylindrical disk along the z-direction
-CALL ActiveTransformation( zAxis, pDiskQuaternion, pDiskOrientationZ )
+CALL VectorRotation( zAxis, pDiskQuaternion, pDiskOrientationZ )
 ! Dot product of the orientation of the cylindrical disk along x-direction and the orientation of the cylindrical rim
 drOrientationXZ = DOT_PRODUCT( pDiskOrientationX, pRimOrientation )
 ! Dot product of the orientation of the cylindrical disk along y-direction and the orientation of the cylindrical rim
@@ -1767,7 +1824,8 @@ END SUBROUTINE DiskRimConfiguration
 !  position of the center of mass of a sphere as well as the relative distance between them and   !
 !                       calculates whether they overlap each other or not.                        !
 ! *********************************************************************************************** !
-SUBROUTINE OverlapCheckCYLSPH( cCyclinder, cSphere, cQuaternion, cPosition, sPosition, OverlapCYLSPH )
+SUBROUTINE OverlapCheckCYLSPH( cCyclinder, cSphere, cQuaternion, cPosition, sPosition, OverlapCYLSPH, ASWPotentialCheck, &
+&                              pASWRange )
 
 IMPLICIT NONE
 
@@ -1776,6 +1834,7 @@ IMPLICIT NONE
 ! *********************************************************************************************** !
 INTEGER( Kind= Int64 ) :: dDisk               ! Counter (disks)
 INTEGER( Kind= Int64 ) :: cCyclinder, cSphere ! Counters (component)
+INTEGER( Kind= Int64 ) :: pASWRange           ! Counter (range value of the anisotropic SW potential)
 
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
@@ -1807,33 +1866,60 @@ REAL( Kind= Real64 ), DIMENSION( 2, 3 ) :: cDiskPosition                     ! P
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
 ! *********************************************************************************************** !
-LOGICAL :: OverlapCYLSPH ! Detects overlap between a cylindrical and a spherical particle : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: OverlapCYLSPH     ! Detects overlap between a cylindrical and a spherical particle : TRUE = overlap detected; FALSE = overlap not detected
+LOGICAL :: ASWPotentialCheck ! Checks whether the anisotropic square-well potential will be used or not
 
 ! Half length of cylinder
-HalfLength(1) = 0.5D0 * cLength(cCyclinder)
+IF( ASWPotentialCheck ) THEN
+  HalfLength(1) = 0.5D0 * ( cLength(cCyclinder) + cPotentialRange(cCyclinder,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfLength(1) = 0.5D0 * cLength(cCyclinder)
+END IF
 ! Half length of sphere
-HalfLength(2) = 0.5D0 * cLength(cSphere)
+IF( ASWPotentialCheck ) THEN
+  HalfLength(2) = 0.5D0 * ( cLength(cSphere) + cPotentialRange(cSphere,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfLength(2) = 0.5D0 * cLength(cSphere)
+END IF
 ! Half diameter of cylinder
-HalfDiameter(1) = 0.5D0 * cDiameter(cCyclinder)
+IF( ASWPotentialCheck ) THEN
+  HalfDiameter(1) = 0.5D0 * ( cDiameter(cCyclinder) + cPotentialRange(cCyclinder,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfDiameter(1) = 0.5D0 * cDiameter(cCyclinder)
+END IF
 ! Half diameter of sphere
-HalfDiameter(2) = 0.5D0 * cDiameter(cSphere)
+IF( ASWPotentialCheck ) THEN
+  HalfDiameter(2) = 0.5D0 * ( cDiameter(cSphere) + cPotentialRange(cSphere,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  HalfDiameter(2) = 0.5D0 * cDiameter(cSphere)
+END IF
 
 ! Combined length (squared)
-csSquaredLength = 0.5D0 * ( cLength(cCyclinder) + cLength(cSphere) )
+IF( ASWPotentialCheck ) THEN
+  csSquaredLength = 0.5D0 * ( cLength(cCyclinder) + cPotentialRange(cCyclinder,pASWRange) + &
+  &                           cLength(cSphere) + cPotentialRange(cSphere,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  csSquaredLength = 0.5D0 * ( cLength(cCyclinder) + cLength(cSphere) )
+END IF
 csSquaredLength = csSquaredLength * csSquaredLength
 ! Combined diameter (squared)
-csSquaredDiameter = 0.5D0 * ( cDiameter(cCyclinder) + cDiameter(cSphere) )
+IF( ASWPotentialCheck ) THEN
+  csSquaredDiameter = 0.5D0 * ( cDiameter(cCyclinder) + cPotentialRange(cCyclinder,pASWRange) + &
+  &                             cDiameter(cSphere) + cPotentialRange(cSphere,pASWRange) )
+ELSE IF( .NOT. ASWPotentialCheck ) THEN
+  csSquaredDiameter = 0.5D0 * ( cDiameter(cCyclinder) + cDiameter(cSphere) )
+END IF
 csSquaredDiameter = csSquaredDiameter * csSquaredDiameter
 
 ! Initialization
 OverlapCYLSPH = .FALSE.
 
 ! Orientation of the cylindrical disk along the x-direction
-CALL ActiveTransformation( xAxis, cQuaternion, cOrientationX )
+CALL VectorRotation( xAxis, cQuaternion, cOrientationX )
 ! Orientation of the cylindrical disk along the y-direction
-CALL ActiveTransformation( yAxis, cQuaternion, cOrientationY )
+CALL VectorRotation( yAxis, cQuaternion, cOrientationY )
 ! Orientation of the cylindrical disk along the z-direction
-CALL ActiveTransformation( zAxis, cQuaternion, cOrientationZ )
+CALL VectorRotation( zAxis, cQuaternion, cOrientationZ )
 
 ! Vector distance between cylinder and sphere
 csVectorDistance(1) = sPosition(1) - cPosition(1)

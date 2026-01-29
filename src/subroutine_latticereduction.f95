@@ -3,7 +3,7 @@
 !                   This code contains all subroutines used in the main program                   !
 !    to apply a lattice reduction technique to orthogonalize the shape of the simulation box.     ! 
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:               D. Gottwald, G. Kahl, C. N. Likos                                !
 !                                J. Chem. Phys. 122, 204503 (2005)                                !

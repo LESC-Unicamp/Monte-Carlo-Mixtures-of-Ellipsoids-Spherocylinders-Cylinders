@@ -4,7 +4,7 @@
 !                                   Allen and Tildesley (2017).                                   !
 !            Check https://github.com/Allen-Tildesley/examples/ for more information.             !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -12,7 +12,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -541,12 +541,12 @@ LOGICAL :: ControlInitConfig ! Enable/disable potential check for this subroutin
 
 ! New cell index
 IF( CellListControl ) iCellIndex(:) = CellIndex( ScalingDistanceUnitBox )
-IF( ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) .AND. ControlInitConfig .AND. &
+IF( ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) .AND. ControlInitConfig .AND. &
 &     CellListControlPotential ) iCellIndexPotential(:) = CellIndexPotential( ScalingDistanceUnitBox )
 
 ! Move particle from a cell to another cell, only if necessary
 IF( CellListControl ) CALL MoveParticleList( pParticle, iCellIndex(:) )
-IF( ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) .AND. ControlInitConfig .AND. &
+IF( ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) .AND. ControlInitConfig .AND. &
 &     CellListControlPotential ) CALL MoveParticleListPotential( pParticle, iCellIndexPotential(:) )
 
 RETURN
@@ -602,7 +602,7 @@ pCellsNew = FLOOR( 1.D0 / BoxCutoffNew )
 IF( ANY( pCellsNew /= pCellsOld ) ) CALL MakeList( BoxCutoffNew, Position, bLengthInverseNew )
 
 ! Potential only
-IF( ( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) .AND. ControlInitConfig ) THEN
+IF( ( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) .AND. ControlInitConfig ) THEN
   ! Box cutoff
   BoxCutoffOld(1) = cLargestSphericalWell / bLengthOld(1)
   BoxCutoffOld(2) = cLargestSphericalWell / bLengthOld(5)

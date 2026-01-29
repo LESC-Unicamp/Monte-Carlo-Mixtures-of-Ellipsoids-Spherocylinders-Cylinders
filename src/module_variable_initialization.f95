@@ -7,7 +7,7 @@
 !  This module also initialize some inquiry (character) variables, allowing the user to control   !
 ! which results will be written out in external files and to enable post-processing subroutines.  !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -15,7 +15,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                         May 15th, 2024                                          !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
@@ -72,6 +72,15 @@ READ( 10, * ) Dummy, nSavingFrequency
 ! Condition
 IF( nSavingFrequency < 1 ) THEN
   WRITE( *, "(3G0)" ) "The saving frequency [", nSavingFrequency, "] cannot be a negative integer nor zero. Exiting... "
+  CALL Exit(  )
+END IF
+
+! Saving frequency (trajectory)
+READ( 10, * ) Dummy, nSavingFrequencyXYZ
+! Condition
+IF( nSavingFrequencyXYZ < 1 ) THEN
+  WRITE( *, "(4G0)" ) "The saving frequency for the configuration file [", nSavingFrequencyXYZ, "] cannot be a negative ", &
+  &                   "integer nor zero. Exiting... "
   CALL Exit(  )
 END IF
 
@@ -323,6 +332,8 @@ IF( PerturbedPotentialType == "HARDCORE" ) THEN
   PerturbedPotentialTypeLogical(1) = .TRUE.
 ELSE IF( PerturbedPotentialType == "SQUAREWELL" ) THEN
   PerturbedPotentialTypeLogical(2) = .TRUE.
+ELSE IF( PerturbedPotentialType == "ANISOSW" ) THEN
+  PerturbedPotentialTypeLogical(3) = .TRUE.
 ELSE ! Stop condition
   WRITE( *, "(3G0)" ) "The user-defined [", TRIM( PerturbedPotentialType ), "] is not an available force field. Exiting..."
   CALL Exit(  )
@@ -337,6 +348,8 @@ IF( FullPotentialType == "HARDCORE" ) THEN
   FullPotentialTypeLogical(1) = .TRUE.
 ELSE IF( FullPotentialType == "SQUAREWELL" ) THEN
   FullPotentialTypeLogical(2) = .TRUE.
+ELSE IF( FullPotentialType == "ANISOSW" ) THEN
+  FullPotentialTypeLogical(3) = .TRUE.
 ELSE ! Stop condition 1
   WRITE( *, "(3G0)" ) "The user-defined [", TRIM( FullPotentialType ), "] is not an available force field. Exiting..."
   CALL Exit(  )
@@ -705,7 +718,7 @@ pLoop: DO
       WRITE( *, "(G0)") "Exiting..."
       CALL Exit(  )
     END IF
-  ELSE IF ( ConfigurationSelection(4) .OR. ConfigurationSelection(5) ) THEN
+  ELSE IF ( ConfigurationSelection(4) ) THEN
     EXIT pLoop
   END IF
 END DO pLoop
@@ -1036,6 +1049,7 @@ WRITE( *, "(G0,G0)" ) "Number of Equilibration Cycles: ", nEquilibrationCycles
 WRITE( *, "(G0,G0)" ) "Number of Production Cycles: ", MaxSimulationCycles - nEquilibrationCycles
 WRITE( *, "(G0)" ) " "
 WRITE( *, "(G0,G0,G0)" ) "Saving Frequency: Every ", nSavingFrequency, " Cycle(s)"
+WRITE( *, "(G0,G0,G0)" ) "Saving Frequency (Configuration): Every ", nSavingFrequencyXYZ, " Cycle(s)"
 WRITE( *, "(G0,G0,G0)" ) "Movement Adjustment Frequency: Every ", nAdjustmentMovementFrequency, " Equilibration Cycle(s)"
 WRITE( *, "(G0,G0,G0)" ) "Volumetric Adjustment Frequency: Every ", nAdjustmentVolumeFrequency, " Equilibration Cycle(s)"
 WRITE( *, "(G0)" ) " "
@@ -1127,7 +1141,7 @@ INTEGER( Kind= Int64 ) :: rRange ! Counter
 OPEN( Unit= 10, File= "ini_potential.ini", Action= "READ" )
 
 ! Square-well potential
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   ! Number of attractive range points
   READ( 10, * ) Dummy, nRange
   ! Stop condition 1
@@ -1136,7 +1150,7 @@ IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
     CALL Exit(  )
   END IF
   ! Stop condition 2
-  IF( nRange > 1 .AND. FullPotentialTypeLogical(2) ) THEN
+  IF( nRange > 1 .AND. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
     WRITE( *, "(G0)" ) "The configurational potential (reference system) can only accept one range value. Exiting... "
     CALL Exit(  )
   END IF
@@ -1146,10 +1160,18 @@ IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
   READ( 10, * ) Dummy, PotentialRange
   ! Condition
   DO rRange = 1, nRange
-    IF( PotentialRange(rRange) <= 1.D0 ) THEN
-      WRITE( *, "(3G0,G0.5,G0)" ) "The attractive range #", rRange, " [", PotentialRange(rRange), &
-      &                           "] cannot be less than or equal to 1. Exiting... "
-      CALL Exit(  )
+    IF( PerturbedPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
+      IF( PotentialRange(rRange) <= 1.D0 ) THEN
+        WRITE( *, "(3G0,G0.5,G0)" ) "The attractive range #", rRange, " [", PotentialRange(rRange), &
+        &                           "] cannot be less than or equal to 1. Exiting... "
+        CALL Exit(  )
+      END IF
+    ELSE IF( PerturbedPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+      IF( PotentialRange(rRange) <= 0.D0 ) THEN
+        WRITE( *, "(3G0,G0.5,G0)" ) "The attractive range #", rRange, " [", PotentialRange(rRange), &
+        &                           "] cannot be less than or equal to 0. Exiting... "
+        CALL Exit(  )
+      END IF
     END IF
   END DO
   ! Reduced Temperature
@@ -1194,6 +1216,9 @@ IF( FullPotentialTypeLogical(1) ) THEN
   ELSE IF( PerturbedPotentialTypeLogical(2) ) THEN
     WRITE( *, "(G0)" ) "Full Potential Type: [HARDCORE]"
     WRITE( *, "(G0)" ) "Perturbed Potential Type: [SQUAREWELL]"
+  ELSE IF( PerturbedPotentialTypeLogical(3) ) THEN
+    WRITE( *, "(G0)" ) "Full Potential Type: [HARDCORE]"
+    WRITE( *, "(G0)" ) "Perturbed Potential Type: [ANISOSW]"
   END IF
 ELSE IF( FullPotentialTypeLogical(2) ) THEN
   IF( PerturbedPotentialTypeLogical(1) ) THEN
@@ -1202,10 +1227,13 @@ ELSE IF( FullPotentialTypeLogical(2) ) THEN
   ELSE IF( PerturbedPotentialTypeLogical(2) ) THEN
     WRITE( *, "(G0)" ) "Full Potential Type: [SQUAREWELL]"
     WRITE( *, "(G0)" ) "Perturbed Potential Type: [SQUAREWELL]"
+  ELSE IF( PerturbedPotentialTypeLogical(3) ) THEN
+    WRITE( *, "(G0)" ) "Full Potential Type: [SQUAREWELL]"
+    WRITE( *, "(G0)" ) "Perturbed Potential Type: [ANISOSW]"  
   END IF
 END IF
 WRITE( *, "(G0)" ) " "
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   WRITE( *, "(G0,G0)" ) "Number of Attractive Range Points: ", nRange
   WRITE( *, "(G0)", Advance= "NO" ) "Attractive Range Values: ["
   DO rRange = 1, nRange
@@ -1300,6 +1328,7 @@ WRITE( 105, "(G0,5(G0,1X))" ) "Configuration_Selection: ", ConfigurationSelectio
 WRITE( 105, "(2G0)" ) "Max_Simulation_Cycles: ", MaxSimulationCycles
 WRITE( 105, "(2G0)" ) "Number_of_Equilibration_Cycles: ", nEquilibrationCycles
 WRITE( 105, "(2G0)" ) "Saving_Frequency: ", nSavingFrequency
+WRITE( 105, "(2G0)" ) "Saving_Frequency_Configuration: ", nSavingFrequencyXYZ
 WRITE( 105, "(2G0)" ) "Movement_Adjustment_Frequency: ", nAdjustmentMovementFrequency
 WRITE( 105, "(2G0)" ) "Volumetric_Adjustment_Frequency: ", nAdjustmentVolumeFrequency
 WRITE( 105, "(2G0)" ) "Movement_Adjustment_Frequency_Random_Config: ", nAdjustmentMovementRandomConfig
@@ -1453,6 +1482,7 @@ READ( 105, * ) Dummy, ConfigurationSelection
 READ( 105, * ) Dummy, MaxSimulationCycles
 READ( 105, * ) Dummy, nEquilibrationCycles
 READ( 105, * ) Dummy, nSavingFrequency
+READ( 105, * ) Dummy, nSavingFrequencyXYZ
 READ( 105, * ) Dummy, nAdjustmentMovementFrequency
 READ( 105, * ) Dummy, nAdjustmentVolumeFrequency
 READ( 105, * ) Dummy, nAdjustmentMovementRandomConfig

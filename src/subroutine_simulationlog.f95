@@ -3,7 +3,7 @@
 !                    This code contains a subroutine used in the main program                     !
 !         to generate a log file containg all pertinent information about the simulation.         !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
@@ -74,7 +74,7 @@ CHARACTER( LEN= 100 ), DIMENSION( :, : ), ALLOCATABLE :: CharLabelPRange ! Simul
 LOGICAL :: FileExist ! Checks whether a file exists or not
 
 ! Allocation
-ALLOCATE( CharLabel(78,nComponents) )
+ALLOCATE( CharLabel(79,nComponents) )
 ALLOCATE( CharLabelPRange(1,nRange ) )
 
 ! Initialize character labels
@@ -108,6 +108,7 @@ WRITE( CharLabel(19,1), "(G0)"   ) MaxSimulationCycles
 WRITE( CharLabel(20,1), "(G0)"   ) nEquilibrationCycles
 WRITE( CharLabel(21,1), "(G0)"   ) MaxSimulationCycles - nEquilibrationCycles
 WRITE( CharLabel(22,1), "(G0)"   ) nSavingFrequency
+WRITE( CharLabel(79,1), "(G0)"   ) nSavingFrequencyXYZ
 WRITE( CharLabel(23,1), "(G0)"   ) nAdjustmentMovementFrequency
 WRITE( CharLabel(74,1), "(G0)"   ) nAdjustmentVolumeFrequency
 WRITE( CharLabel(24,1), "(G0.5)" ) AcceptanceRatioTranslation
@@ -209,8 +210,10 @@ IF( PerturbedPotentialTypeLogical(1) ) THEN
   WRITE( CharLabel(78,1), "(G0)" ) "[PERTURBATION] No"
 ELSE IF( PerturbedPotentialTypeLogical(2) ) THEN
   WRITE( CharLabel(78,1), "(G0)" ) "[PERTURBATION] Square Well"
+ELSE IF( PerturbedPotentialTypeLogical(2) ) THEN
+  WRITE( CharLabel(78,1), "(G0)" ) "[PERTURBATION] Anisotropic Square Well"
 END IF
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   WRITE( CharLabel(65,1), "(G0)"   ) nRange
   DO rRange = 1, nRange
     WRITE( CharLabelPRange(1,rRange), "(G0.5)" ) PotentialRange(rRange)
@@ -244,9 +247,9 @@ END IF
 ! Simulation Log Strings                                                                          !
 ! *********************************************************************************************** !
 ! Allocation
-ALLOCATE( StringsHeader(6), StringsText(84,nComponents), StringsSubtitle(6) )
+ALLOCATE( StringsHeader(6), StringsText(85,nComponents), StringsSubtitle(6) )
 ALLOCATE( StringsPRange( 1,( INT( DBLE( nRange ) / 4.D0 ) + 1 ) ) )
-ALLOCATE( StringsSizeHeader(6), StringsSizeText(84,nComponents), StringsSizeSubtitle(6) )
+ALLOCATE( StringsSizeHeader(6), StringsSizeText(85,nComponents), StringsSizeSubtitle(6) )
 
 ! String name (header)
 StringsHeader(1) = "MONTE CARLO SIMULATION LOG"
@@ -291,6 +294,7 @@ StringsText(24,1) = "Total Number of Cycles: "//TRIM( CharLabel(19,1) )
 StringsText(25,1) = "Equilibration Cycles: "//TRIM( CharLabel(20,1) )
 StringsText(26,1) = "Production Cycles: "//TRIM( CharLabel(21,1) )
 StringsText(27,1) = "Saving Frequency (Cycles): "//TRIM( CharLabel(22,1) )
+StringsText(85,1) = "Saving Frequency XYZ (Cycles): "//TRIM( CharLabel(79,1) )
 StringsText(28,1) = "Movement Adjustment Frequency (Cycles): "//TRIM( CharLabel(23,1) )
 StringsText(80,1) = "Volumetric Adjustment Frequency (Cycles): "//TRIM( CharLabel(74,1) )
 StringsText(29,1) = "Ratio Threshold (Translation): "//TRIM( CharLabel(24,1) )
@@ -402,7 +406,7 @@ StringsSubtitle(6) = "PARAMETERS OF THE POTENTIAL"
 DO iString = 1, 6
   StringsSizeHeader(iString) = ( 70.D0 - DBLE( LEN( TRIM( StringsHeader(iString) ) ) ) ) * 0.5D0
 END DO
-DO iString = 1, 84
+DO iString = 1, 85
   DO cComponent = 1, nComponents
     StringsSizeText(iString,cComponent) = ( 69 - LEN( TRIM( StringsText(iString,cComponent) ) ) )
   END DO
@@ -540,6 +544,7 @@ WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(24,1) )//REPEAT( 
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(25,1) )//REPEAT( " ", NINT( StringsSizeText(25,1) ) )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(26,1) )//REPEAT( " ", NINT( StringsSizeText(26,1) ) )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(27,1) )//REPEAT( " ", NINT( StringsSizeText(27,1) ) )//CH_VS
+WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(85,1) )//REPEAT( " ", NINT( StringsSizeText(85,1) ) )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(28,1) )//REPEAT( " ", NINT( StringsSizeText(28,1) ) )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(80,1) )//REPEAT( " ", NINT( StringsSizeText(80,1) ) )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(29,1) )//REPEAT( " ", NINT( StringsSizeText(29,1) ) )//CH_VS
@@ -606,7 +611,7 @@ WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(69,1) )//REPEAT( " ", NINT( StringsSizeText(69,1) ) + 2 )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 1 )//TRIM( StringsText(84,1) )//REPEAT( " ", NINT( StringsSizeText(84,1) ) )//CH_VS
 WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 70 )//CH_VS
-IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN
+IF( ANY( PerturbedPotentialTypeLogical(2:3) ) .OR. ANY( FullPotentialTypeLogical(2:3) ) ) THEN
   WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( StringsText(70,1) )//REPEAT( " ", NINT( StringsSizeText(70,1) ) - 1 )//CH_VS
   WRITE( 95, "(G0)" ) CH_VS//REPEAT( " ", 2 )//TRIM( StringsText(71,1) )//REPEAT( " ", NINT( StringsSizeText(71,1) ) - 1 )//CH_VS
   IF( nRange == 4 ) THEN

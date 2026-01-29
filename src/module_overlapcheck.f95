@@ -3,7 +3,7 @@
 !                  This module contains all subroutines used in the main program                  !
 !                            to search for overlapping configurations.                            !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                         May 15th, 2024                                          !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -124,13 +124,13 @@ DO jComponent = 1, iComponent - 1
       ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
       IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
         CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-        &                     PrivateOverlap )
+        &                     PrivateOverlap, .FALSE., 0_INT64 )
         ! Overlap found
         IF( PrivateOverlap ) SharedOverlap = .TRUE.
       ! Overlap test for spherocylinders (Vega-Lago method)
       ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
         CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, PrivateOverlap )
+        &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
         ! Overlap found
         IF( PrivateOverlap ) SharedOverlap = .TRUE.
       ! Overlap test for cylinders and/or spheres
@@ -140,7 +140,7 @@ DO jComponent = 1, iComponent - 1
           OverlapSPC = .FALSE.
           ! Preliminary test (circumscribing spherocylinders)
           CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, OverlapSPC )
+          &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
           ! Overlap criterion
           IF( OverlapSPC ) THEN
             ! Apply periodic boundary conditions on the position of particle j
@@ -149,7 +149,7 @@ DO jComponent = 1, iComponent - 1
             jPosition(3) = iPosition(3) + VectorDistance(3)
             ! Overlap test for cylinders (modified algorithm of Lopes et al.)
             CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-            &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+            &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) SharedOverlap = .TRUE.
           END IF
@@ -159,7 +159,7 @@ DO jComponent = 1, iComponent - 1
           jPosition(1) = iPosition(1) + VectorDistance(1)
           jPosition(2) = iPosition(2) + VectorDistance(2)
           jPosition(3) = iPosition(3) + VectorDistance(3)
-          CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap )
+          CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for cylinders and spheres
@@ -168,7 +168,7 @@ DO jComponent = 1, iComponent - 1
           jPosition(1) = iPosition(1) + VectorDistance(1)
           jPosition(2) = iPosition(2) + VectorDistance(2)
           jPosition(3) = iPosition(3) + VectorDistance(3)
-          CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap )
+          CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for spheres
@@ -236,13 +236,13 @@ DO jComponent = iComponent + 1, nComponents
       ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
       IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
         CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-        &                     PrivateOverlap )
+        &                     PrivateOverlap, .FALSE., 0_INT64 )
         ! Overlap found
         IF( PrivateOverlap ) SharedOverlap = .TRUE.
       ! Overlap test for spherocylinders (Vega-Lago method)
       ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
         CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, PrivateOverlap )
+        &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
         ! Overlap found
         IF( PrivateOverlap ) SharedOverlap = .TRUE.
       ! Overlap test for cylinders and/or spheres
@@ -252,7 +252,7 @@ DO jComponent = iComponent + 1, nComponents
           OverlapSPC = .FALSE.
           ! Preliminary test (circumscribing spherocylinders)
           CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, OverlapSPC )
+          &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
           ! Overlap criterion
           IF( OverlapSPC ) THEN
             ! Apply periodic boundary conditions on the position of particle j
@@ -261,7 +261,7 @@ DO jComponent = iComponent + 1, nComponents
             jPosition(3) = iPosition(3) + VectorDistance(3)
             ! Overlap test for cylinders (modified algorithm of Lopes et al.)
             CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-            &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+            &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) SharedOverlap = .TRUE.
           END IF
@@ -271,7 +271,7 @@ DO jComponent = iComponent + 1, nComponents
           jPosition(1) = iPosition(1) + VectorDistance(1)
           jPosition(2) = iPosition(2) + VectorDistance(2)
           jPosition(3) = iPosition(3) + VectorDistance(3)
-          CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap )
+          CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for cylinders and spheres
@@ -280,7 +280,7 @@ DO jComponent = iComponent + 1, nComponents
           jPosition(1) = iPosition(1) + VectorDistance(1)
           jPosition(2) = iPosition(2) + VectorDistance(2)
           jPosition(3) = iPosition(3) + VectorDistance(3)
-          CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap )
+          CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for spheres
@@ -347,13 +347,13 @@ DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
     ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
     IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
       CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     PrivateOverlap )
+      &                     PrivateOverlap, .FALSE., 0_INT64 )
       ! Overlap found
       IF( PrivateOverlap ) SharedOverlap = .TRUE.
     ! Overlap test for spherocylinders (Vega-Lago method)
     ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
       CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     ParallelSPC, PrivateOverlap )
+      &                     ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
       ! Overlap found
       IF( PrivateOverlap ) SharedOverlap = .TRUE.
     ! Overlap test for cylinders or spheres
@@ -363,7 +363,7 @@ DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
         OverlapSPC = .FALSE.
         ! Preliminary test (circumscribing spherocylinders)
         CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, OverlapSPC )
+        &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
         ! Overlap criterion
         IF( OverlapSPC ) THEN
           ! Apply periodic boundary conditions on the position of particle j
@@ -372,7 +372,7 @@ DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
           jPosition(3) = iPosition(3) + VectorDistance(3)
           ! Overlap test for cylinders (modified algorithm of Lopes et al.)
           CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-          &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+          &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         END IF
@@ -437,13 +437,13 @@ DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
     ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
     IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
       CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     PrivateOverlap )
+      &                     PrivateOverlap, .FALSE., 0_INT64 )
       ! Overlap found
       IF( PrivateOverlap ) SharedOverlap = .TRUE.
     ! Overlap test for spherocylinders (Vega-Lago method)
     ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
       CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     ParallelSPC, PrivateOverlap )
+      &                     ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
       ! Overlap found
       IF( PrivateOverlap ) SharedOverlap = .TRUE.
     ! Overlap test for cylinders or spheres
@@ -453,7 +453,7 @@ DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
         OverlapSPC = .FALSE.
         ! Preliminary test (circumscribing spherocylinders)
         CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, OverlapSPC )
+        &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
         ! Overlap criterion
         IF( OverlapSPC ) THEN
           ! Apply periodic boundary conditions on the position of particle j
@@ -462,7 +462,7 @@ DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
           jPosition(3) = iPosition(3) + VectorDistance(3)
           ! Overlap test for cylinders (modified algorithm of Lopes et al.)
           CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-          &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+          &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         END IF
@@ -604,7 +604,7 @@ DO
     ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
     IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
       CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     OverlapHER )
+      &                     OverlapHER, .FALSE., 0_INT64 )
       ! Overlap criterion
       IF( OverlapHER ) THEN
         ! Returns control to the calling program unit if an overlap is detected
@@ -614,7 +614,7 @@ DO
     ! Overlap test for spherocylinders (Vega-Lago method)
     ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
       CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-      &                     ContactDistance, ParallelSPC, OverlapSPC )
+      &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
       ! Overlap criterion
       IF( OverlapSPC ) THEN
         ! Returns control to the calling program unit if an overlap is detected
@@ -628,7 +628,7 @@ DO
         OverlapSPC = .FALSE.
         ! Preliminary test (circumscribing spherocylinders)
         CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, OverlapSPC )
+        &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
         ! Overlap criterion
         IF( OverlapSPC ) THEN
           ! Apply periodic boundary conditions on the position of particle j
@@ -637,7 +637,7 @@ DO
           jPosition(3) = iPosition(3) + VectorDistance(3)
           ! Overlap test for cylinders (modified algorithm of Lopes et al.)
           CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-          &                     iComponent, jComponent, ParallelSPC, OverlapCYL )
+          &                     iComponent, jComponent, ParallelSPC, OverlapCYL, .FALSE., 0_INT64 )
           ! Overlap criterion
           IF( OverlapCYL ) THEN
             ! Returns control to the calling program unit if an overlap is detected
@@ -651,7 +651,7 @@ DO
         jPosition(1) = iPosition(1) + VectorDistance(1)
         jPosition(2) = iPosition(2) + VectorDistance(2)
         jPosition(3) = iPosition(3) + VectorDistance(3)
-        CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, OverlapCYL )
+        CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, OverlapCYL, .FALSE., 0_INT64 )
         IF( OverlapCYL ) THEN
           ! Returns control to the calling program unit if an overlap is detected
           Overlap = .TRUE.
@@ -663,7 +663,7 @@ DO
         jPosition(1) = iPosition(1) + VectorDistance(1)
         jPosition(2) = iPosition(2) + VectorDistance(2)
         jPosition(3) = iPosition(3) + VectorDistance(3)
-        CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, OverlapCYL )
+        CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, OverlapCYL, .FALSE., 0_INT64 )
         IF( OverlapCYL ) THEN
           ! Returns control to the calling program unit if an overlap is detected
           Overlap = .TRUE.
@@ -793,13 +793,13 @@ DO iComponent = 1, nComponents - 1
           ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
           IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
             CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, PrivateOverlap )
+            &                     ContactDistance, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) SharedOverlap = .TRUE.
           ! Overlap test for spherocylinders (Vega-Lago method)
           ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
             CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, PrivateOverlap )
+            &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) SharedOverlap = .TRUE.
           ! Overlap test for cylinders and/or spheres
@@ -809,7 +809,7 @@ DO iComponent = 1, nComponents - 1
               OverlapSPC = .FALSE.
               ! Preliminary test (circumscribing spherocylinders)
               CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-              &                     ContactDistance, ParallelSPC, OverlapSPC )
+              &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
               ! Overlap criterion
               IF( OverlapSPC ) THEN
                 ! Apply periodic boundary conditions on the position of particle j
@@ -818,7 +818,7 @@ DO iComponent = 1, nComponents - 1
                 jPosition(3) = iPosition(3) + VectorDistance(3)
                 ! Overlap test for cylinders (modified algorithm of Lopes et al.)
                 CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-                &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+                &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
                 ! Overlap found
                 IF( PrivateOverlap ) SharedOverlap = .TRUE.
               END IF
@@ -828,7 +828,8 @@ DO iComponent = 1, nComponents - 1
               jPosition(1) = iPosition(1) + VectorDistance(1)
               jPosition(2) = iPosition(2) + VectorDistance(2)
               jPosition(3) = iPosition(3) + VectorDistance(3)
-              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap )
+              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap, .FALSE., &
+              &                        0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) SharedOverlap = .TRUE.
             ! Overlap test for cylinders and spheres
@@ -837,7 +838,8 @@ DO iComponent = 1, nComponents - 1
               jPosition(1) = iPosition(1) + VectorDistance(1)
               jPosition(2) = iPosition(2) + VectorDistance(2)
               jPosition(3) = iPosition(3) + VectorDistance(3)
-              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap )
+              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap, .FALSE., &
+              &                        0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) SharedOverlap = .TRUE.
             ! Overlap test for spheres
@@ -926,13 +928,13 @@ DO iComponent = 1, nComponents
         ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
         IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
           CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, PrivateOverlap )
+          &                     ContactDistance, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for spherocylinders (Vega-Lago method)
         ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
           CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, PrivateOverlap )
+          &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for cylinders or spheres
@@ -942,7 +944,7 @@ DO iComponent = 1, nComponents
             OverlapSPC = .FALSE.
             ! Preliminary test (circumscribing spherocylinders)
             CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, OverlapSPC )
+            &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
             ! Overlap criterion
             IF( OverlapSPC ) THEN
               ! Apply periodic boundary conditions on the position of particle j
@@ -951,7 +953,7 @@ DO iComponent = 1, nComponents
               jPosition(3) = iPosition(3) + VectorDistance(3)
               ! Overlap test for cylinders (modified algorithm of Lopes et al.)
               CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-              &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+              &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) SharedOverlap = .TRUE.
             END IF
@@ -1089,13 +1091,13 @@ DO iComponent = 1, nComponents - 1
           ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
           IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
             CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, PrivateOverlap )
+            &                     ContactDistance, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) SharedOverlap = .TRUE.
           ! Overlap test for spherocylinders (Vega-Lago method)
           ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
             CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, PrivateOverlap )
+            &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) SharedOverlap = .TRUE.
           ! Overlap test for cylinders and/or spheres
@@ -1105,7 +1107,7 @@ DO iComponent = 1, nComponents - 1
               OverlapSPC = .FALSE.
               ! Preliminary test (circumscribing spherocylinders)
               CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-              &                     ContactDistance, ParallelSPC, OverlapSPC )
+              &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
               ! Overlap criterion
               IF( OverlapSPC ) THEN
                 ! Apply periodic boundary conditions on the position of particle j
@@ -1114,7 +1116,7 @@ DO iComponent = 1, nComponents - 1
                 jPosition(3) = iPosition(3) + VectorDistance(3)
                 ! Overlap test for cylinders (modified algorithm of Lopes et al.)
                 CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-                &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+                &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
                 ! Overlap found
                 IF( PrivateOverlap ) SharedOverlap = .TRUE.
               END IF
@@ -1124,7 +1126,8 @@ DO iComponent = 1, nComponents - 1
               jPosition(1) = iPosition(1) + VectorDistance(1)
               jPosition(2) = iPosition(2) + VectorDistance(2)
               jPosition(3) = iPosition(3) + VectorDistance(3)
-              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap )
+              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap, .FALSE., &
+              &                        0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) SharedOverlap = .TRUE.
             ! Overlap test for cylinders and spheres
@@ -1133,7 +1136,8 @@ DO iComponent = 1, nComponents - 1
               jPosition(1) = iPosition(1) + VectorDistance(1)
               jPosition(2) = iPosition(2) + VectorDistance(2)
               jPosition(3) = iPosition(3) + VectorDistance(3)
-              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap )
+              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap, .FALSE., &
+              &                        0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) SharedOverlap = .TRUE.
             ! Overlap test for spheres
@@ -1222,13 +1226,13 @@ DO iComponent = 1, nComponents
         ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
         IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
           CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, PrivateOverlap )
+          &                     ContactDistance, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for spherocylinders (Vega-Lago method)
         ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
           CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, PrivateOverlap )
+          &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) SharedOverlap = .TRUE.
         ! Overlap test for cylinders or spheres
@@ -1238,7 +1242,7 @@ DO iComponent = 1, nComponents
             OverlapSPC = .FALSE.
             ! Preliminary test (circumscribing spherocylinders)
             CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, OverlapSPC )
+            &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
             ! Overlap criterion
             IF( OverlapSPC ) THEN
               ! Apply periodic boundary conditions on the position of particle j
@@ -1247,7 +1251,7 @@ DO iComponent = 1, nComponents
               jPosition(3) = iPosition(3) + VectorDistance(3)
               ! Overlap test for cylinders (modified algorithm of Lopes et al.)
               CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-              &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+              &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) SharedOverlap = .TRUE.
             END IF
@@ -1478,7 +1482,7 @@ DO iComponent = 1, nComponents - 1
           ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
           IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
             CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, PrivateOverlap )
+            &                     ContactDistance, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) THEN
               SharedOverlap = .TRUE.
@@ -1490,7 +1494,7 @@ DO iComponent = 1, nComponents - 1
           ! Overlap test for spherocylinders (Vega-Lago method)
           ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
             CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, PrivateOverlap )
+            &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
             ! Overlap found
             IF( PrivateOverlap ) THEN
               SharedOverlap = .TRUE.
@@ -1506,7 +1510,7 @@ DO iComponent = 1, nComponents - 1
               OverlapSPC = .FALSE.
               ! Preliminary test (circumscribing spherocylinders)
               CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-              &                     ContactDistance, ParallelSPC, OverlapSPC )
+              &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
               ! Overlap criterion
               IF( OverlapSPC ) THEN
                 ! Apply periodic boundary conditions on the position of particle j
@@ -1515,7 +1519,7 @@ DO iComponent = 1, nComponents - 1
                 jPosition(3) = iPosition(3) + VectorDistance(3)
                 ! Overlap test for cylinders (modified algorithm of Lopes et al.)
                 CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-                &                     iComponent, jComponent, ParallelSPC, PrivateOverlap )
+                &                     iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
                 ! Overlap found
                 IF( PrivateOverlap ) THEN
                   SharedOverlap = .TRUE.
@@ -1531,7 +1535,8 @@ DO iComponent = 1, nComponents - 1
               jPosition(1) = iPosition(1) + VectorDistance(1)
               jPosition(2) = iPosition(2) + VectorDistance(2)
               jPosition(3) = iPosition(3) + VectorDistance(3)
-              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap )
+              CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, PrivateOverlap, .FALSE., &
+              &                        0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) THEN
                 SharedOverlap = .TRUE.
@@ -1546,7 +1551,8 @@ DO iComponent = 1, nComponents - 1
               jPosition(1) = iPosition(1) + VectorDistance(1)
               jPosition(2) = iPosition(2) + VectorDistance(2)
               jPosition(3) = iPosition(3) + VectorDistance(3)
-              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap )
+              CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, PrivateOverlap, .FALSE., &
+              &                        0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) THEN
                 SharedOverlap = .TRUE.
@@ -1655,7 +1661,7 @@ DO iComponent = 1, nComponents
         ! Overlap test for ellipsoids of revolution (Perram-Wertheim Method)
         IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
           CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, PrivateOverlap )
+          &                     ContactDistance, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) THEN
             SharedOverlap = .TRUE.
@@ -1667,7 +1673,7 @@ DO iComponent = 1, nComponents
         ! Overlap test for spherocylinders (Vega-Lago Method)
         ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
           CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-          &                     ContactDistance, ParallelSPC, PrivateOverlap )
+          &                     ContactDistance, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
           ! Overlap found
           IF( PrivateOverlap ) THEN
             SharedOverlap = .TRUE.
@@ -1683,7 +1689,7 @@ DO iComponent = 1, nComponents
             OverlapSPC = .FALSE.
             ! Preliminary test (circumscribing spherocylinders)
             CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-            &                     ContactDistance, ParallelSPC, OverlapSPC )
+            &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
             ! Overlap criterion
             IF( OverlapSPC ) THEN
               ! Apply periodic boundary conditions on the position of particle j
@@ -1692,7 +1698,7 @@ DO iComponent = 1, nComponents
               jPosition(3) = iPosition(3) + VectorDistance(3)
               ! Overlap test for cylinders (modified algorithm of Lopes et al.)
               CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, &
-              &                     jPosition, iComponent, jComponent, ParallelSPC, PrivateOverlap )
+              &                     jPosition, iComponent, jComponent, ParallelSPC, PrivateOverlap, .FALSE., 0_INT64 )
               ! Overlap found
               IF( PrivateOverlap ) THEN
                 SharedOverlap = .TRUE.
@@ -1969,7 +1975,7 @@ DO
     ! Overlap test for ellipsoids of revolution (Perram-Wertheim method)
     IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
       CALL OverlapCheckEOR( iQuaternion, jQuaternion, VectorDistance, SquaredDistance, iComponent, jComponent, ContactDistance, &
-      &                     OverlapHER )
+      &                     OverlapHER, .FALSE., 0_INT64 )
       ! Overlap criterion
       IF( OverlapHER ) THEN
         ! Returns control to the calling program unit if an overlap is detected
@@ -1979,7 +1985,7 @@ DO
     ! Overlap test for spherocylinders (Vega-Lago method)
     ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
       CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-      &                     ContactDistance, ParallelSPC, OverlapSPC )
+      &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
       ! Overlap criterion
       IF( OverlapSPC ) THEN
         ! Returns control to the calling program unit if an overlap is detected
@@ -1993,7 +1999,7 @@ DO
         OverlapSPC = .FALSE.
         ! Preliminary test (circumscribing spherocylinders)
         CALL OverlapCheckSPC( iOrientation, jOrientation, VectorDistance, SquaredDistance, iComponent, jComponent, &
-        &                     ContactDistance, ParallelSPC, OverlapSPC )
+        &                     ContactDistance, ParallelSPC, OverlapSPC, .FALSE., 0_INT64 )
         ! Overlap criterion
         IF( OverlapSPC ) THEN
           ! Apply periodic boundary conditions on the position of particle j
@@ -2002,7 +2008,7 @@ DO
           jPosition(3) = iPosition(3) + VectorDistance(3)
           ! Overlap test for cylinders (modified algorithm of Lopes et al.)
           CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-          &                     iComponent, jComponent, ParallelSPC, OverlapCYL )
+          &                     iComponent, jComponent, ParallelSPC, OverlapCYL, .FALSE., 0_INT64 )
           ! Overlap criterion
           IF( OverlapCYL ) THEN
             ! Returns control to the calling program unit if an overlap is detected
@@ -2016,7 +2022,7 @@ DO
         jPosition(1) = iPosition(1) + VectorDistance(1)
         jPosition(2) = iPosition(2) + VectorDistance(2)
         jPosition(3) = iPosition(3) + VectorDistance(3)
-        CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, OverlapCYL )
+        CALL OverlapCheckCYLSPH( iComponent, jComponent, iQuaternion, iPosition, jPosition, OverlapCYL, .FALSE., 0_INT64 )
         IF( OverlapCYL ) THEN
           ! Returns control to the calling program unit if an overlap is detected
           Overlap = .TRUE.
@@ -2028,7 +2034,7 @@ DO
         jPosition(1) = iPosition(1) + VectorDistance(1)
         jPosition(2) = iPosition(2) + VectorDistance(2)
         jPosition(3) = iPosition(3) + VectorDistance(3)
-        CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, OverlapCYL )
+        CALL OverlapCheckCYLSPH( jComponent, iComponent, jQuaternion, jPosition, iPosition, OverlapCYL, .FALSE., 0_INT64 )
         IF( OverlapCYL ) THEN
           ! Returns control to the calling program unit if an overlap is detected
           Overlap = .TRUE.

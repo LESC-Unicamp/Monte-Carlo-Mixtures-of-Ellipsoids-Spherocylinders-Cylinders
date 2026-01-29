@@ -3,7 +3,7 @@
 !                   This code contains all subroutines used in the main program                   !
 !                         to compute the potential energy of the system.                          !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -11,7 +11,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                         May 15th, 2024                                          !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Main References:                  M. P. Allen, D. J. Tildesley                                  !
 !                           Oxford University Press, 2nd Edition (2017)                           !
@@ -53,6 +53,8 @@ REAL( KIND= REAL64 )                      :: SquaredDistance            ! Magnit
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: iPosition, jPosition       ! Position of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: VectorDistance             ! Vector distance between particles i and j
 REAL( KIND= REAL64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox     ! Position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation, jOrientation ! Orientation of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion, jQuaternion   ! Quaternions of particles i and j
 REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair potential energy
 REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergyShared  ! Pair potential energy (shared)
 
@@ -65,8 +67,9 @@ DO iComponent = 1, nComponents - 1
   DO jComponent = iComponent + 1, nComponents
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
-    !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                 !
-    !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &               !
+    !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &     !
+    !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &           !
+    !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                       !
     !$OMP REDUCTION( + : PairPotentialEnergyShared )                                              !
     !#############################################################################################!
     ! First loop represents all particles with indexes i of component Ci
@@ -81,6 +84,24 @@ DO iComponent = 1, nComponents - 1
         jPosition(1) = pPosition(1,jParticle)
         jPosition(2) = pPosition(2,jParticle)
         jPosition(3) = pPosition(3,jParticle)
+        ! Orientation of particle i
+        iOrientation(1) = pOrientation(1,iParticle)
+        iOrientation(2) = pOrientation(2,iParticle)
+        iOrientation(3) = pOrientation(3,iParticle)
+        ! Orientation of particle j
+        jOrientation(1) = pOrientation(1,jParticle)
+        jOrientation(2) = pOrientation(2,jParticle)
+        jOrientation(3) = pOrientation(3,jParticle)
+        ! Quaternion of particle i
+        iQuaternion(0) = pQuaternion(0,iParticle)
+        iQuaternion(1) = pQuaternion(1,iParticle)
+        iQuaternion(2) = pQuaternion(2,iParticle)
+        iQuaternion(3) = pQuaternion(3,iParticle)
+        ! Quaternion of particle j
+        jQuaternion(0) = pQuaternion(0,jParticle)
+        jQuaternion(1) = pQuaternion(1,jParticle)
+        jQuaternion(2) = pQuaternion(2,jParticle)
+        jQuaternion(3) = pQuaternion(3,jParticle)
         ! Vector distance between particles i and j
         VectorDistance(1) = jPosition(1) - iPosition(1)
         VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -94,6 +115,9 @@ DO iComponent = 1, nComponents - 1
         ! Compute pair potential
         IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
           CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+        ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+          CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+          &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
         END IF
         ! Increment total potential energy
         PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy
@@ -113,8 +137,9 @@ DO iComponent = 1, nComponents
   jComponent = iComponent
   !###############################################################################################!
   !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
-  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                   !
-  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
+  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &       !
+  !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &             !
+  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
   !$OMP REDUCTION( + : PairPotentialEnergyShared )                                                !
   !###############################################################################################!
   ! First loop represents a particle with an index i of component Ci
@@ -131,6 +156,24 @@ DO iComponent = 1, nComponents
       jPosition(1) = pPosition(1,jParticle)
       jPosition(2) = pPosition(2,jParticle)
       jPosition(3) = pPosition(3,jParticle)
+      ! Orientation of particle i
+      iOrientation(1) = pOrientation(1,iParticle)
+      iOrientation(2) = pOrientation(2,iParticle)
+      iOrientation(3) = pOrientation(3,iParticle)
+      ! Orientation of particle j
+      jOrientation(1) = pOrientation(1,jParticle)
+      jOrientation(2) = pOrientation(2,jParticle)
+      jOrientation(3) = pOrientation(3,jParticle)
+      ! Quaternion of particle i
+      iQuaternion(0) = pQuaternion(0,iParticle)
+      iQuaternion(1) = pQuaternion(1,iParticle)
+      iQuaternion(2) = pQuaternion(2,iParticle)
+      iQuaternion(3) = pQuaternion(3,iParticle)
+      ! Quaternion of particle j
+      jQuaternion(0) = pQuaternion(0,jParticle)
+      jQuaternion(1) = pQuaternion(1,jParticle)
+      jQuaternion(2) = pQuaternion(2,jParticle)
+      jQuaternion(3) = pQuaternion(3,jParticle)
       ! Vector distance between particles i and j
       VectorDistance(1) = jPosition(1) - iPosition(1)
       VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -144,6 +187,9 @@ DO iComponent = 1, nComponents
       ! Compute pair potential
       IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
         CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+      ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+        CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+        &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
       END IF
       ! Increment total potential energy
       PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy
@@ -183,9 +229,11 @@ INTEGER( Kind= Int64 ), OPTIONAL :: HalfNeighbours ! Checks whether a cell and i
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
 REAL( Kind= Real64 ), DIMENSION( 3 )      :: BoxCutoff               ! Box cutoff (x-, y-, and z-directions)
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition               ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition               ! Position of particle i
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation            ! Orientation of particle i
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Box length (inverse)
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion             ! Quaternion of particle i
 REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy        ! Potential energy of particle i
 REAL( KIND= REAL64 ), DIMENSION( nRange ) :: iPotentialEnergyShared  ! Potential energy of particle i (shared)
 
@@ -209,7 +257,7 @@ iPotentialEnergyShared = 0.D0
 
 !#################################################################################################!
 !$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
-!$OMP PRIVATE( iParticle, iComponent, iPosition, iPotentialEnergy ) &                             !
+!$OMP PRIVATE( iParticle, iComponent, iPosition, iOrientation, iQuaternion, iPotentialEnergy ) &  !
 !$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
 !#################################################################################################!
 ! Loop over all particles (consider neighbours)
@@ -218,9 +266,14 @@ DO iParticle = 1, nParticles
   iComponent = pComponents(iParticle)
   ! Position of particle i
   iPosition = pPosition(:,iParticle)
+  ! Orientation of particle i
+  iOrientation = pOrientation(:,iParticle)
+  ! Quaternion of particle i
+  iQuaternion = pQuaternion(:,iParticle)
   ! Potential between particle i and its neighbours
-  CALL ListComputeParticlePotentialEnergyInitialConfig( iComponent, iParticle, iPosition, iPotentialEnergy, &
-  &                                                     CurrentBoxLength, CurrentBoxLengthInverse, CellHalfLogical )
+  CALL ListComputeParticlePotentialEnergyInitialConfig( iComponent, iParticle, iQuaternion, iOrientation, iPosition, &
+  &                                                     iPotentialEnergy, CurrentBoxLength, CurrentBoxLengthInverse, &
+  &                                                     CellHalfLogical )
   ! Increment total potential energy
   iPotentialEnergyShared = iPotentialEnergyShared + iPotentialEnergy
 END DO
@@ -239,8 +292,9 @@ END SUBROUTINE ListComputeTotalPotentialEnergyInitialConfig
 ! *********************************************************************************************** !
 !        This subroutine uses lists to compute the potential energy of a random particle i        !
 ! *********************************************************************************************** !
-SUBROUTINE ListComputeParticlePotentialEnergyInitialConfig( iComponent, iParticle, iPosition, iPotentialEnergy, CurrentBoxLength, &
-&                                                           CurrentBoxLengthInverse, CellHalfLogicalPotential )
+SUBROUTINE ListComputeParticlePotentialEnergyInitialConfig( iComponent, iParticle, iQuaternion, iOrientation, iPosition, &
+&                                                           iPotentialEnergy, CurrentBoxLength, CurrentBoxLengthInverse, &
+&                                                           CellHalfLogicalPotential )
 
 ! Uses one module: linked lists
 USE LinkedLists, ONLY: NeighboursPotential, CellIndexPotential
@@ -259,14 +313,16 @@ INTEGER( Kind= Int64 ), DIMENSION( nParticles ) :: jNeighbourList         ! List
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( Kind= Real64 )                      :: SquaredDistance         ! Magnitude of the vector distance between particles i and j (squared)
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition, jPosition    ! Position of particles i and j
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: VectorDistance          ! Vector distance between particles i and j
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox  ! Scaled position (unit box)
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Inverse of box length
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy         ! Potential energy of particle i
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy      ! Pair potential energy
+REAL( Kind= Real64 )                      :: SquaredDistance            ! Magnitude of the vector distance between particles i and j (squared)
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition, jPosition       ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation, jOrientation ! Orientation of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: VectorDistance             ! Vector distance between particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox     ! Scaled position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength           ! Box length
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse    ! Inverse of box length
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion, jQuaternion   ! Quaternions of particles i and j
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy           ! Potential energy of particle i
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair potential energy
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -315,6 +371,15 @@ DO
   jPosition(1) = pPosition(1,jParticle)
   jPosition(2) = pPosition(2,jParticle)
   jPosition(3) = pPosition(3,jParticle)
+  ! Orientation of particle j
+  jOrientation(1) = pOrientation(1,jParticle)
+  jOrientation(2) = pOrientation(2,jParticle)
+  jOrientation(3) = pOrientation(3,jParticle)
+  ! Quaternion of particle j
+  jQuaternion(0) = pQuaternion(0,jParticle)
+  jQuaternion(1) = pQuaternion(1,jParticle)
+  jQuaternion(2) = pQuaternion(2,jParticle)
+  jQuaternion(3) = pQuaternion(3,jParticle)
   ! Vector distance between particles i and j
   VectorDistance(1) = jPosition(1) - iPosition(1)
   VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -328,6 +393,9 @@ DO
   ! Compute pair potential
   IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
     CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+  ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+    CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+    &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
   END IF
   ! Increment potential energy
   iPotentialEnergy = iPotentialEnergy + PairPotentialEnergy
@@ -353,15 +421,17 @@ INTEGER( KIND= INT64 ) :: iComponent, jComponent ! Counters (component)
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( KIND= REAL64 )                      :: SquaredDistance           ! Magnitude of the vector distance between particles i and j (squared)
-REAL( KIND= REAL64 )                      :: SystemPotentialEnergy     ! System potential energy
-REAL( KIND= REAL64 )                      :: PairPotentialEnergyShared ! Pair potential energy (shared)
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: iPosition, jPosition      ! Position of particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: VectorDistance            ! Vector distance between particles i and j
-REAL( KIND= REAL64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox    ! Position (unit box)
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength          ! Box length
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse   ! Box length (inverse)
-REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy       ! Pair potential energy
+REAL( KIND= REAL64 )                      :: SquaredDistance            ! Magnitude of the vector distance between particles i and j (squared)
+REAL( KIND= REAL64 )                      :: SystemPotentialEnergy      ! System potential energy
+REAL( KIND= REAL64 )                      :: PairPotentialEnergyShared  ! Pair potential energy (shared)
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: iPosition, jPosition       ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation, jOrientation ! Orientation of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: VectorDistance             ! Vector distance between particles i and j
+REAL( KIND= REAL64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox     ! Position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength           ! Box length
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse    ! Box length (inverse)
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion, jQuaternion   ! Quaternions of particles i and j
+REAL( KIND= REAL64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair potential energy
 
 ! Initialization
 SystemPotentialEnergy = 0.D0
@@ -372,8 +442,9 @@ DO iComponent = 1, nComponents - 1
   DO jComponent = iComponent + 1, nComponents
     !#############################################################################################!
     !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                           !
-    !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                 !
-    !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &               !
+    !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &     !
+    !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &           !
+    !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                       !
     !$OMP REDUCTION( + : PairPotentialEnergyShared )                                              !
     !#############################################################################################!
     ! First loop represents all particles with indexes i of component Ci
@@ -388,6 +459,24 @@ DO iComponent = 1, nComponents - 1
         jPosition(1) = pPositionMC(1,jParticle)
         jPosition(2) = pPositionMC(2,jParticle)
         jPosition(3) = pPositionMC(3,jParticle)
+        ! Orientation of particle i
+        iOrientation(1) = pOrientationMC(1,iParticle)
+        iOrientation(2) = pOrientationMC(2,iParticle)
+        iOrientation(3) = pOrientationMC(3,iParticle)
+        ! Orientation of particle j
+        jOrientation(1) = pOrientationMC(1,jParticle)
+        jOrientation(2) = pOrientationMC(2,jParticle)
+        jOrientation(3) = pOrientationMC(3,jParticle)
+        ! Quaternion of particle i
+        iQuaternion(0) = pQuaternionMC(0,iParticle)
+        iQuaternion(1) = pQuaternionMC(1,iParticle)
+        iQuaternion(2) = pQuaternionMC(2,iParticle)
+        iQuaternion(3) = pQuaternionMC(3,iParticle)
+        ! Quaternion of particle j
+        jQuaternion(0) = pQuaternionMC(0,jParticle)
+        jQuaternion(1) = pQuaternionMC(1,jParticle)
+        jQuaternion(2) = pQuaternionMC(2,jParticle)
+        jQuaternion(3) = pQuaternionMC(3,jParticle)
         ! Vector distance between particles i and j
         VectorDistance(1) = jPosition(1) - iPosition(1)
         VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -401,6 +490,9 @@ DO iComponent = 1, nComponents - 1
         ! Compute pair potential
         IF( FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
           CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+        ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+          CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+          &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
         END IF
         ! Increment total potential energy
         PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy(1)
@@ -420,8 +512,9 @@ DO iComponent = 1, nComponents
   jComponent = iComponent
   !###############################################################################################!
   !$OMP PARALLEL DO COLLAPSE( 2 ) DEFAULT( Shared ) &                                             !
-  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, VectorDistance ) &                   !
-  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
+  !$OMP PRIVATE( iParticle, jParticle, iPosition, jPosition, iOrientation, jOrientation ) &       !
+  !$OMP PRIVATE( iQuaternion, jQuaternion, VectorDistance, ScalingDistanceUnitBox ) &             !
+  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
   !$OMP REDUCTION( + : PairPotentialEnergyShared )                                                !
   !###############################################################################################!
   ! First loop represents a particle with an index i of component Ci
@@ -438,6 +531,24 @@ DO iComponent = 1, nComponents
       jPosition(1) = pPositionMC(1,jParticle)
       jPosition(2) = pPositionMC(2,jParticle)
       jPosition(3) = pPositionMC(3,jParticle)
+      ! Orientation of particle i
+      iOrientation(1) = pOrientationMC(1,iParticle)
+      iOrientation(2) = pOrientationMC(2,iParticle)
+      iOrientation(3) = pOrientationMC(3,iParticle)
+      ! Orientation of particle j
+      jOrientation(1) = pOrientationMC(1,jParticle)
+      jOrientation(2) = pOrientationMC(2,jParticle)
+      jOrientation(3) = pOrientationMC(3,jParticle)
+      ! Quaternion of particle i
+      iQuaternion(0) = pQuaternionMC(0,iParticle)
+      iQuaternion(1) = pQuaternionMC(1,iParticle)
+      iQuaternion(2) = pQuaternionMC(2,iParticle)
+      iQuaternion(3) = pQuaternionMC(3,iParticle)
+      ! Quaternion of particle j
+      jQuaternion(0) = pQuaternionMC(0,jParticle)
+      jQuaternion(1) = pQuaternionMC(1,jParticle)
+      jQuaternion(2) = pQuaternionMC(2,jParticle)
+      jQuaternion(3) = pQuaternionMC(3,jParticle)
       ! Vector distance between particles i and j
       VectorDistance(1) = jPosition(1) - iPosition(1)
       VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -451,6 +562,9 @@ DO iComponent = 1, nComponents
       ! Compute pair potential
       IF( FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
         CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+      ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+        CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+        &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
       END IF
       ! Increment total potential energy
       PairPotentialEnergyShared = PairPotentialEnergyShared + PairPotentialEnergy(1)
@@ -471,8 +585,8 @@ END SUBROUTINE ComputeTotalPotentialEnergy
 ! *********************************************************************************************** !
 !              This subroutine computes the potential energy of a random particle i               !
 ! *********************************************************************************************** !
-SUBROUTINE ComputeParticlePotentialEnergy( iComponent, iParticle, iPosition, iPotentialEnergy, CurrentBoxLength, &
-&                                          CurrentBoxLengthInverse )
+SUBROUTINE ComputeParticlePotentialEnergy( iComponent, iParticle, iQuaternion, iOrientation, iPosition, iPotentialEnergy, &
+&                                          CurrentBoxLength, CurrentBoxLengthInverse )
 
 IMPLICIT NONE
 
@@ -485,15 +599,17 @@ INTEGER( Kind= Int64 ) :: iComponent, jComponent ! Counters (component)
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( Kind= Real64 )                      :: SquaredDistance         ! Magnitude of the vector distance between particles i and j (squared)
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition, jPosition    ! Position of particles i and j
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: VectorDistance          ! Vector distance between particles i and j
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox  ! Scaled position (unit box)
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Inverse of box length
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy        ! Potential energy of particle i
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergyShared  ! Potential energy of particle i (shared)
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy     ! Pair potential energy
+REAL( Kind= Real64 )                      :: SquaredDistance            ! Magnitude of the vector distance between particles i and j (squared)
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition, jPosition       ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation, jOrientation ! Orientation of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: VectorDistance             ! Vector distance between particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox     ! Scaled position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion, jQuaternion   ! Quaternions of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength           ! Box length
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse    ! Inverse of box length
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy           ! Potential energy of particle i
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergyShared     ! Potential energy of particle i (shared)
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair potential energy
 
 ! Initialization
 iPotentialEnergy = 0.D0
@@ -503,8 +619,8 @@ iPotentialEnergyShared = 0.D0
 DO jComponent = 1, iComponent - 1
   !###############################################################################################!
   !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
-  !$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                 !
-  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
+  !$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &              !
+  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
   !$OMP REDUCTION( + : iPotentialEnergyShared )                                                   !
   !###############################################################################################!
   ! Unique loop takes only particles whose component indexes are less than Ci
@@ -513,6 +629,15 @@ DO jComponent = 1, iComponent - 1
     jPosition(1) = pPositionMC(1,jParticle)
     jPosition(2) = pPositionMC(2,jParticle)
     jPosition(3) = pPositionMC(3,jParticle)
+    ! Orientation of particle j
+    jOrientation(1) = pOrientationMC(1,jParticle)
+    jOrientation(2) = pOrientationMC(2,jParticle)
+    jOrientation(3) = pOrientationMC(3,jParticle)
+    ! Quaternion of particle j
+    jQuaternion(0) = pQuaternionMC(0,jParticle)
+    jQuaternion(1) = pQuaternionMC(1,jParticle)
+    jQuaternion(2) = pQuaternionMC(2,jParticle)
+    jQuaternion(3) = pQuaternionMC(3,jParticle)
     ! Vector distance between particles i and j
     VectorDistance(1) = jPosition(1) - iPosition(1)
     VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -526,6 +651,9 @@ DO jComponent = 1, iComponent - 1
     ! Compute pair potential
     IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
       CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+    ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+      CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+      &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
     END IF
     ! Increment potential energy of particle i
     iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
@@ -542,8 +670,8 @@ END DO
 DO jComponent = iComponent + 1, nComponents
   !###############################################################################################!
   !$OMP PARALLEL DO DEFAULT( Shared ) &                                                           !
-  !$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                 !
-  !$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                         !
+  !$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &              !
+  !$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                 !
   !$OMP REDUCTION( + : iPotentialEnergyShared )                                                   !
   !###############################################################################################!
   ! Unique loop takes only particles whose component indexes are greater than Ci
@@ -552,6 +680,15 @@ DO jComponent = iComponent + 1, nComponents
     jPosition(1) = pPositionMC(1,jParticle)
     jPosition(2) = pPositionMC(2,jParticle)
     jPosition(3) = pPositionMC(3,jParticle)
+    ! Orientation of particle j
+    jOrientation(1) = pOrientationMC(1,jParticle)
+    jOrientation(2) = pOrientationMC(2,jParticle)
+    jOrientation(3) = pOrientationMC(3,jParticle)
+    ! Quaternion of particle j
+    jQuaternion(0) = pQuaternionMC(0,jParticle)
+    jQuaternion(1) = pQuaternionMC(1,jParticle)
+    jQuaternion(2) = pQuaternionMC(2,jParticle)
+    jQuaternion(3) = pQuaternionMC(3,jParticle)
     ! Vector distance between particles i and j
     VectorDistance(1) = jPosition(1) - iPosition(1)
     VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -565,6 +702,10 @@ DO jComponent = iComponent + 1, nComponents
     ! Compute pair potential
     IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
       CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+    ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+      CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+      &                                    SquaredDistance, iComponent, jComponent, &
+      &                                    PairPotentialEnergy )
     END IF
     ! Increment potential energy of particle i
     iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
@@ -582,8 +723,8 @@ jComponent = iComponent
 
 !#################################################################################################!
 !$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
-!$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                   !
-!$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                           !
+!$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &                !
+!$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                   !
 !$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
 !#################################################################################################!
 ! First loop takes only particles whose j-indexes are below the i-index of the particles of the component Ci
@@ -592,6 +733,15 @@ DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
   jPosition(1) = pPositionMC(1,jParticle)
   jPosition(2) = pPositionMC(2,jParticle)
   jPosition(3) = pPositionMC(3,jParticle)
+  ! Orientation of particle j
+  jOrientation(1) = pOrientationMC(1,jParticle)
+  jOrientation(2) = pOrientationMC(2,jParticle)
+  jOrientation(3) = pOrientationMC(3,jParticle)
+  ! Quaternion of particle j
+  jQuaternion(0) = pQuaternionMC(0,jParticle)
+  jQuaternion(1) = pQuaternionMC(1,jParticle)
+  jQuaternion(2) = pQuaternionMC(2,jParticle)
+  jQuaternion(3) = pQuaternionMC(3,jParticle)
   ! Vector distance between particles i and j
   VectorDistance(1) = jPosition(1) - iPosition(1)
   VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -605,6 +755,9 @@ DO jParticle = SUM( cParticles(0:(jComponent-1)) ) + 1, iParticle - 1
   ! Compute pair potential
   IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
     CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+  ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+    CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+    &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
   END IF
   ! Increment potential energy of particle i
   iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
@@ -619,8 +772,8 @@ iPotentialEnergyShared = 0.D0
 
 !#################################################################################################!
 !$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
-!$OMP PRIVATE( jParticle, jPosition, VectorDistance, ScalingDistanceUnitBox ) &                   !
-!$OMP PRIVATE( SquaredDistance, PairPotentialEnergy ) &                                           !
+!$OMP PRIVATE( jParticle, jPosition, jOrientation, jQuaternion, VectorDistance ) &                !
+!$OMP PRIVATE( ScalingDistanceUnitBox, SquaredDistance, PairPotentialEnergy ) &                   !
 !$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
 !#################################################################################################!
 ! Second loop takes only particles whose j-indexes are above the i-index of the particles of the component Ci
@@ -629,6 +782,15 @@ DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
   jPosition(1) = pPositionMC(1,jParticle)
   jPosition(2) = pPositionMC(2,jParticle)
   jPosition(3) = pPositionMC(3,jParticle)
+  ! Orientation of particle j
+  jOrientation(1) = pOrientationMC(1,jParticle)
+  jOrientation(2) = pOrientationMC(2,jParticle)
+  jOrientation(3) = pOrientationMC(3,jParticle)
+  ! Quaternion of particle j
+  jQuaternion(0) = pQuaternionMC(0,jParticle)
+  jQuaternion(1) = pQuaternionMC(1,jParticle)
+  jQuaternion(2) = pQuaternionMC(2,jParticle)
+  jQuaternion(3) = pQuaternionMC(3,jParticle)
   ! Vector distance between particles i and j
   VectorDistance(1) = jPosition(1) - iPosition(1)
   VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -642,6 +804,9 @@ DO jParticle = iParticle + 1, SUM( cParticles(0:jComponent) )
   ! Compute pair potential
   IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
     CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+  ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+    CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+    &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
   END IF
   ! Increment potential energy of particle i
   iPotentialEnergyShared = iPotentialEnergyShared + PairPotentialEnergy
@@ -682,9 +847,11 @@ INTEGER( Kind= Int64 ), OPTIONAL :: HalfNeighbours ! Checks whether a cell and i
 REAL( KIND= REAL64 )                      :: SystemPotentialEnergy   ! System potential energy
 REAL( Kind= Real64 )                      :: iPotentialEnergyShared  ! Potential energy of particle i (shared)
 REAL( Kind= Real64 ), DIMENSION( 3 )      :: BoxCutoff               ! Box cutoff (x-, y-, and z-directions)
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition               ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition               ! Position of particle i
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation            ! Orientation of particle i
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
 REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Box length (inverse)
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion             ! Quaternion of particle i
 REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy        ! Potential energy of particle i
 
 ! *********************************************************************************************** !
@@ -710,7 +877,7 @@ iPotentialEnergyShared = 0.D0
 
 !#################################################################################################!
 !$OMP PARALLEL DO DEFAULT( Shared ) &                                                             !
-!$OMP PRIVATE( iParticle, iComponent, iPosition, iPotentialEnergy ) &                             !
+!$OMP PRIVATE( iParticle, iComponent, iPosition, iOrientation, iQuaternion, iPotentialEnergy ) &  !
 !$OMP REDUCTION( + : iPotentialEnergyShared )                                                     !
 !#################################################################################################!
 ! Loop over all particles (consider neighbours)
@@ -719,9 +886,13 @@ DO iParticle = 1, nParticles
   iComponent = pComponents(iParticle)
   ! Position of particle i
   iPosition = pPositionMC(:,iParticle)
+  ! Orientation of particle i
+  iOrientation = pOrientationMC(:,iParticle)
+  ! Quaternion of particle i
+  iQuaternion = pQuaternionMC(:,iParticle)
   ! Potential between particle i and its neighbours
-  CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iPosition, iPotentialEnergy, CurrentBoxLength, &
-  &                                        CurrentBoxLengthInverse, CellHalfLogical )
+  CALL ListComputeParticlePotentialEnergy( iComponent, iParticle, iQuaternion, iOrientation, iPosition, iPotentialEnergy, &
+  &                                        CurrentBoxLength, CurrentBoxLengthInverse, CellHalfLogical )
   ! Increment total potential energy
   iPotentialEnergyShared = iPotentialEnergyShared + iPotentialEnergy(1)
 END DO
@@ -740,8 +911,8 @@ END SUBROUTINE ListComputeTotalPotentialEnergy
 ! *********************************************************************************************** !
 !        This subroutine uses lists to compute the potential energy of a random particle i        !
 ! *********************************************************************************************** !
-SUBROUTINE ListComputeParticlePotentialEnergy( iComponent, iParticle, iPosition, iPotentialEnergy, CurrentBoxLength, &
-&                                              CurrentBoxLengthInverse, CellHalfLogicalPotential )
+SUBROUTINE ListComputeParticlePotentialEnergy( iComponent, iParticle, iQuaternion, iOrientation, iPosition, iPotentialEnergy, &
+&                                              CurrentBoxLength, CurrentBoxLengthInverse, CellHalfLogicalPotential )
 
 ! Uses one module: linked lists
 USE LinkedLists, ONLY: NeighboursPotential, CellIndexPotential
@@ -760,14 +931,16 @@ INTEGER( Kind= Int64 ), DIMENSION( nParticles ) :: jNeighbourList         ! List
 ! *********************************************************************************************** !
 ! REAL VARIABLES                                                                                  !
 ! *********************************************************************************************** !
-REAL( Kind= Real64 )                      :: SquaredDistance         ! Magnitude of the vector distance between particles i and j (squared)
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition, jPosition    ! Position of particles i and j
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: VectorDistance          ! Vector distance between particles i and j
-REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox  ! Scaled position (unit box)
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength        ! Box length
-REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse ! Inverse of box length
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy        ! Potential energy of particle i
-REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy     ! Pair potential energy
+REAL( Kind= Real64 )                      :: SquaredDistance            ! Magnitude of the vector distance between particles i and j (squared)
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iPosition, jPosition       ! Position of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: iOrientation, jOrientation ! Orientation of particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: VectorDistance             ! Vector distance between particles i and j
+REAL( Kind= Real64 ), DIMENSION( 3 )      :: ScalingDistanceUnitBox     ! Scaled position (unit box)
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLength           ! Box length
+REAL( Kind= Real64 ), DIMENSION( 9 )      :: CurrentBoxLengthInverse    ! Inverse of box length
+REAL( Kind= Real64 ), DIMENSION( 0:3 )    :: iQuaternion, jQuaternion   ! Quaternions of particles i and j
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: iPotentialEnergy           ! Potential energy of particle i
+REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair potential energy
 
 ! *********************************************************************************************** !
 ! LOGICAL VARIABLES                                                                               !
@@ -816,6 +989,15 @@ DO
   jPosition(1) = pPositionMC(1,jParticle)
   jPosition(2) = pPositionMC(2,jParticle)
   jPosition(3) = pPositionMC(3,jParticle)
+  ! Orientation of particle j
+  jOrientation(1) = pOrientationMC(1,jParticle)
+  jOrientation(2) = pOrientationMC(2,jParticle)
+  jOrientation(3) = pOrientationMC(3,jParticle)
+  ! Quaternion of particle j
+  jQuaternion(0) = pQuaternionMC(0,jParticle)
+  jQuaternion(1) = pQuaternionMC(1,jParticle)
+  jQuaternion(2) = pQuaternionMC(2,jParticle)
+  jQuaternion(3) = pQuaternionMC(3,jParticle)
   ! Vector distance between particles i and j
   VectorDistance(1) = jPosition(1) - iPosition(1)
   VectorDistance(2) = jPosition(2) - iPosition(2)
@@ -829,6 +1011,9 @@ DO
   ! Compute pair potential
   IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! Spherical square-well potential
     CALL SquareWellPotential( SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
+  ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
+    CALL AnisotropicSquareWellPotential( iPosition, iOrientation, jOrientation, iQuaternion, jQuaternion, VectorDistance, &
+    &                                    SquaredDistance, iComponent, jComponent, PairPotentialEnergy )
   END IF
   ! Increment potential energy
   iPotentialEnergy = iPotentialEnergy + PairPotentialEnergy

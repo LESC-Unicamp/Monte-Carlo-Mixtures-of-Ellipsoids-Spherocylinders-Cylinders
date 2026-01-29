@@ -5,10 +5,10 @@
 !               Please note that which shell is used to invoke the command line is                !
 !                           system-dependent and environment-dependent.                           !
 !         See <https://gcc.gnu.org/onlinedocs/gfortran/SYSTEM.html> for more information.         !
-!                  The code below is meant for Ubuntu 20.04 operational systems.                  !
+!              The code below was tested on the Ubuntu 22.04.5 LTS operating system.              !
 !                   We have not provided an alternative code for Windows users.                   !
 !                                                                                                 !
-! Version number: 1.3.1                                                                           !
+! Version number: 2.0.0                                                                           !
 ! ############################################################################################### !
 !                                University of Campinas (Unicamp)                                 !
 !                                 School of Chemical Engineering                                  !
@@ -16,7 +16,7 @@
 !                             --------------------------------------                              !
 !                             Supervisor: Luís Fernando Mercier Franco                            !
 !                             --------------------------------------                              !
-!                                       February 9th, 2024                                        !
+!                                       January 28th, 2026                                        !
 ! ############################################################################################### !
 ! Disclaimer note: Authors assume no responsibility or liability for the use of this code.        !
 ! ############################################################################################### !
