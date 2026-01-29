@@ -126,8 +126,7 @@ The following features are supported in the current version:
 
 6. Cell Lists
 
-<sub>\*<b>Version 1.3.1</b>.</sub>
-<sub>\*\*<b>Version 2.0.0</b>.</sub>
+<sub>\*<b>Version 1.3.1</b>.</sub><br><sub>\*\*<b>Version 2.0.0</b>.</sub>
 
 ## <a name="language"></a>Language
 <p align="justify">
