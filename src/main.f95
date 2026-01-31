@@ -1289,12 +1289,12 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         nMovementTranslationCounter = 0
       END IF
 
-      ! Avoid large translations
+      ! Avoid wrapped translations
       BoxEdgeLength(1) = DSQRT( DOT_PRODUCT( BoxLengthMC(1:3), BoxLengthMC(1:3) ) )
       BoxEdgeLength(2) = DSQRT( DOT_PRODUCT( BoxLengthMC(4:6), BoxLengthMC(4:6) ) )
       BoxEdgeLength(3) = DSQRT( DOT_PRODUCT( BoxLengthMC(7:9), BoxLengthMC(7:9) ) )
-      IF( MaxTranslationalDisplacement > 2.D0 * MAXVAL( BoxEdgeLength ) ) THEN
-        MaxTranslationalDisplacement = MaxTranslationalDisplacement - MAXVAL( BoxEdgeLength )
+      IF( MaxTranslationalDisplacement > 0.5D0 * MINVAL( BoxEdgeLength ) ) THEN
+        MaxTranslationalDisplacement = 0.5D0 * MINVAL( BoxEdgeLength )
       END IF
 
     END IF
@@ -1321,9 +1321,9 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         nMovementRotationCounter = 0
       END IF
 
-      ! Avoid 4π-rotations
-      IF( MaxAngularDisplacement > 4.D0 * cPi ) THEN
-        MaxAngularDisplacement = MaxAngularDisplacement - 2.D0 * cPi
+      ! Avoid wrapped rotations
+      IF( MaxAngularDisplacement > cPi ) THEN
+        MaxAngularDisplacement = cPi
       END IF
 
     END IF
