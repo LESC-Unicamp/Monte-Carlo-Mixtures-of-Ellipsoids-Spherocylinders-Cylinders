@@ -1279,6 +1279,13 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         ELSE
           MaxTranslationalDisplacement = 1.05D0 * MaxTranslationalDisplacement
         END IF
+        ! Avoid wrapped translations
+        BoxEdgeLength(1) = DSQRT( DOT_PRODUCT( BoxLengthMC(1:3), BoxLengthMC(1:3) ) )
+        BoxEdgeLength(2) = DSQRT( DOT_PRODUCT( BoxLengthMC(4:6), BoxLengthMC(4:6) ) )
+        BoxEdgeLength(3) = DSQRT( DOT_PRODUCT( BoxLengthMC(7:9), BoxLengthMC(7:9) ) )
+        IF( MaxTranslationalDisplacement > 0.5D0 * MINVAL( BoxEdgeLength ) ) THEN
+          MaxTranslationalDisplacement = 0.5D0 * MINVAL( BoxEdgeLength )
+        END IF
         ! Ratio data (translation)
         IF( iCycle > LastLine(1) ) THEN
           WRITE( 30, "(7G0)" ) iCycle, ",", Ratio, ",", MaxTranslationalDisplacement, ",", AcceptanceRatioTranslation
@@ -1287,14 +1294,6 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         ! Reset counter
         nAcceptanceTranslation      = 0
         nMovementTranslationCounter = 0
-      END IF
-
-      ! Avoid wrapped translations
-      BoxEdgeLength(1) = DSQRT( DOT_PRODUCT( BoxLengthMC(1:3), BoxLengthMC(1:3) ) )
-      BoxEdgeLength(2) = DSQRT( DOT_PRODUCT( BoxLengthMC(4:6), BoxLengthMC(4:6) ) )
-      BoxEdgeLength(3) = DSQRT( DOT_PRODUCT( BoxLengthMC(7:9), BoxLengthMC(7:9) ) )
-      IF( MaxTranslationalDisplacement > 0.5D0 * MINVAL( BoxEdgeLength ) ) THEN
-        MaxTranslationalDisplacement = 0.5D0 * MINVAL( BoxEdgeLength )
       END IF
 
     END IF
@@ -1311,6 +1310,10 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         ELSE
           MaxAngularDisplacement = 1.05D0 * MaxAngularDisplacement
         END IF
+        ! Avoid wrapped rotations
+        IF( MaxAngularDisplacement > cPi ) THEN
+          MaxAngularDisplacement = cPi
+        END IF
         ! Ratio data (rotation)
         IF( iCycle > LastLine(2) ) THEN
           WRITE( 40, "(7G0)" ) iCycle, ",", Ratio, ",", MaxAngularDisplacement, ",", AcceptanceRatioRotation
@@ -1319,11 +1322,6 @@ DO iCycle = FirstCycle + 1, MaxSimulationCycles
         ! Reset counter
         nAcceptanceRotation      = 0
         nMovementRotationCounter = 0
-      END IF
-
-      ! Avoid wrapped rotations
-      IF( MaxAngularDisplacement > cPi ) THEN
-        MaxAngularDisplacement = cPi
       END IF
 
     END IF
