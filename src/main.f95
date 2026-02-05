@@ -400,37 +400,43 @@ IF( PerturbedPotentialTypeLogical(2) .OR. FullPotentialTypeLogical(2) ) THEN ! S
 ELSE IF( PerturbedPotentialTypeLogical(3) .OR. FullPotentialTypeLogical(3) ) THEN ! Anisotropic square-well potential
   IF( GeometryType(1) ) THEN ! Ellipsoids-of-revolution
     DO cComponent = 1, nComponents
-      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         IF( cAspectRatio(cComponent) > 0.D0 .AND. cAspectRatio(cComponent) < 1.D0 ) THEN
-          cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+          cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * &
+          &                                             cDiameterEquivalentSphere(cComponent)
         ELSE IF( cAspectRatio(cComponent) > 1.D0 ) THEN
-          cCircumscribingPotentialRange(cComponent,:) = cLength(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+          cCircumscribingPotentialRange(cComponent,:) = cLength(cComponent) + PotentialRange(:) * &
+          &                                             cDiameterEquivalentSphere(cComponent)
         END IF
       ELSE
-        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * &
+        &                                             cDiameterEquivalentSphere(cComponent)
       END IF
     END DO
   ELSE IF( GeometryType(2) ) THEN ! Spherocylinders
     DO cComponent = 1, nComponents
-      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + cLength(cComponent) + PotentialRange(:) * &
-        &                                             cDiameter(cComponent)
+        &                                             cDiameterEquivalentSphere(cComponent)
       ELSE
-        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * &
+        &                                             cDiameterEquivalentSphere(cComponent)
       END IF
     END DO
   ELSE IF( GeometryType(3) ) THEN ! Cylinders
     DO cComponent = 1, nComponents
-      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameter(cComponent)
+      cPotentialRange(cComponent,:) = PotentialRange(:) * cDiameterEquivalentSphere(cComponent)
       IF( .NOT. SphericalComponentLogical(cComponent) ) THEN
         cCircumscribingPotentialRange(cComponent,:) = DSQRT( cLength(cComponent) * cLength(cComponent) + cDiameter(cComponent) * &
-        &                                             cDiameter(cComponent) * ( 1.D0 + 2.D0 * PotentialRange(:) + 2.D0 * &
-        &                                             PotentialRange(:) * PotentialRange(:) ) + 2.D0 * cDiameter(cComponent) * &
-        &                                             cLength(cComponent) * PotentialRange(:) )
+        &                                             cDiameter(cComponent) + 2.D0 * PotentialRange(:) * &
+        &                                             cDiameterEquivalentSphere(cComponent) * ( cLength(cComponent) + &
+        &                                             cDiameter(cComponent) * PotentialRange(:) * &
+        &                                             cDiameterEquivalentSphere(cComponent) ) )
       ELSE
-        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * cDiameter(cComponent)
+        cCircumscribingPotentialRange(cComponent,:) = cDiameter(cComponent) + PotentialRange(:) * &
+        &                                             cDiameterEquivalentSphere(cComponent)
       END IF
     END DO
   END IF
