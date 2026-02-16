@@ -853,7 +853,14 @@ OverlapCYL = .FALSE.
 iVectorDistanceOrientation = DOT_PRODUCT( VectorDistance, iOrientation )
 jVectorDistanceOrientation = DOT_PRODUCT( VectorDistance, jOrientation )
 
-!
+! Orthogonality check (potential only)
+IF( ASWPotentialCheck ) THEN
+  AngleCosine = DOT_PRODUCT( iOrientation, jOrientation )
+  OrthogonalityCheck = 1.D0 - ( AngleCosine * AngleCosine )
+  IF( DABS( OrthogonalityCheck ) < 1.D-10 ) THEN
+    ParallelSPC = .TRUE.
+  END IF
+END IF
 
 ! *********************************************************************************************** !
 ! CASE 1: PARALLEL CYLINDERS                                                                      !
