@@ -117,13 +117,15 @@ DO rRange = 1, nRange
       &                     ParallelSPC, Overlap, .TRUE., rRange )
     ELSE IF( GeometryType(3) ) THEN ! Cylinders
       IF( .NOT. SphericalComponentLogical(iComponent) .AND. .NOT. SphericalComponentLogical(jComponent) ) THEN
+        ! Initialization
+        ParallelSPC = .FALSE.
         ! Apply periodic boundary conditions on the position of particle j
         jPosition(1) = iPosition(1) + VectorDistance(1)
         jPosition(2) = iPosition(2) + VectorDistance(2)
         jPosition(3) = iPosition(3) + VectorDistance(3)
         ! Overlap test for cylinders (modified algorithm of Lopes et al.)
         CALL OverlapCheckCYL( iQuaternion, jQuaternion, iOrientation, jOrientation, VectorDistance, iPosition, jPosition, &
-        &                     iComponent, jComponent, .FALSE., Overlap, .TRUE., rRange )
+        &                     iComponent, jComponent, ParallelSPC, Overlap, .TRUE., rRange )
       ! Overlap test for cylinders and spheres
       ELSE IF( .NOT. SphericalComponentLogical(iComponent) .AND. SphericalComponentLogical(jComponent) ) THEN
         ! Apply periodic boundary conditions on the position of particle j
