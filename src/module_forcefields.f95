@@ -100,7 +100,6 @@ REAL( Kind= Real64 ), DIMENSION( nRange ) :: PairPotentialEnergy        ! Pair p
 ! *********************************************************************************************** !
 LOGICAL :: Overlap     ! Detects overlap between two particles: TRUE = overlap detected; FALSE = overlap not detected
 LOGICAL :: ParallelSPC ! Checks the relative orientation of two spherocylinders : TRUE = parallel orientation; FALSE = non-parallel orientation
-LOGICAL :: OverlapSPC  ! Detects overlap between two spherocylinders: TRUE = overlap detected; FALSE = overlap not detected
 
 ! Compute pair potential for every attractive range
 DO rRange = 1, nRange
