@@ -596,15 +596,13 @@ SquaredShortestDistance = ShortestDistance * ShortestDistance
 
 ! Half length of spherocylinder i
 IF( ASWPotentialCheck ) THEN
-  IF( GeometryType(2) ) HalfLength(1) = 0.5D0 * cLength(iComponent)
-  IF( GeometryType(3) ) HalfLength(1) = 0.5D0 * ( cLength(iComponent) + cPotentialRange(iComponent,pASWRange) )
+  HalfLength(1) = 0.5D0 * cLength(iComponent)
 ELSE IF( .NOT. ASWPotentialCheck ) THEN
   HalfLength(1) = 0.5D0 * cLength(iComponent)
 END IF
 ! Half length of spherocylinder j
 IF( ASWPotentialCheck ) THEN
-  IF( GeometryType(2) ) HalfLength(2) = 0.5D0 * cLength(jComponent)
-  IF( GeometryType(3) ) HalfLength(2) = 0.5D0 * ( cLength(jComponent) + cPotentialRange(jComponent,pASWRange) )
+  HalfLength(2) = 0.5D0 * cLength(jComponent)
 ELSE IF( .NOT. ASWPotentialCheck ) THEN
   HalfLength(2) = 0.5D0 * cLength(jComponent)
 END IF
