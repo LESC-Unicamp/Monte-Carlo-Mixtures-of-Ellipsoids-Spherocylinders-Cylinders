@@ -763,6 +763,8 @@ INTEGER( Kind= Int64 ) :: pASWRange              ! Counter (range value of the a
 ! *********************************************************************************************** !
 REAL( Kind= Real64 )                    :: cSquaredLength                  ! Cylindrical length (squared)
 REAL( Kind= Real64 )                    :: cSquaredDiameter                ! Cylindrical diameter (squared)
+REAL( Kind= Real64 )                    :: AngleCosine                     ! Dot product of both orientations (particles i and j)
+REAL( Kind= Real64 )                    :: OrthogonalityCheck              ! Orthogonality check between orientations of particles i and j
 REAL( Kind= Real64 )                    :: iVectorDistanceOrientation      ! Dot product of vector distance and orientation of particle i
 REAL( Kind= Real64 )                    :: jVectorDistanceOrientation      ! Dot product of vector distance and orientation of particle j
 REAL( Kind= Real64 )                    :: SquaredVectorDistanceParallel   ! Squared vector distance between particles i and j (parallel)
@@ -850,6 +852,8 @@ OverlapCYL = .FALSE.
 ! Initial calculation
 iVectorDistanceOrientation = DOT_PRODUCT( VectorDistance, iOrientation )
 jVectorDistanceOrientation = DOT_PRODUCT( VectorDistance, jOrientation )
+
+!
 
 ! *********************************************************************************************** !
 ! CASE 1: PARALLEL CYLINDERS                                                                      !
