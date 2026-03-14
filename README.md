@@ -264,7 +264,7 @@ where <code>X</code> is the number of threads.
 
 | Name<br> ______________________ | String Name<br> _________________________________ | Definition<br> _______________________________ | Options<br> _________________________________________________ |
 |:---:|:---:| --- | --- |
-| Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as <i>N</i> attempts to displace a random particle in the system or a single attempt to change the volume of the box | Any positive, non-zero <code>INTEGER</code> number |
+| Number of cycles | <code>max_cycles</code> | Used to define the maximum number of simulation cycles<br> **NOTE**: A cycle is defined as an attempt to displace a random particle in the system or an attempt to change the volume of the box | Any positive, non-zero <code>INTEGER</code> number |
 | Number of equilibration cycles | <code>equilibration_cycles</code> | Used to define the number of equilibration cycles within the maximum number of cycles | Any positive, non-zero <code>INTEGER</code> number less than the maximum number of cycles |
 | Saving frequency | <code>saving_frequency</code> | Used to define how often simulation results are written out | Any positive, non-zero <code>INTEGER</code> number<br> **NOTE**: _1_ is the highest frequency, meaning that the results will be written out every simulation cycle |
 | Adjustment frequency<br> (movement) | <code>adjustment_frequency_movement</code> | Used to define how often movement displacement adjustments are carried out | Any positive, non-zero <code>INTEGER</code> number |
